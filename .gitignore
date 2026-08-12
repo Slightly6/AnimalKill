@@ -1,0 +1,32 @@
+# Unity 生成的文件（不用上传，太大了且可重新生成）
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+
+# IDE
+.vs/
+.idea/
+.vscode/
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+
+# 系统
+.DS_Store
+Thumbs.db
+
+# 崩溃报告
+sysinfo.txt
+*.stackdump
+
+# 备份
+*.bak
+*.orig

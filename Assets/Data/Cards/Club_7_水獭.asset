@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c24f5aa9dbdbe3468b022dc770b2e83, type: 3}
+  m_Name: "Club_7_\u6C34\u736D"
+  m_EditorClassIdentifier: 
+  suit: 3
+  rank: 7
+  animalName: "\u6C34\u736D"
+  description: "\u653B7 \u884012"
+  abilityName: "\u6F5C\u6C34"
+  abilityDesc: "\u3010\u6F5C\u6C34\u3011\u767B\u573A\u83B7\u5F97 3 \u70B9\u62A4\u76FE\u3002\u89C9\u9192\u6BCF\u56DE\u5408\u5237\u65B0\u3002"
+  isAwakened: 0
+  artwork: {fileID: 0}
+  cardColor: {r: 1, g: 1, b: 1, a: 1}

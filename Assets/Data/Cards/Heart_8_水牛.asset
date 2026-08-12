@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6c24f5aa9dbdbe3468b022dc770b2e83, type: 3}
+  m_Name: "Heart_8_\u6C34\u725B"
+  m_EditorClassIdentifier: 
+  suit: 1
+  rank: 8
+  animalName: "\u6C34\u725B"
+  description: "\u653B8 \u884011"
+  abilityName: "\u51B2\u950B"
+  abilityDesc: "\u3010\u51B2\u950B\u3011\u76F8\u90BB\u53CB\u65B9 +2 \u653B\u3002\u89C9\u9192\u8840+3\u3002"
+  isAwakened: 0
+  artwork: {fileID: 0}
+  cardColor: {r: 1, g: 1, b: 1, a: 1}
