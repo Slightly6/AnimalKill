@@ -102,36 +102,6 @@ public class BoardManager : Singleton<BoardManager>
         return null;
     }
 
-    public CardSlot FindEmptyPlayerSlot()
-    {
-        for (int i = 0; i < playerSlots.Count; i++)
-            if (playerSlots[i].IsEmpty) return playerSlots[i];
-        return null;
-    }
-
-    public bool HasEmptyPlayerSlot()
-    {
-        return FindEmptyPlayerSlot() != null;
-    }
-
-    // 兼容旧接口：在敌方当前排创建一张卡
-    public Card CreateEnemyCardAt(int lane)
-    {
-        CardSlot slot = GetEnemySlot(lane);
-        if (slot == null || !slot.IsEmpty) return null;
-        if (enemyDeck.Count == 0 || enemyCardPrefab == null) return null;
-
-        CardDataSO data = enemyDeck[Random.Range(0, enemyDeck.Count)].Clone();
-        GameObject go = Instantiate(enemyCardPrefab, slot.transform);
-        Card card = go.GetComponent<Card>();
-        if (card == null) { Destroy(go); return null; }
-
-        card.Init(data, false);
-        card.SetFaceDown(false);   // 敌方卡翻开显示正面
-        slot.PlaceCard(card);
-        return card;
-    }
-
     // ========== AI ==========
 
     // 在预出排创建一张卡（扣着）
@@ -155,8 +125,8 @@ public class BoardManager : Singleton<BoardManager>
 
     void OnPhaseChanged(PhaseChangedEvent e)
     {
-        // 敌方回合结束时，随机补 2~5 张预告
-        if (e.phase == TurnPhase.End && !e.isPlayerTurn)
+        // 每回合结束，随机补 2~5 张预告
+        if (e.phase == TurnPhase.End)
         {
             int n = Random.Range(2, 6);
             int added = 0;

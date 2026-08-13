@@ -14,7 +14,7 @@ public enum CardRank
 {
     Two = 2, Three = 3, Four = 4, Five = 5,
     Six = 6, Seven = 7, Eight = 8, Nine = 9, Ten = 10,
-    Jack = 11, Queen = 12, King = 13, Ace = 14
+    Jack = 11, Queen = 12, King = 13, Ace = 1
 }
 
 // ========== 卡牌数据 ==========
@@ -22,7 +22,7 @@ public enum CardRank
 public class CardDataSO : ScriptableObject
 {
     public CardSuit suit;// 花色
-    public CardRank rank;// 点数 2~14   
+    public CardRank rank;// 点数 1~13
 
     // 动物
     public string animalName = "新动物";
@@ -68,23 +68,6 @@ public class CardDataSO : ScriptableObject
         if (rank == CardRank.Queen) return "Q";
         if (rank == CardRank.Jack) return "J";
         return ((int)rank).ToString();
-    }
-
-    public string GetFullName()
-    {
-        string star = isAwakened ? "⭐" : "";
-        return star + GetSuitSymbol() + GetRankText() + " " + animalName;
-    }
-
-    // ---- 外观 ----
-
-    public Color GetSuitColor()
-    {
-        if (suit == CardSuit.Spade) return new Color(0.2f, 0.2f, 0.35f);
-        if (suit == CardSuit.Heart) return new Color(0.85f, 0.2f, 0.2f);
-        if (suit == CardSuit.Diamond) return new Color(0.9f, 0.7f, 0.05f);
-        if (suit == CardSuit.Club) return new Color(0.1f, 0.5f, 0.15f);
-        return Color.gray;
     }
 
     // ---- 操作 ----

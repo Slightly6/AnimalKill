@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using System.Collections;
 /// <summary>
 /// 一张扑克牌动物卡。战力 = 攻 = 血，一个数值。
 /// </summary>
@@ -18,7 +19,6 @@ public class Card : MonoBehaviour
     [System.NonSerialized] public bool IsFaceDown = true;   // 默认扣着（背面朝上），不在 Inspector 显示
 
     public string CardName { get { return Data.animalName; } }
-    public int Power { get { return Data.GetPower(); } }
 
     public void Init(CardDataSO data, bool isPlayer)
     {
@@ -80,60 +80,79 @@ public class Card : MonoBehaviour
         }
     }
 
-    // 战力数值 → 点数文字  例: 13→K  8→8  3→3
+    // 战力数值 → 点数文字  例: 13→K  8→8  1→A
     string PowerToRankString(int power)
     {
-        if (power >= 14) return "A";
         if (power >= 13) return "K";
         if (power >= 12) return "Q";
         if (power >= 11) return "J";
-        if (power <= 2) return "2";
-        return power.ToString();
+        if (power == 1) return "A";
+        return power.ToString();   // 2~10
     }
 
     // ========== 战斗 ==========
 
-    // 战斗：攻击方先手，被打死的来不及还手
-    public void Fight(Card other)
+    // 单次伤害：把 damage 打到 target 身上，处理死亡
+    void DealDamage(Card target, int damage)
     {
-        if (IsDead || other.IsDead) return;
-
-        // ① 我先出手，把伤害打到对方身上
-        int myDamage = CurrentPower;
-        other.CurrentPower -= myDamage;
+        target.CurrentPower -= damage;
 
         EventBus.Publish(new CardAttackedEvent
         {
             attacker = this,
-            target = other,
-            damage = myDamage
+            target = target,
+            damage = damage
         });
 
-        Debug.Log("[战斗] " + CardName + " 先手打 " + other.CardName + " " + myDamage + " 点");
-
-        // ② 对方被打死了？那它来不及还手，直接结束
-        if (other.CurrentPower <= 0)
+        if (target.CurrentPower <= 0)
         {
-            other.CurrentPower = 0;
-            other.Die();
-            return;
-        }
-        other.RefreshDisplay();
-
-        // ③ 对方没死，用剩下的战力还手
-        int theirDamage = other.CurrentPower;
-        CurrentPower -= theirDamage;
-
-        if (CurrentPower <= 0)
-        {
-            CurrentPower = 0;
-            Die();
+            target.CurrentPower = 0;
+            target.Die();
         }
         else
         {
-            RefreshDisplay();
-            StartCoroutine(HitFlash());
+            target.RefreshDisplay();
         }
+    }
+
+    // 通用攻击动作：冲过去打一下，再回原位（this 是出手方，target 是被打方）
+    public IEnumerator StrikeAndReturn(Card target)
+    {
+        Vector3 homePos = transform.position;
+        Vector3 dir = (target.transform.position - homePos).normalized;
+        Vector3 slamPos = target.transform.position - dir * 0.5f;
+
+        // ① 边旋转边冲过去（快）
+        yield return CardAnimator.MoveAndRotate(transform, slamPos, 15f, 0.12f);
+
+        // ② 命中：扣血
+        int damage = CurrentPower;
+        DealDamage(target, damage);
+        Debug.Log("[战斗] " + CardName + " 打 " + target.CardName + " " + damage + " 点");
+
+        // ③ 边旋转边回原位（慢）
+        yield return CardAnimator.MoveAndRotate(transform, homePos, 0f, 0.2f);
+    }
+
+    // 打脸动画：对面没卡，冲出去打对方脸，然后回来
+    public IEnumerator FaceAnim()
+    {
+        Vector3 homePos = transform.position;
+        // 玩家往上打脸，敌方往下打脸
+        Vector3 dir = IsPlayer ? Vector3.up : Vector3.down;
+        Vector3 lungePos = homePos + dir * 1.0f;
+
+        // ① 边旋转边冲出去（快）
+        yield return CardAnimator.MoveAndRotate(transform, lungePos, 15f, 0.12f);
+
+        // ② 命中：打脸扣血
+        int damage = CurrentPower;
+        if (IsPlayer) GameManager.Instance.DamageEnemy(damage);
+        else GameManager.Instance.DamagePlayer(damage);
+        Debug.Log("[战斗] " + CardName + " 打脸 " + damage + " 点");
+
+        // ③ 边旋转边回原位（慢）
+        yield return CardAnimator.MoveAndRotate(transform, homePos, 0f, 0.2f);
     }
 
     void Die()
@@ -154,12 +173,6 @@ public class Card : MonoBehaviour
     }
 
     // ========== 动画 ==========
-
-    System.Collections.IEnumerator HitFlash()
-    {
-        // 暂时没底框可闪，先空着，后续加了 frame 再补
-        yield break;
-    }
 
     System.Collections.IEnumerator DeathAnim()
     {

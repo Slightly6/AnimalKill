@@ -157,13 +157,13 @@ MonoBehaviour:
   enemyRowY: 1.2
   playerRowY: -1
   enemyDeck:
-  - {fileID: 11400000, guid: 6804df1573fa75e468bf6778690c87dd, type: 2}
-  - {fileID: 11400000, guid: 391fb2c1914accb4da7aca8795ec27bb, type: 2}
-  - {fileID: 11400000, guid: d958deb338a0f79409904a7390a8bbb9, type: 2}
-  - {fileID: 11400000, guid: 49467b91c9731e74687e816dacc2afcb, type: 2}
-  - {fileID: 11400000, guid: 3cb2f8751bfb9dd4885ee8747475df96, type: 2}
-  - {fileID: 11400000, guid: b2e5a67fae986af48b8929c2b1d90e80, type: 2}
-  - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
+  - {fileID: 11400000, guid: 6d718d9dcb1a07649878d29c336bb029, type: 2}
+  - {fileID: 11400000, guid: a8e4d70f798dd434cbd1f515a81534b3, type: 2}
+  - {fileID: 11400000, guid: 2252e6d6b43bdc74b952bc1d5cd87a65, type: 2}
+  - {fileID: 11400000, guid: bed912cc61014c44aba197afc95c94b6, type: 2}
+  - {fileID: 11400000, guid: d15e2bec6cd8eb347aa22836792e1294, type: 2}
+  - {fileID: 11400000, guid: a8e4d70f798dd434cbd1f515a81534b3, type: 2}
+  - {fileID: 11400000, guid: dd6e9de5e0f6bc346a2a655d49f86f38, type: 2}
   enemyCardPrefab: {fileID: 1901183720400362659, guid: c82b2c731d11c6243bbae4c000c84563, type: 3}
 --- !u!4 &150004689
 Transform:
@@ -473,7 +473,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 815d022568799904d961b294d06a95b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  playPhaseDuration: 15
 --- !u!1 &418607838
 GameObject:
   m_ObjectHideFlags: 0
@@ -724,7 +723,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: -8.21, y: -2.78, z: -0.020140365}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.75, y: 0.57, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -773,7 +772,7 @@ BoxCollider2D:
   m_IsTrigger: 0
   m_UsedByEffector: 0
   m_UsedByComposite: 0
-  m_Offset: {x: 0, y: 0}
+  m_Offset: {x: -0.0054133534, y: -0.007121682}
   m_SpriteTilingProperty:
     border: {x: 0, y: 0, z: 0, w: 0}
     pivot: {x: 0.5, y: 0.5}
@@ -784,7 +783,7 @@ BoxCollider2D:
     adaptiveTiling: 0
   m_AutoTiling: 0
   serializedVersion: 2
-  m_Size: {x: 1, y: 1}
+  m_Size: {x: 1.8335954, y: 2.6381304}
   m_EdgeRadius: 0
 --- !u!212 &1278628153
 SpriteRenderer:
@@ -873,17 +872,17 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   deckCards:
-  - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
-  - {fileID: 11400000, guid: 0effb2fe63d05234293792cc6443c4ac, type: 2}
-  - {fileID: 11400000, guid: 0cb69d00a3e004f42b0463228d0266f0, type: 2}
-  - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
-  - {fileID: 11400000, guid: c995e70832264604fafb98af7faa8d1c, type: 2}
-  - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
-  - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
-  - {fileID: 11400000, guid: da542635c64249d49a4c55273c6f12f9, type: 2}
-  - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
-  - {fileID: 11400000, guid: c995e70832264604fafb98af7faa8d1c, type: 2}
-  - {fileID: 11400000, guid: 5460954ec967bc94ebe676c179793ee1, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
+  - {fileID: 11400000, guid: b5a191e3e918e9747a714bd8e855c6b3, type: 2}
   maxHandSize: 20
   initialHandSize: 6
   drawPerTurn: 1

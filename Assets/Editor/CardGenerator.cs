@@ -35,11 +35,11 @@ public class CardGenerator
         // 4 种花色
         CardSuit[] suits = { CardSuit.Spade, CardSuit.Heart, CardSuit.Diamond, CardSuit.Club };
 
-        // 13 个点数（从 2 到 A）
+        // 13 个点数（从 A 到 K，A 最弱 = 1 点）
         CardRank[] ranks = {
-            CardRank.Two, CardRank.Three, CardRank.Four, CardRank.Five,
-            CardRank.Six, CardRank.Seven, CardRank.Eight, CardRank.Nine,
-            CardRank.Ten, CardRank.Jack, CardRank.Queen, CardRank.King, CardRank.Ace
+            CardRank.Ace, CardRank.Two, CardRank.Three, CardRank.Four, CardRank.Five,
+            CardRank.Six, CardRank.Seven, CardRank.Eight, CardRank.Nine, CardRank.Ten,
+            CardRank.Jack, CardRank.Queen, CardRank.King
         };
 
         // 每种花色的 13 只动物

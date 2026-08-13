@@ -29,7 +29,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1901183720400362659}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.68, y: -2.8, z: -0.03276892}
   m_LocalScale: {x: 1, y: 1, z: 10}
   m_ConstrainProportionsScale: 0
@@ -107,11 +107,12 @@ MonoBehaviour:
   rankTexts:
   - {fileID: 5896373055710930085}
   - {fileID: 7920359150304433119}
-  Data: {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
+  Data: {fileID: 11400000, guid: 0138deda2881b394d92ee5d469a718f5, type: 2}
   CurrentPower: 0
   IsDead: 0
   IsPlayer: 0
   flipDuration: 0.3
+  AttackAnimator: {fileID: 0}
 --- !u!114 &678577280254055433
 MonoBehaviour:
   m_ObjectHideFlags: 0
