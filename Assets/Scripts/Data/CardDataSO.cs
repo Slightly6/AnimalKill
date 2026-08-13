@@ -21,8 +21,8 @@ public enum CardRank
 [CreateAssetMenu(fileName = "NewCard", menuName = "Data/Card Data")]
 public class CardDataSO : ScriptableObject
 {
-    public CardSuit suit;
-    public CardRank rank;
+    public CardSuit suit;// 花色
+    public CardRank rank;// 点数 2~14   
 
     // 动物
     public string animalName = "新动物";

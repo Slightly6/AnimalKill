@@ -181,16 +181,11 @@ public class BoardManager : Singleton<BoardManager>
 
             if (preview.IsEmpty) continue;
 
+            // 放牌区这格还有活牌 → 新牌先不上，等旧牌死了再上
+            if (!current.IsEmpty) continue;
+
             Card card = preview.CurrentCard;
             preview.RemoveCard();
-
-            if (!current.IsEmpty)
-            {
-                // 当前排有卡 → 旧的死了，预出卡顶上
-                Card oldCard = current.CurrentCard;
-                current.RemoveCard();
-                Destroy(oldCard.gameObject);
-            }
 
             card.transform.SetParent(current.transform);
             card.transform.localPosition = Vector3.zero;

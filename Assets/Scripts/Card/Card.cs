@@ -11,7 +11,7 @@ public class Card : MonoBehaviour
 
     // ---- 运行时状态 ----
     public CardDataSO Data;
-    public int CurrentPower;// 当前战力
+    public int CurrentPower;// 当前力量
     public bool IsDead;
     public bool IsPlayer;
     public float flipDuration=0.3f;   // 翻面动画时长
@@ -93,16 +93,14 @@ public class Card : MonoBehaviour
 
     // ========== 战斗 ==========
 
-    // 互殴：双方各受对方当前战力伤害
+    // 战斗：攻击方先手，被打死的来不及还手
     public void Fight(Card other)
     {
         if (IsDead || other.IsDead) return;
 
+        // ① 我先出手，把伤害打到对方身上
         int myDamage = CurrentPower;
-        int theirDamage = other.CurrentPower;
-
         other.CurrentPower -= myDamage;
-        CurrentPower -= theirDamage;
 
         EventBus.Publish(new CardAttackedEvent
         {
@@ -111,21 +109,21 @@ public class Card : MonoBehaviour
             damage = myDamage
         });
 
-        Debug.Log("[战斗] " + CardName + "(" + myDamage + ") ⇄ " +
-                  other.CardName + "(" + theirDamage + ")");
+        Debug.Log("[战斗] " + CardName + " 先手打 " + other.CardName + " " + myDamage + " 点");
 
-        // 对方死了？
+        // ② 对方被打死了？那它来不及还手，直接结束
         if (other.CurrentPower <= 0)
         {
             other.CurrentPower = 0;
             other.Die();
+            return;
         }
-        else
-        {
-            other.RefreshDisplay();
-        }
+        other.RefreshDisplay();
 
-        // 自己死了？
+        // ③ 对方没死，用剩下的战力还手
+        int theirDamage = other.CurrentPower;
+        CurrentPower -= theirDamage;
+
         if (CurrentPower <= 0)
         {
             CurrentPower = 0;

@@ -7,9 +7,6 @@ using UnityEngine;
 /// </summary>
 public class BattleManager : Singleton<BattleManager>
 {
-    [Header("玩家出牌时长（秒）")]
-    public float playPhaseDuration = 15f;
-
     public TurnPhase CurrentPhase { get; private set; }// 当前阶段
     public bool IsPlayerTurn { get; private set; } = true;// 当前回合是玩家回合吗
 
