@@ -14,13 +14,6 @@ public class DeckPile : MonoBehaviour
         DeckManager dm = DeckManager.Instance;
         if (dm == null) return;
 
-        // 检查手牌上限
-        if (dm.HandCards.Count >= dm.maxHandSize)
-        {
-            Debug.Log("手牌已满");
-            return;
-        }
-
-        StartCoroutine(dm.DrawCards(1));
+        dm.TryDrawOne();
     }
 }

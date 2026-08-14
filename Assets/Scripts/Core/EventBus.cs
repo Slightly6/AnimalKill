@@ -106,11 +106,17 @@ public struct GameOverEvent
     public bool playerWin;
 }
 
-// 血量变化
-public struct HealthChangedEvent
+// 筹码变化
+public struct ChipsChangedEvent
 {
-    public int playerHP;
-    public int enemyHP;
+    public int playerChips;   // 玩家当前筹码
+    public int enemyChips;    // 敌人当前筹码
+}
+
+// 战利品变化（打脸收牌）
+public struct TrophyChangedEvent
+{
+    public int count;
 }
 
 // 结束出牌阶段（玩家点按钮跳过等待）
@@ -122,6 +128,24 @@ public struct HandChangedEvent
 {
 
 }
+
+// 进入一关（开始战斗）
+public struct LevelStartedEvent
+{
+    public int levelIndex;   // 第几关 0~51
+    public bool isBoss;
+}
+
+// 过关（打光敌人筹码，非整局胜利）
+public struct LevelClearedEvent
+{
+}
+
+// 地图刷新（生成/更新地图）
+public struct MapChangedEvent
+{
+}
+
 // 回合阶段
 public enum TurnPhase
 {

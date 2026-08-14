@@ -80,13 +80,13 @@ public class Card : MonoBehaviour
         }
     }
 
-    // 战力数值 → 点数文字  例: 13→K  8→8  1→A
+    // 战力数值 → 点数文字  例: 14→A  13→K  8→8
     string PowerToRankString(int power)
     {
+        if (power >= 14) return "A";
         if (power >= 13) return "K";
         if (power >= 12) return "Q";
         if (power >= 11) return "J";
-        if (power == 1) return "A";
         return power.ToString();   // 2~10
     }
 
@@ -145,10 +145,18 @@ public class Card : MonoBehaviour
         // ① 边旋转边冲出去（快）
         yield return CardAnimator.MoveAndRotate(transform, lungePos, 15f, 0.12f);
 
-        // ② 命中：打脸扣血
+        // ② 命中：打脸
         int damage = CurrentPower;
-        if (IsPlayer) GameManager.Instance.DamageEnemy(damage);
-        else GameManager.Instance.DamagePlayer(damage);
+        if (IsPlayer)
+        {
+            GameManager.Instance.AddTrophy(Data);          // 收牌凑德州
+            GameManager.Instance.EnemyLoseChips(damage);   // 扣敌人筹码
+        }
+        else
+        {
+            GameManager.Instance.LoseChips(damage);        // 敌人扣玩家筹码
+            GameManager.Instance.EnemyAddChips(damage);    // 敌人自己加上
+        }
         Debug.Log("[战斗] " + CardName + " 打脸 " + damage + " 点");
 
         // ③ 边旋转边回原位（慢）

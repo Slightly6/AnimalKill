@@ -4,7 +4,7 @@ using UnityEngine;
 /// <summary>
 /// 管理牌组和手牌。
 /// 管洗牌、抽牌、手牌上限。
-/// 监听 PhaseChanged 事件，抽牌阶段自动抽牌。
+/// 每关 SetupLevel 从 LevelConfig 读配置，牌组跨关继承。
 /// </summary>
 public class DeckManager : Singleton<DeckManager>
 {
@@ -13,8 +13,7 @@ public class DeckManager : Singleton<DeckManager>
 
     [Header("手牌设置")]
     public int maxHandSize = 20;     // 手牌上限
-    public int initialHandSize = 6;  // 开局给几张（后续技能可以改）
-    public int drawPerTurn = 1;      // 每回合抽几张
+    public int drawPerTurn = 1;      // 每回合抽几张（每关 SetupLevel 更新）
 
     [Header("卡牌预制体")]
     public GameObject cardPrefab;
@@ -28,11 +27,11 @@ public class DeckManager : Singleton<DeckManager>
     // 抽牌堆和手牌
     private List<CardDataSO> drawPile = new List<CardDataSO>();// 抽牌堆
     public List<Card> HandCards { get; private set; } = new List<Card>();// 手牌
+    private int drawsThisTurn = 0;   // 本回合已经抽了几张
 
     private void Start()
     {
         InitDeck();
-        StartCoroutine(DrawCards(initialHandSize));   // 开局给 initialHandSize 张（带翻面）
         EventBus.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
     }
 
@@ -41,7 +40,7 @@ public class DeckManager : Singleton<DeckManager>
         EventBus.Unsubscribe<PhaseChangedEvent>(OnPhaseChanged);
     }
 
-    // 初始化牌组
+    // 初始化牌组（整局只洗一次，跨关继承）
     private void InitDeck()
     {
         drawPile = new List<CardDataSO>(deckCards);
@@ -49,14 +48,43 @@ public class DeckManager : Singleton<DeckManager>
         Debug.Log("牌组初始化完成，共 " + drawPile.Count + " 张");
     }
 
-    // 回合阶段变了（先不用自动抽牌，改为手动点牌堆抽）
+    // 每关配置：更新每回合抽牌数，手牌补到开局数（MapManager 调用）
+    public void SetupLevel(LevelConfig cfg)
+    {
+        drawPerTurn = cfg.drawPerTurn;
+
+        if (HandCards.Count < cfg.initialHandSize)
+        {
+            StartCoroutine(DrawCards(cfg.initialHandSize - HandCards.Count));
+        }
+
+        drawsThisTurn = drawPerTurn;   // 本关开局补了牌，第一回合不能再抽
+    }
+
+    // 回合阶段变了：回合结束（End 阶段）重置抽牌次数，下一回合又能抽
     private void OnPhaseChanged(PhaseChangedEvent e)
     {
-        // 以后需要自动抽牌再打开
-        // if (e.phase == TurnPhase.Draw && e.isPlayerTurn)
-        // {
-        //     StartCoroutine(DrawCards(drawPerTurn));
-        // }
+        if (e.phase == TurnPhase.End && e.isPlayerTurn)
+        {
+            drawsThisTurn = 0;
+        }
+    }
+
+    // 尝试抽一张（受每回合 drawPerTurn 限制）
+    public void TryDrawOne()
+    {
+        if (drawsThisTurn >= drawPerTurn)
+        {
+            Debug.Log("本回合已经抽过牌了");
+            return;
+        }
+        if (HandCards.Count >= maxHandSize)
+        {
+            Debug.Log("手牌满了");
+            return;
+        }
+        drawsThisTurn++;
+        StartCoroutine(DrawCards(1));
     }
 
     // 抽 N 张（协程，一张张翻面）
@@ -100,7 +128,6 @@ public class DeckManager : Singleton<DeckManager>
 
         CardDataSO clone = data.Clone();
 
-        // 从牌堆位置出生
         GameObject go = Instantiate(cardPrefab);
         if (deckPile != null)
             go.transform.position = deckPile.position;
@@ -115,10 +142,8 @@ public class DeckManager : Singleton<DeckManager>
 
         card.Init(clone, true);   // Init 里默认扣着（背面朝上）
 
-        // 翻面动画
         yield return StartCoroutine(card.FlipAnim());
 
-        // 翻完进手牌
         card.transform.SetParent(handPanel);
         HandCards.Add(card);
         EventBus.Publish(new HandChangedEvent());

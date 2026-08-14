@@ -112,7 +112,6 @@ MonoBehaviour:
   IsDead: 0
   IsPlayer: 0
   flipDuration: 0.3
-  AttackAnimator: {fileID: 0}
 --- !u!114 &678577280254055433
 MonoBehaviour:
   m_ObjectHideFlags: 0

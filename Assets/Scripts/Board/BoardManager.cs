@@ -10,7 +10,8 @@ using UnityEngine;
 public class BoardManager : Singleton<BoardManager>
 {
     [Header("槽位预制体（拖一个就行，剩下自动生成）")]
-    public GameObject slotPrefab;
+    public GameObject slotPrefab;           // 玩家排 + 敌方当前排
+    public GameObject previewSlotPrefab;    // 敌方预出排（单独图，空则用 slotPrefab）
 
     [Header("布局")]
     public float slotSpacing = 2.2f;
@@ -23,33 +24,29 @@ public class BoardManager : Singleton<BoardManager>
     private List<CardSlot> enemyPreviewSlots = new List<CardSlot>();
 
     [Header("敌方卡牌")]
-    public List<CardDataSO> enemyDeck = new List<CardDataSO>();
     public GameObject enemyCardPrefab;
+
+    private LevelConfig currentConfig;   // 当前关配置
 
     void Start()
     {
-        playerSlots = GenerateSlots(playerRowY, true);
-        enemySlots = GenerateSlots(enemyRowY, false);
-        enemyPreviewSlots = GenerateSlots(previewRowY, false);
+        playerSlots = GenerateSlots(playerRowY, true, slotPrefab);
+        enemySlots = GenerateSlots(enemyRowY, false, slotPrefab);
+        enemyPreviewSlots = GenerateSlots(previewRowY, false, PreviewPrefab());
 
         EventBus.Subscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Subscribe<CardDiedEvent>(OnCardDied);
         EventBus.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
-
-        // 开局随机 2~5 张预告
-        int n = Random.Range(2, 6);
-        for (int i = 0; i < n; i++)
-            CreateEnemyPreview(i);
     }
 
-    List<CardSlot> GenerateSlots(float y, bool isPlayer)
+    List<CardSlot> GenerateSlots(float y, bool isPlayer, GameObject prefab)
     {
         List<CardSlot> list = new List<CardSlot>();
         float totalWidth = 4 * slotSpacing;
         float startX = -totalWidth / 2f;
         for (int i = 0; i < 5; i++)
         {
-            GameObject go = Instantiate(slotPrefab, transform);
+            GameObject go = Instantiate(prefab, transform);
             go.transform.position = new Vector3(startX + i * slotSpacing, y, 0);
             go.name = (isPlayer ? "Player" : "Enemy") + "_Slot_" + i;
             CardSlot slot = go.GetComponent<CardSlot>();
@@ -60,11 +57,48 @@ public class BoardManager : Singleton<BoardManager>
         return list;
     }
 
+    // 预出排的槽位 prefab（没拖单独的图就用普通 slotPrefab）
+    GameObject PreviewPrefab()
+    {
+        return previewSlotPrefab != null ? previewSlotPrefab : slotPrefab;
+    }
+
     void OnDestroy()
     {
         EventBus.Unsubscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Unsubscribe<CardDiedEvent>(OnCardDied);
         EventBus.Unsubscribe<PhaseChangedEvent>(OnPhaseChanged);
+    }
+
+    // ========== 每关重置 ==========
+
+    // 进一关：清空敌方，按 cfg 重新摆敌人（玩家棋盘/手牌跨关保留）
+    public void ResetLevel(LevelConfig cfg)
+    {
+        currentConfig = cfg;
+        ClearEnemyBoard();
+
+        if (cfg == null || cfg.enemyDeck.Count == 0) return;
+
+        int n = Random.Range(cfg.minPreviewCards, cfg.maxPreviewCards + 1);
+        for (int i = 0; i < 5 && i < n; i++)
+        {
+            CreateEnemyPreview(i);
+        }
+    }
+
+    // 清空敌方当前排 + 预出排
+    void ClearEnemyBoard()
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            CardSlot enemy = GetEnemySlot(i);
+            CardSlot preview = GetPreviewSlot(i);
+            if (enemy != null && enemy.CurrentCard != null) Destroy(enemy.CurrentCard.gameObject);
+            if (preview != null && preview.CurrentCard != null) Destroy(preview.CurrentCard.gameObject);
+            if (enemy != null) enemy.RemoveCard();
+            if (preview != null) preview.RemoveCard();
+        }
     }
 
     // ========== 获取槽位 ==========
@@ -85,7 +119,6 @@ public class BoardManager : Singleton<BoardManager>
         return slot != null ? slot.CurrentCard : null;
     }
 
-    // 保留旧接口兼容
     public CardSlot GetSlot(int lane, bool isPlayerSide)
     {
         return isPlayerSide ? GetPlayerSlot(lane) : GetEnemySlot(lane);
@@ -109,9 +142,12 @@ public class BoardManager : Singleton<BoardManager>
     {
         CardSlot slot = GetPreviewSlot(lane);
         if (slot == null || !slot.IsEmpty) return;
-        if (enemyDeck.Count == 0 || enemyCardPrefab == null) return;
+        if (currentConfig == null || currentConfig.enemyDeck.Count == 0 || enemyCardPrefab == null) return;
 
-        CardDataSO data = enemyDeck[Random.Range(0, enemyDeck.Count)].Clone();
+        CardDataSO data = currentConfig.enemyDeck[Random.Range(0, currentConfig.enemyDeck.Count)].Clone();
+        if (currentConfig.enemyBonusPower != 0) data.AddBonus(currentConfig.enemyBonusPower);
+        if (currentConfig.enemyAwakened) data.Awaken();
+
         GameObject go = Instantiate(enemyCardPrefab, slot.transform);
         Card card = go.GetComponent<Card>();
         if (card == null) { Destroy(go); return; }
@@ -125,10 +161,10 @@ public class BoardManager : Singleton<BoardManager>
 
     void OnPhaseChanged(PhaseChangedEvent e)
     {
-        // 每回合结束，随机补 2~5 张预告
-        if (e.phase == TurnPhase.End)
+        // 每回合结束，按 cfg 补几张预告
+        if (e.phase == TurnPhase.End && currentConfig != null)
         {
-            int n = Random.Range(2, 6);
+            int n = Random.Range(currentConfig.minRefillCards, currentConfig.maxRefillCards + 1);
             int added = 0;
             for (int i = 0; i < 5 && added < n; i++)
             {
@@ -150,13 +186,10 @@ public class BoardManager : Singleton<BoardManager>
             CardSlot current = GetEnemySlot(i);
 
             if (preview.IsEmpty) continue;
-
-            // 放牌区这格还有活牌 → 新牌先不上，等旧牌死了再上
             if (!current.IsEmpty) continue;
 
             Card card = preview.CurrentCard;
             preview.RemoveCard();
-
             card.transform.SetParent(current.transform);
             card.transform.localPosition = Vector3.zero;
             current.PlaceCard(card);
