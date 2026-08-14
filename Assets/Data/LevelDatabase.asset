@@ -13,39 +13,54 @@ MonoBehaviour:
   m_Name: LevelDatabase
   m_EditorClassIdentifier: 
   levels:
-  - levelName: 
+  - levelName: 1
     isBoss: 0
-    enemyDeck: []
+    enemyDeck:
+    - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
+    - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
+    - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
+    - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
+    - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
-    minPreviewCards: 0
-    maxPreviewCards: 0
+    minPreviewCards: 1
+    maxPreviewCards: 2
     minRefillCards: 0
-    maxRefillCards: 0
-    enemyStartingChips: 0
-    initialHandSize: 0
-    drawPerTurn: 0
-  - levelName: 
+    maxRefillCards: 1
+    enemyStartingChips: 100
+    initialHandSize: 6
+    drawPerTurn: 1
+  - levelName: 2
     isBoss: 0
-    enemyDeck: []
+    enemyDeck:
+    - {fileID: 11400000, guid: 0effb2fe63d05234293792cc6443c4ac, type: 2}
+    - {fileID: 11400000, guid: 0effb2fe63d05234293792cc6443c4ac, type: 2}
+    - {fileID: 11400000, guid: 0effb2fe63d05234293792cc6443c4ac, type: 2}
+    - {fileID: 11400000, guid: 0effb2fe63d05234293792cc6443c4ac, type: 2}
+    - {fileID: 11400000, guid: 0effb2fe63d05234293792cc6443c4ac, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
-    minPreviewCards: 0
-    maxPreviewCards: 0
+    minPreviewCards: 1
+    maxPreviewCards: 3
     minRefillCards: 0
-    maxRefillCards: 0
-    enemyStartingChips: 0
-    initialHandSize: 0
-    drawPerTurn: 0
-  - levelName: 
+    maxRefillCards: 2
+    enemyStartingChips: 200
+    initialHandSize: 6
+    drawPerTurn: 1
+  - levelName: 3
     isBoss: 0
-    enemyDeck: []
+    enemyDeck:
+    - {fileID: 11400000, guid: 0effb2fe63d05234293792cc6443c4ac, type: 2}
+    - {fileID: 11400000, guid: 0cb69d00a3e004f42b0463228d0266f0, type: 2}
+    - {fileID: 11400000, guid: 5f9a5eec58ff19f47ba763e1c8986377, type: 2}
+    - {fileID: 11400000, guid: 2490c8e777737034ba3fc1cd2838cddb, type: 2}
+    - {fileID: 11400000, guid: 2490c8e777737034ba3fc1cd2838cddb, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
-    minPreviewCards: 0
-    maxPreviewCards: 0
+    minPreviewCards: 1
+    maxPreviewCards: 3
     minRefillCards: 0
-    maxRefillCards: 0
-    enemyStartingChips: 0
-    initialHandSize: 0
-    drawPerTurn: 0
+    maxRefillCards: 3
+    enemyStartingChips: 300
+    initialHandSize: 6
+    drawPerTurn: 1

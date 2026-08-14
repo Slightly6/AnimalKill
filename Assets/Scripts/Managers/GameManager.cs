@@ -22,6 +22,13 @@ public class GameManager : Singleton<GameManager>
     // 战利品区当前张数
     public int TrophyCount { get { return trophy.Count; } }
 
+    // 取战利品区第 index 张牌（0~4，空位返回 null，给 UI 显示用）
+    public CardDataSO GetTrophyCard(int index)
+    {
+        if (index < 0 || index >= trophy.Count) return null;
+        return trophy[index];
+    }
+
     public bool IsGameOver { get; private set; }
 
     // 战利品区：打脸收的牌，凑满 5 张结算

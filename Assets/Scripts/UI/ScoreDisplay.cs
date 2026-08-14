@@ -2,40 +2,32 @@ using UnityEngine;
 using TMPro;
 
 /// <summary>
-/// 筹码 + 战利品显示。挂在一个 TextMeshPro 上。
-/// 订阅筹码/战利品事件，实时刷新文字。
+/// 单个筹码显示。挂在一个物体上（Canvas 内），只刷新一个筹码数字。
+/// 玩家筹码和敌人筹码各挂一个实例，分开摆到不同位置。
+/// isPlayer = true → 显示玩家筹码；false → 显示敌人筹码。
 /// </summary>
-[RequireComponent(typeof(TextMeshPro))]
 public class ScoreDisplay : MonoBehaviour
 {
-    private TextMeshPro text;
-
-    void Awake()
-    {
-        text = GetComponent<TextMeshPro>();
-    }
+    public bool isPlayer = true;          // 勾上=玩家筹码，不勾=敌人筹码
+    public TextMeshProUGUI text;          // 要刷新的那个数字
 
     void Start()
     {
         EventBus.Subscribe<ChipsChangedEvent>(OnChipsChanged);
-        EventBus.Subscribe<TrophyChangedEvent>(OnTrophyChanged);
         Refresh();
     }
 
     void OnDestroy()
     {
         EventBus.Unsubscribe<ChipsChangedEvent>(OnChipsChanged);
-        EventBus.Unsubscribe<TrophyChangedEvent>(OnTrophyChanged);
     }
 
     void OnChipsChanged(ChipsChangedEvent e) { Refresh(); }
-    void OnTrophyChanged(TrophyChangedEvent e) { Refresh(); }
 
     void Refresh()
     {
-        if (GameManager.Instance == null) return;
-        text.text = "你 " + GameManager.Instance.PlayerChips
-            + "    敌 " + GameManager.Instance.EnemyChips
-            + "    战利品 " + GameManager.Instance.TrophyCount + "/5";
+        if (GameManager.Instance == null || text == null) return;
+        int chips = isPlayer ? GameManager.Instance.PlayerChips : GameManager.Instance.EnemyChips;
+        text.text = chips.ToString();
     }
 }
