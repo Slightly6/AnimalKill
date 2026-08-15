@@ -141,11 +141,6 @@ public struct LevelClearedEvent
 {
 }
 
-// 地图刷新（生成/更新地图）
-public struct MapChangedEvent
-{
-}
-
 // 回合阶段
 public enum TurnPhase
 {

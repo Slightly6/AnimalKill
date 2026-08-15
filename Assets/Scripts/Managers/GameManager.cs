@@ -8,9 +8,6 @@ using UnityEngine;
 /// </summary>
 public class GameManager : Singleton<GameManager>
 {
-    [Header("筹码")]
-    public int startingChips = 100;   // 玩家开局筹码（整局只初始化一次，跨关继承；敌人每关读 LevelConfig）
-
     private const int TROPHY_SIZE = 5;   // 战利品区容量
 
     // 玩家当前筹码（别的脚本只读，不要直接改）
@@ -37,7 +34,7 @@ public class GameManager : Singleton<GameManager>
     protected override void Awake()
     {
         base.Awake();               // 让 Singleton 正确设 _instance
-        PlayerChips = startingChips;   // 整局只初始化一次
+        PlayerChips = GameProgress.playerChips;   // 整局只初始化一次
     }
 
     private void Start()
@@ -173,6 +170,7 @@ public class GameManager : Singleton<GameManager>
         if (EnemyChips <= 0)
         {
             EnemyChips = 0;
+            GameProgress.playerChips = PlayerChips;// 跨关继承玩家筹码
             EventBus.Publish(new LevelClearedEvent());   // 过关（是否胜利由 MapManager 判）
         }
         else if (PlayerChips <= 0)

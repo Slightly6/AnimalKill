@@ -41,11 +41,20 @@ public class DeckManager : Singleton<DeckManager>
     }
 
     // 初始化牌组（整局只洗一次，跨关继承）
-    private void InitDeck()
+      private void InitDeck()
     {
-        drawPile = new List<CardDataSO>(deckCards);
-        Shuffle(drawPile);
-        Debug.Log("牌组初始化完成，共 " + drawPile.Count + " 张");
+      // 跨关继承：进度里已经有牌组就用它；没有（第一次）用 Inspector 的初始牌组
+      if (GameProgress.playerDeck != null && GameProgress.playerDeck.Count > 0)
+      {
+          drawPile = new List<CardDataSO>(GameProgress.playerDeck);
+      }
+      else
+      {
+          drawPile = new List<CardDataSO>(deckCards);
+          GameProgress.playerDeck = new List<CardDataSO>(deckCards);   // 存进进度，以后跨关继承
+      }
+      Shuffle(drawPile);
+      Debug.Log("牌组初始化完成，共 " + drawPile.Count + " 张");
     }
 
     // 每关配置：更新每回合抽牌数，手牌补到开局数（MapManager 调用）

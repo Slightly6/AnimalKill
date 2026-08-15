@@ -27,6 +27,7 @@ public class BoardManager : Singleton<BoardManager>
     public GameObject enemyCardPrefab;
 
     private LevelConfig currentConfig;   // 当前关配置
+    private int previewStuckTurns = 0;   // 预出排连续几回合没前移（被正式排顶住）
 
     void Start()
     {
@@ -36,7 +37,6 @@ public class BoardManager : Singleton<BoardManager>
 
         EventBus.Subscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Subscribe<CardDiedEvent>(OnCardDied);
-        EventBus.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
     }
 
     List<CardSlot> GenerateSlots(float y, bool isPlayer, GameObject prefab)
@@ -67,7 +67,6 @@ public class BoardManager : Singleton<BoardManager>
     {
         EventBus.Unsubscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Unsubscribe<CardDiedEvent>(OnCardDied);
-        EventBus.Unsubscribe<PhaseChangedEvent>(OnPhaseChanged);
     }
 
     // ========== 每关重置 ==========
@@ -76,14 +75,16 @@ public class BoardManager : Singleton<BoardManager>
     public void ResetLevel(LevelConfig cfg)
     {
         currentConfig = cfg;
+        previewStuckTurns = 0;   // 新关卡重置卡住计数
         ClearEnemyBoard();
 
         if (cfg == null || cfg.enemyDeck.Count == 0) return;
 
         int n = Random.Range(cfg.minPreviewCards, cfg.maxPreviewCards + 1);
+        List<int> lanes = ShuffledLanes();   // 打乱 0~4，预出牌随机落位
         for (int i = 0; i < 5 && i < n; i++)
         {
-            CreateEnemyPreview(i);
+            CreateEnemyPreview(lanes[i]);
         }
     }
 
@@ -97,6 +98,17 @@ public class BoardManager : Singleton<BoardManager>
             if (enemy != null && enemy.CurrentCard != null) Destroy(enemy.CurrentCard.gameObject);
             if (preview != null && preview.CurrentCard != null) Destroy(preview.CurrentCard.gameObject);
             if (enemy != null) enemy.RemoveCard();
+            if (preview != null) preview.RemoveCard();
+        }
+    }
+
+    // 只清空预出排（卡住两回合后强制刷新用）
+    void ClearPreview()
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            CardSlot preview = GetPreviewSlot(i);
+            if (preview != null && preview.CurrentCard != null) Destroy(preview.CurrentCard.gameObject);
             if (preview != null) preview.RemoveCard();
         }
     }
@@ -157,45 +169,86 @@ public class BoardManager : Singleton<BoardManager>
         slot.PlaceCard(card);
     }
 
+    // 打乱 0~4，返回随机顺序的通道列表（让预出牌随机落位，不按顺序）
+    private List<int> ShuffledLanes()
+    {
+        List<int> lanes = new List<int> { 0, 1, 2, 3, 4 };
+        for (int i = lanes.Count - 1; i > 0; i--)
+        {
+            int j = Random.Range(0, i + 1);
+            int temp = lanes[i];
+            lanes[i] = lanes[j];
+            lanes[j] = temp;
+        }
+        return lanes;
+    }
+
     // ========== 回合推进 ==========
 
-    void OnPhaseChanged(PhaseChangedEvent e)
+    // 预出排是否有牌（任意位置有牌返回 true）
+    private bool HasPreviewCard()
     {
-        // 每回合结束，按 cfg 补几张预告
-        if (e.phase == TurnPhase.End && currentConfig != null)
+        for (int i = 0; i < 5; i++)
         {
-            int n = Random.Range(currentConfig.minRefillCards, currentConfig.maxRefillCards + 1);
-            int added = 0;
-            for (int i = 0; i < 5 && added < n; i++)
-            {
-                if (GetPreviewSlot(i).IsEmpty)
-                {
-                    CreateEnemyPreview(i);
-                    added++;
-                }
-            }
+            if (!GetPreviewSlot(i).IsEmpty) return true;
+        }
+        return false;
+    }
+
+    // 补预出排：没牌就补 n 张（随机落位），前移完立刻补
+    private void RefillPreview()
+    {
+        if (currentConfig == null) return;
+        if (HasPreviewCard()) return;   // 还有牌就不补
+
+        int n = Random.Range(currentConfig.minRefillCards, currentConfig.maxRefillCards + 1);
+        List<int> lanes = ShuffledLanes();   // 打乱 0~4，随机落位
+        for (int i = 0; i < 5 && i < n; i++)
+        {
+            CreateEnemyPreview(lanes[i]);
         }
     }
 
     // 预出排下移到当前排（敌方出牌阶段调用）
     public void MovePreviewToCurrent()
     {
+        bool movedAny = false;   // 这次有没有预出牌成功前移
+
         for (int i = 0; i < 5; i++)
         {
             CardSlot preview = GetPreviewSlot(i);
             CardSlot current = GetEnemySlot(i);
 
             if (preview.IsEmpty) continue;
-            if (!current.IsEmpty) continue;
+            if (!current.IsEmpty) continue;   // 正式排有牌，这张被顶住，不前移
 
             Card card = preview.CurrentCard;
             preview.RemoveCard();
             card.transform.SetParent(current.transform);
             card.transform.localPosition = Vector3.zero;
             current.PlaceCard(card);
+            movedAny = true;
 
             Debug.Log("[棋盘] 敌方预出 " + card.CardName + " 移到第" + (i + 1) + "路");
         }
+
+        // 卡住检测：预出排有牌却一张都没前移，说明被正式排顶住了
+        if (movedAny)
+        {
+            previewStuckTurns = 0;   // 有前移，正常，重置
+        }
+        else if (HasPreviewCard())
+        {
+            previewStuckTurns++;
+            // 顶住两回合 → 清空预出排，下面 RefillPreview 会从空位置重新随机补，防止卡 bug
+            if (previewStuckTurns >= 2)
+            {
+                ClearPreview();
+                previewStuckTurns = 0;
+            }
+        }
+
+        RefillPreview();   // 前移完（或卡住被清空后），从空位置随机补
     }
 
     // ========== 事件 ==========

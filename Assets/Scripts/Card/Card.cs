@@ -151,6 +151,7 @@ public class Card : MonoBehaviour
         {
             GameManager.Instance.AddTrophy(Data);          // 收牌凑德州
             GameManager.Instance.EnemyLoseChips(damage);   // 扣敌人筹码
+            GameManager.Instance.AddChips(damage);         // 玩家加 damage 筹码（打脸赢的）
         }
         else
         {
