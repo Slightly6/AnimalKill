@@ -57,18 +57,16 @@ using System.Collections;
           BattleManager.Instance.StartLevel(cfg);    // 开打
       }
 
-      // 过关：进度 +1，打完 52 关就胜利，否则切地图选下一关
+      // 过关：最终 Boss（最后一关）→ 胜利；否则回地图继续往上
       void OnLevelCleared(LevelClearedEvent e)
       {
-          GameProgress.currentLevel++;
-
-          if (GameProgress.currentLevel >= database.levels.Count)
+          if (GameProgress.currentLevel >= database.levels.Count - 1)
           {
-              GameManager.Instance.WinGame();   // 打满 52 关 → 整局胜利
+              GameManager.Instance.WinGame();
           }
           else
           {
-              SceneManager.LoadScene(mapSceneName);   // 切地图场景选下一关
+              SceneManager.LoadScene(mapSceneName);
           }
       }
   }

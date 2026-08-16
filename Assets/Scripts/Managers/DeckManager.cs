@@ -82,6 +82,14 @@ public class DeckManager : Singleton<DeckManager>
     // 尝试抽一张（受每回合 drawPerTurn 限制）
     public void TryDrawOne()
     {
+        // 敲钟后（战斗/结束阶段）不能抽牌，直到这回合打完
+        TurnPhase phase = BattleManager.Instance.CurrentPhase;
+        if (phase == TurnPhase.Battle || phase == TurnPhase.End)
+        {
+            Debug.Log("现在不能抽牌");
+            return;
+        }
+
         if (drawsThisTurn >= drawPerTurn)
         {
             Debug.Log("本回合已经抽过牌了");

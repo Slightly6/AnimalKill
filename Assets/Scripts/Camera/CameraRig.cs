@@ -10,8 +10,6 @@ public class CameraRig : Singleton<CameraRig>
     public Vector3 lowPosition = new Vector3(0f, 3.2f, 6.5f);   // 低位：低、靠后，看远端
     public Vector3 highPosition = new Vector3(0f, 8.0f, 3.0f);  // 高位：高、靠中，俯瞰全桌
 
-    [Header("拿起牌时相机向后移动的距离（越大越往后拉远）")]
-    public float highPullback = 0f;   // 拿起牌时，在高位基础上再向后（+Z，远离桌子）退多少
 
     [Header("看向桌面中心")]
     public Vector3 focusPoint = new Vector3(0f, 0f, -1f);
@@ -34,19 +32,12 @@ public class CameraRig : Singleton<CameraRig>
     void LateUpdate()
     {
         // 位置往目标机位靠（帧率相关平滑，平民写法）
-        Vector3 targetPos = targetHigh ? HighPosition() : lowPosition;
+        Vector3 targetPos = targetHigh ? highPosition : lowPosition;
         transform.position = Vector3.Lerp(transform.position, targetPos, lerpSpeed * Time.deltaTime);
 
         // 始终看向桌面中心
         transform.LookAt(focusPoint, Vector3.up);
     }
-
-    // 高位相机：highPosition 基础上再向后（+Z）退 highPullback，方便拉远看全桌
-    Vector3 HighPosition()
-    {
-        return highPosition + new Vector3(0f, 0f, highPullback);
-    }
-
     // 切换机位：true=高位（俯视全桌），false=低位（看远端）。CardDisplay 拖牌时调用。
     public void SetHigh(bool high)
     {

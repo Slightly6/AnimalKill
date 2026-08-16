@@ -12,9 +12,10 @@ public enum CardSuit
 // ========== 点数 ==========
 public enum CardRank
 {
+    Ace = 1,
     Two = 2, Three = 3, Four = 4, Five = 5,
     Six = 6, Seven = 7, Eight = 8, Nine = 9, Ten = 10,
-    Jack = 11, Queen = 12, King = 13, Ace = 14
+    Jack = 11, Queen = 12, King = 13
 }
 
 // ========== 卡牌数据 ==========
@@ -22,7 +23,7 @@ public enum CardRank
 public class CardDataSO : ScriptableObject
 {
     public CardSuit suit;// 花色
-    public CardRank rank;// 点数 2~14
+    public CardRank rank;// 点数 1~13
 
     // 动物
     public string animalName = "新动物";

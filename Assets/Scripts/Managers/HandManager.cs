@@ -13,6 +13,9 @@ public class HandManager : MonoBehaviour
     public float yOffset = 0.2f;        // 越靠边越往下沉
     public float handDist = 9f;         // 手牌离相机的距离
 
+    [Header("拖牌时向玩家倾斜")]
+    public float dragTiltAngle = 15f;   // 拖牌时手牌区整体向玩家倾斜多少度（正=向玩家，负=反向）
+
     [Header("起点")]
     public Transform handCenter;        // 手牌区中心点（新版用相机相对，可留空）
 
@@ -63,7 +66,13 @@ public class HandManager : MonoBehaviour
 
             // 扇形倾斜：越靠边越斜，但整体面向相机
             float angle = -t * maxAngle;
-            card.transform.rotation = cam.transform.rotation * Quaternion.Euler(0, 0, angle);
+
+            // 拖牌时整体向玩家倾斜，平时不倾斜
+            float tilt = 0f;
+            if (CardDisplay.draggingCard != null)
+                tilt = dragTiltAngle;
+
+            card.transform.rotation = cam.transform.rotation * Quaternion.Euler(tilt, 0, angle);
 
             // 错开渲染顺序，防止手牌互相闪烁
             SortingGroup sg = card.GetComponent<SortingGroup>();

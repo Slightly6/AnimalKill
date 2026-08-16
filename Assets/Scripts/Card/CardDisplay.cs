@@ -17,6 +17,10 @@ public class CardDisplay : MonoBehaviour
     private Quaternion originalRot;
     private Transform originalParent;
     private int originalSortOrder;
+    private Vector3 originalScale;    // 拖前缩放（弹回用）
+
+    // 拖动时牌的缩放（0.9 = 稍微缩小，抵消切高位的透视放大）
+    public float dragScale = 0.9f;
 
     // 桌面平面（y=0），拖拽时射线打它
     private Plane tablePlane;
@@ -66,13 +70,15 @@ public class CardDisplay : MonoBehaviour
         originalPos = transform.position;
         originalRot = transform.rotation;
         originalParent = transform.parent;
+        originalScale = transform.localScale;
 
         SortingGroup sg = GetComponent<SortingGroup>();
         originalSortOrder = sg != null ? sg.sortingOrder : 0;
         if (sg != null) sg.sortingOrder = 100;   // 拖拽时盖在最上面
 
-        // 牌放平到桌面（牌面朝上 +Y）
+        // 牌放平到桌面（牌面朝上 +Y），拖动时缩小一点抵消透视放大
         transform.rotation = Quaternion.Euler(90, 180, 0);
+        transform.localScale = Vector3.one * dragScale;
 
         // 镜头切高位，俯瞰全桌
         if (CameraRig.Instance != null)
@@ -86,7 +92,7 @@ public class CardDisplay : MonoBehaviour
         if (!enabled) return;
 
         Vector3 hit = RayToTable();
-        transform.position = hit + Vector3.up * 0.5f;   // 浮在桌面上方一点
+        transform.position = hit + Vector3.up * 0.01f;   // 浮在桌面上方一点
     }
 
     void OnMouseUp()
@@ -125,10 +131,11 @@ public class CardDisplay : MonoBehaviour
         }
         else
         {
-            // 弹回：位置、朝向、父物体、排序都恢复
+            // 弹回：位置、朝向、父物体、缩放、排序都恢复
             transform.position = originalPos;
             transform.rotation = originalRot;
             transform.SetParent(originalParent);
+            transform.localScale = originalScale;
 
             SortingGroup sg = GetComponent<SortingGroup>();
             if (sg != null) sg.sortingOrder = originalSortOrder;

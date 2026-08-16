@@ -16,6 +16,7 @@ public class Card : MonoBehaviour
     public bool IsDead;
     public bool IsPlayer;
     public float flipDuration=0.3f;   // 翻面动画时长
+    public float ScaleX=0.8f;       
     [System.NonSerialized] public bool IsFaceDown = true;   // 默认扣着（背面朝上），不在 Inspector 显示
 
     public string CardName { get { return Data.animalName; } }
@@ -50,7 +51,7 @@ public class Card : MonoBehaviour
         while (t < flipDuration)
         {
             t += Time.deltaTime;
-            transform.localScale = new Vector3(Mathf.Lerp(1, 0, t / flipDuration), scale.y, scale.z);
+            transform.localScale = new Vector3(Mathf.Lerp(ScaleX, 0, t / flipDuration), scale.y, scale.z);
             yield return null;
         }
 
@@ -62,7 +63,7 @@ public class Card : MonoBehaviour
         while (t < flipDuration)
         {
             t += Time.deltaTime;
-            transform.localScale = new Vector3(Mathf.Lerp(0, 1, t / flipDuration), scale.y, scale.z);
+            transform.localScale = new Vector3(Mathf.Lerp(0, ScaleX, t / flipDuration), scale.y, scale.z);
             yield return null;
         }
     }
@@ -80,10 +81,10 @@ public class Card : MonoBehaviour
         }
     }
 
-    // 战力数值 → 点数文字  例: 14→A  13→K  8→8
+    // 战力数值 → 点数文字  例: 1→A  13→K  8→8
     string PowerToRankString(int power)
     {
-        if (power >= 14) return "A";
+        if (power <= 1) return "A";
         if (power >= 13) return "K";
         if (power >= 12) return "Q";
         if (power >= 11) return "J";

@@ -1,15 +1,14 @@
 using UnityEngine;
 
 /// <summary>
-/// 铃铛按钮。挂在铃铛 GameObject 上（带 BoxCollider2D）。
+/// 铃铛按钮。挂在铃铛 GameObject 上（带 SphereCollider）。
 /// 点了 = 结束出牌阶段，进入战斗。
 /// </summary>
-[RequireComponent(typeof(BoxCollider2D))]
 public class BellButton : MonoBehaviour
 {
     void Awake()
     {
-        BoxCollider2D col = GetComponent<BoxCollider2D>();
+        SphereCollider col = GetComponent<SphereCollider>();
         col.isTrigger = true;
     }
 

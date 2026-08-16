@@ -3,9 +3,11 @@ using UnityEngine;
 // 地图节点类型
 public enum NodeType
 {
-    Battle,    // 战斗（关联一个关卡配置）
-    Upgrade,   // 升级（占位，后期设计内容）
-    Boss       // 最终 boss
+    Battle,    // 必过关（战斗，对应 LevelDatabase 的关）
+    Extra,     // 小关（额外战斗，占位）
+    Shop,      // 商店（占位）
+    Upgrade,   // 强化（占位）
+    Boss       // Boss（K）
 }
 
 /// <summary>

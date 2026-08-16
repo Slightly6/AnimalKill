@@ -58,7 +58,7 @@ public class GameManager : Singleton<GameManager>
         // 后续在这里做觉醒或掉落
     }
 
-    // 玩家出牌：扣筹码（按牌点数，2~14，A=14）
+    // 玩家出牌：扣筹码（按牌点数，1~13，A=1）
     private void OnCardPlayed(CardPlayedEvent e)
     {
         if (IsGameOver) return;
