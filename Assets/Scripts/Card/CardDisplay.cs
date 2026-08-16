@@ -1,15 +1,16 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
-/// 卡牌拖拽（世界空间 2D 版本，OnMouse 系列 + Collider2D）
+/// 卡牌拖拽（2.5D 俯视桌面版）。
+/// 用数学平面（y=0 的桌面）做射线，不依赖槽位碰撞体。
 /// </summary>
 [RequireComponent(typeof(Card))]
-[RequireComponent(typeof(BoxCollider2D))]
+[RequireComponent(typeof(BoxCollider))]
 public class CardDisplay : MonoBehaviour
 {
     private Card card;
     private Camera mainCam;
-    private Vector3 dragOffset;
 
     // 拖前状态（弹回用）
     private Vector3 originalPos;
@@ -17,8 +18,8 @@ public class CardDisplay : MonoBehaviour
     private Transform originalParent;
     private int originalSortOrder;
 
-    // 拖拽中的 Z 深度
-    private float dragZ;
+    // 桌面平面（y=0），拖拽时射线打它
+    private Plane tablePlane;
 
     // 当前正在拖拽的卡（全局标记，让 HandManager 别抢）
     public static CardDisplay draggingCard;
@@ -28,16 +29,12 @@ public class CardDisplay : MonoBehaviour
         card = GetComponent<Card>();
         mainCam = Camera.main;
 
-        // 确保有碰撞体
-        BoxCollider2D col = GetComponent<BoxCollider2D>();
+        // 确保有 3D 碰撞体（OnMouseDown 靠它）
+        BoxCollider col = GetComponent<BoxCollider>();
         col.isTrigger = true;
-        col.size = new Vector2(1.8f, 2.6f);  // 和卡牌大小匹配
-    }
+        col.size = new Vector3(1.8f, 2.6f, 0.05f);
 
-    void Start()
-    {
-        // 记住深度
-        dragZ = transform.position.z;
+        tablePlane = new Plane(Vector3.up, Vector3.zero);
     }
 
     void Update()
@@ -58,7 +55,7 @@ public class CardDisplay : MonoBehaviour
         // 只有玩家自己的卡能拖
         if (card.IsPlayer == false) return;
 
-        // 检查能不能出牌（BattleManager 不存在就跳过检查）
+        // 检查能不能出牌
         if (BattleManager.Instance != null)
         {
             if (!BattleManager.Instance.IsPlayerTurn) return;
@@ -67,22 +64,19 @@ public class CardDisplay : MonoBehaviour
 
         // 记住原位
         originalPos = transform.position;
-        originalRot = transform.localRotation;
+        originalRot = transform.rotation;
         originalParent = transform.parent;
 
-        // 计算偏移
-        Vector3 mouseWorld = mainCam.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorld.z = dragZ;
-        dragOffset = transform.position - mouseWorld;
+        SortingGroup sg = GetComponent<SortingGroup>();
+        originalSortOrder = sg != null ? sg.sortingOrder : 0;
+        if (sg != null) sg.sortingOrder = 100;   // 拖拽时盖在最上面
 
-        // 提到前面
-        dragZ = -2f;  // 拖拽时离相机更近
-        Vector3 pos = transform.position;
-        pos.z = dragZ;
-        transform.position = pos;
+        // 牌放平到桌面
+        transform.rotation = Quaternion.Euler(-90, 0, 0);
 
-        // 拖拽时摆正
-        transform.localRotation = Quaternion.identity;
+        // 镜头切高位，俯瞰全桌
+        if (CameraRig.Instance != null)
+            CameraRig.Instance.SetHigh(true);
 
         draggingCard = this;
     }
@@ -90,9 +84,9 @@ public class CardDisplay : MonoBehaviour
     void OnMouseDrag()
     {
         if (!enabled) return;
-        Vector3 mouseWorld = mainCam.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorld.z = dragZ;
-        transform.position = mouseWorld;   // 卡牌中心直接贴鼠标
+
+        Vector3 hit = RayToTable();
+        transform.position = hit + Vector3.up * 0.5f;   // 浮在桌面上方一点
     }
 
     void OnMouseUp()
@@ -103,13 +97,14 @@ public class CardDisplay : MonoBehaviour
 
     void EndDrag()
     {
-        if (draggingCard != this) return;   // 防止重复调用
+        if (draggingCard != this) return;
         draggingCard = null;
 
-        // 恢复深度
-        dragZ = originalPos.z;
+        // 镜头切回低位
+        if (CameraRig.Instance != null)
+            CameraRig.Instance.SetHigh(false);
 
-        // 检测鼠标下有没有槽位
+        // 检测鼠标下最近的玩家槽位
         CardSlot slot = GetSlotUnderMouse();
 
         if (slot != null && slot.IsEmpty && slot.isPlayerSide)
@@ -130,27 +125,33 @@ public class CardDisplay : MonoBehaviour
         }
         else
         {
-            // 弹回
+            // 弹回：位置、朝向、父物体、排序都恢复
             transform.position = originalPos;
-            transform.localRotation = originalRot;
+            transform.rotation = originalRot;
             transform.SetParent(originalParent);
+
+            SortingGroup sg = GetComponent<SortingGroup>();
+            if (sg != null) sg.sortingOrder = originalSortOrder;
         }
     }
 
-    // ========== 射线检测槽位 ==========
+    // ========== 射线 ==========
 
+    // 鼠标射线打到桌面（y=0 平面）上的点
+    Vector3 RayToTable()
+    {
+        Ray ray = mainCam.ScreenPointToRay(Input.mousePosition);
+        float dist = 0;
+        if (tablePlane.Raycast(ray, out dist))
+            return ray.GetPoint(dist);
+        return transform.position;   // 没打到就原地
+    }
+
+    // 找鼠标下的玩家槽位（用数学平面 + 最近距离，不用碰撞体）
     CardSlot GetSlotUnderMouse()
     {
-        Vector3 mouseWorld = mainCam.ScreenToWorldPoint(Input.mousePosition);
-        mouseWorld.z = 0;
-
-        Collider2D[] hits = Physics2D.OverlapPointAll(mouseWorld);
-
-        for (int i = 0; i < hits.Length; i++)
-        {
-            CardSlot slot = hits[i].GetComponent<CardSlot>();
-            if (slot != null) return slot;
-        }
-        return null;
+        Vector3 hit = RayToTable();
+        if (BoardManager.Instance == null) return null;
+        return BoardManager.Instance.FindNearestPlayerSlot(hit);
     }
 }

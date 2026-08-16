@@ -119,11 +119,18 @@ public class Card : MonoBehaviour
     public IEnumerator StrikeAndReturn(Card target)
     {
         Vector3 homePos = transform.position;
-        Vector3 dir = (target.transform.position - homePos).normalized;
+        Quaternion homeRot = transform.rotation;
+        Vector3 dir = target.transform.position - homePos;
+        dir.y = 0;   // 只在桌面 XZ 平面冲锋
+        dir.Normalize();
         Vector3 slamPos = target.transform.position - dir * 0.5f;
 
+        // 冲锋时往前进方向侧倾一点，像真的扑过去
+        Vector3 tiltAxis = Vector3.Cross(dir, Vector3.up);
+        Quaternion lungeRot = Quaternion.AngleAxis(15f, tiltAxis) * homeRot;
+
         // ① 边旋转边冲过去（快）
-        yield return CardAnimator.MoveAndRotate(transform, slamPos, 15f, 0.12f);
+        yield return CardAnimator.MoveAndRotate(transform, slamPos, lungeRot, 0.12f);
 
         // ② 命中：扣血
         int damage = CurrentPower;
@@ -131,19 +138,23 @@ public class Card : MonoBehaviour
         Debug.Log("[战斗] " + CardName + " 打 " + target.CardName + " " + damage + " 点");
 
         // ③ 边旋转边回原位（慢）
-        yield return CardAnimator.MoveAndRotate(transform, homePos, 0f, 0.2f);
+        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, 0.2f);
     }
 
     // 打脸动画：对面没卡，冲出去打对方脸，然后回来
     public IEnumerator FaceAnim()
     {
         Vector3 homePos = transform.position;
-        // 玩家往上打脸，敌方往下打脸
-        Vector3 dir = IsPlayer ? Vector3.up : Vector3.down;
+        Quaternion homeRot = transform.rotation;
+        // 玩家朝 -Z（打向敌人远端），敌方朝 +Z（打向玩家）
+        Vector3 dir = IsPlayer ? -Vector3.forward : Vector3.forward;
         Vector3 lungePos = homePos + dir * 1.0f;
 
+        Vector3 tiltAxis = Vector3.Cross(dir, Vector3.up);
+        Quaternion lungeRot = Quaternion.AngleAxis(15f, tiltAxis) * homeRot;
+
         // ① 边旋转边冲出去（快）
-        yield return CardAnimator.MoveAndRotate(transform, lungePos, 15f, 0.12f);
+        yield return CardAnimator.MoveAndRotate(transform, lungePos, lungeRot, 0.12f);
 
         // ② 命中：打脸
         int damage = CurrentPower;
@@ -161,7 +172,7 @@ public class Card : MonoBehaviour
         Debug.Log("[战斗] " + CardName + " 打脸 " + damage + " 点");
 
         // ③ 边旋转边回原位（慢）
-        yield return CardAnimator.MoveAndRotate(transform, homePos, 0f, 0.2f);
+        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, 0.2f);
     }
 
     void Die()

@@ -1,8 +1,9 @@
 using UnityEngine;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// 手牌排列。挂在 HandArea 上。
-/// 牌在屏幕下方扇形展开，像拿着扑克手牌。
+/// 牌在屏幕下方扇形展开，始终面向相机（像拿着扑克手牌）。
 /// </summary>
 public class HandManager : MonoBehaviour
 {
@@ -10,9 +11,10 @@ public class HandManager : MonoBehaviour
     public float cardSpacing = 1.5f;    // 牌与牌的水平间距
     public float maxAngle = 8f;         // 最边上的牌倾斜多少度
     public float yOffset = 0.2f;        // 越靠边越往下沉
+    public float handDist = 9f;         // 手牌离相机的距离
 
     [Header("起点")]
-    public Transform handCenter;        // 手牌区中心点，不填就用自身 Transform
+    public Transform handCenter;        // 手牌区中心点（新版用相机相对，可留空）
 
     private DeckManager deck;
 
@@ -32,8 +34,13 @@ public class HandManager : MonoBehaviour
     {
         int count = deck.HandCards.Count;
         if (count == 0) return;
-        float totalWidth = (count - 1) * cardSpacing;
-        float startX = handCenter.position.x - totalWidth / 2f;
+        if (Camera.main == null) return;
+
+        Camera cam = Camera.main;
+
+        // 屏幕下方一点作为手牌中心（viewport 0~1，0.5,0.10 = 下方中间）
+        Vector3 center = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.10f, handDist));
+
         for (int i = 0; i < count; i++)
         {
             Card card = deck.HandCards[i];
@@ -43,16 +50,24 @@ public class HandManager : MonoBehaviour
             if (CardDisplay.draggingCard != null && CardDisplay.draggingCard.GetComponent<Card>() == card)
                 continue;
 
-            float x = startX + i * cardSpacing;
-            float y = handCenter.position.y;
-            float distFromCenter = Mathf.Abs(i - (count - 1) / 2f);
-            y -= distFromCenter * yOffset;
+            // 沿相机右方向展开，越靠边越往下沉
+            float t = count == 1 ? 0 : (i / (float)(count - 1) - 0.5f) * 2f;   // -1 ~ 1
+            float x = (i - (count - 1) / 2f) * cardSpacing;
+            float sink = Mathf.Abs(t) * yOffset;
 
-            card.transform.position = new Vector3(x, y, handCenter.position.z + i * 0.01f);
+            Vector3 pos = center
+                + cam.transform.right * x
+                - cam.transform.up * sink;
 
-            float t = count == 1 ? 0 : (i / (float)(count - 1) - 0.5f) * 2f;
+            card.transform.position = pos;
+
+            // 扇形倾斜：越靠边越斜，但整体面向相机
             float angle = -t * maxAngle;
-            card.transform.rotation = Quaternion.Euler(0, 0, angle);
+            card.transform.rotation = cam.transform.rotation * Quaternion.Euler(0, 0, angle);
+
+            // 错开渲染顺序，防止手牌互相闪烁
+            SortingGroup sg = card.GetComponent<SortingGroup>();
+            if (sg != null) sg.sortingOrder = 10 + i;
         }
     }
 }

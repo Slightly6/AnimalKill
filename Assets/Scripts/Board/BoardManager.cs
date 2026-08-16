@@ -13,11 +13,11 @@ public class BoardManager : Singleton<BoardManager>
     public GameObject slotPrefab;           // 玩家排 + 敌方当前排
     public GameObject previewSlotPrefab;    // 敌方预出排（单独图，空则用 slotPrefab）
 
-    [Header("布局")]
+    [Header("布局（桌面 XZ 平面，z 是纵深）")]
     public float slotSpacing = 2.2f;
-    public float previewRowY = 3.5f;
-    public float enemyRowY = 1.5f;
-    public float playerRowY = -1.5f;
+    public float previewRowZ = -3.5f;   // 最远：敌方预出
+    public float enemyRowZ = -1.2f;     // 敌方当前
+    public float playerRowZ = 1.0f;     // 最近：玩家
 
     private List<CardSlot> playerSlots = new List<CardSlot>();
     private List<CardSlot> enemySlots = new List<CardSlot>();
@@ -31,15 +31,16 @@ public class BoardManager : Singleton<BoardManager>
 
     void Start()
     {
-        playerSlots = GenerateSlots(playerRowY, true, slotPrefab);
-        enemySlots = GenerateSlots(enemyRowY, false, slotPrefab);
-        enemyPreviewSlots = GenerateSlots(previewRowY, false, PreviewPrefab());
+        playerSlots = GenerateSlots(playerRowZ, true, slotPrefab, 3);
+        enemySlots = GenerateSlots(enemyRowZ, false, slotPrefab, 2);
+        enemyPreviewSlots = GenerateSlots(previewRowZ, false, PreviewPrefab(), 1);
 
         EventBus.Subscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Subscribe<CardDiedEvent>(OnCardDied);
     }
 
-    List<CardSlot> GenerateSlots(float y, bool isPlayer, GameObject prefab)
+    // rowOrder：排的渲染顺序（远1 / 中2 / 近3），用来让近排盖远排
+    List<CardSlot> GenerateSlots(float z, bool isPlayer, GameObject prefab, int rowOrder)
     {
         List<CardSlot> list = new List<CardSlot>();
         float totalWidth = 4 * slotSpacing;
@@ -47,11 +48,13 @@ public class BoardManager : Singleton<BoardManager>
         for (int i = 0; i < 5; i++)
         {
             GameObject go = Instantiate(prefab, transform);
-            go.transform.position = new Vector3(startX + i * slotSpacing, y, 0);
+            go.transform.position = new Vector3(startX + i * slotSpacing, 0, z);
+            go.transform.rotation = Quaternion.Euler(-90, 0, 0);   // 槽位躺平，卡作子物体自动躺平
             go.name = (isPlayer ? "Player" : "Enemy") + "_Slot_" + i;
             CardSlot slot = go.GetComponent<CardSlot>();
             slot.laneIndex = i;
             slot.isPlayerSide = isPlayer;
+            slot.tableSortOrder = rowOrder;
             list.Add(slot);
         }
         return list;
@@ -145,6 +148,26 @@ public class BoardManager : Singleton<BoardManager>
             for (int i = 0; i < all[r].Count; i++)
                 if (all[r][i].CurrentCard == card) return all[r][i];
         return null;
+    }
+
+    // 在玩家排找离 worldPos（桌面 XZ 平面）最近的槽位；离太远（超过半格多）返回 null
+    public CardSlot FindNearestPlayerSlot(Vector3 worldPos)
+    {
+        CardSlot nearest = null;
+        float bestDist = slotSpacing * slotSpacing * 0.6f;
+        for (int i = 0; i < playerSlots.Count; i++)
+        {
+            CardSlot slot = playerSlots[i];
+            Vector3 delta = slot.transform.position - worldPos;
+            delta.y = 0;   // 只看 XZ 平面距离
+            float dist = delta.sqrMagnitude;
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                nearest = slot;
+            }
+        }
+        return nearest;
     }
 
     // ========== AI ==========

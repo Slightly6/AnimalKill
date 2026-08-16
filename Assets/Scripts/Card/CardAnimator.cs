@@ -8,19 +8,18 @@ using UnityEngine;
 /// </summary>
 public static class CardAnimator
 {
-    // 边移动边旋转（猛锤、回位都用它）
-    public static IEnumerator MoveAndRotate(Transform target, Vector3 to, float toAngle, float duration)
+    // 边移动边旋转（猛锤、回位都用它）。toRot 直接传目标朝向，用 Slerp 插值更稳。
+    public static IEnumerator MoveAndRotate(Transform target, Vector3 to, Quaternion toRot, float duration)
     {
         Vector3 fromPos = target.position;
         Quaternion fromRot = target.rotation;
-        Quaternion toRot = Quaternion.Euler(0, 0, toAngle);
         float elapsed = 0;
         while (elapsed < duration)
         {
             elapsed += Time.deltaTime;
             float p = elapsed / duration;
             target.position = Vector3.Lerp(fromPos, to, p);
-            target.rotation = Quaternion.Lerp(fromRot, toRot, p);
+            target.rotation = Quaternion.Slerp(fromRot, toRot, p);
             yield return null;
         }
         target.position = to;
