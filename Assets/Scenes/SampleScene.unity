@@ -1074,7 +1074,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   lowPosition: {x: 0, y: 3.2, z: 6.5}
   highPosition: {x: 0, y: 8, z: 3}
-  focusPoint: {x: 0, y: 0, z: -1}
+  highPullback: 0
+  focusPoint: {x: 0, y: 0, z: -1.66}
   fieldOfView: 55
   lerpSpeed: 6
 --- !u!1 &530455315

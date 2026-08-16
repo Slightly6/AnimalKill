@@ -71,8 +71,8 @@ public class CardDisplay : MonoBehaviour
         originalSortOrder = sg != null ? sg.sortingOrder : 0;
         if (sg != null) sg.sortingOrder = 100;   // 拖拽时盖在最上面
 
-        // 牌放平到桌面
-        transform.rotation = Quaternion.Euler(-90, 0, 0);
+        // 牌放平到桌面（牌面朝上 +Y）
+        transform.rotation = Quaternion.Euler(90, 180, 0);
 
         // 镜头切高位，俯瞰全桌
         if (CameraRig.Instance != null)

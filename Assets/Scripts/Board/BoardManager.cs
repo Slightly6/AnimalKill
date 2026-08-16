@@ -49,7 +49,7 @@ public class BoardManager : Singleton<BoardManager>
         {
             GameObject go = Instantiate(prefab, transform);
             go.transform.position = new Vector3(startX + i * slotSpacing, 0, z);
-            go.transform.rotation = Quaternion.Euler(-90, 0, 0);   // 槽位躺平，卡作子物体自动躺平
+            go.transform.rotation = Quaternion.Euler(90, 180, 0);   // 槽位躺平（牌面朝上 +Y），卡作子物体自动躺平
             go.name = (isPlayer ? "Player" : "Enemy") + "_Slot_" + i;
             CardSlot slot = go.GetComponent<CardSlot>();
             slot.laneIndex = i;
