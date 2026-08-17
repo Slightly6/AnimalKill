@@ -57,16 +57,26 @@ using System.Collections;
           BattleManager.Instance.StartLevel(cfg);    // 开打
       }
 
-      // 过关：最终 Boss（最后一关）→ 胜利；否则回地图继续往上
+      // 过关：K（章节 Boss）→ 解锁下一章 / 胜利；普通关 → 回地图
       void OnLevelCleared(LevelClearedEvent e)
       {
-          if (GameProgress.currentLevel >= database.levels.Count - 1)
+          int rank = GameProgress.currentLevel % 13;   // 0=A ... 12=K
+
+          if (rank == 12)   // 打的是 K = 章节 Boss
           {
-              GameManager.Instance.WinGame();
+              if (GameProgress.currentSuit >= 3)   // 最后一章（♣）→ 整局胜利
+              {
+                  GameManager.Instance.WinGame();
+              }
+              else
+              {
+                  GameProgress.currentSuit++;   // 解锁下一章
+                  SceneManager.LoadScene(mapSceneName);
+              }
           }
           else
           {
-              SceneManager.LoadScene(mapSceneName);
+              SceneManager.LoadScene(mapSceneName);   // 普通关 → 回地图
           }
       }
   }

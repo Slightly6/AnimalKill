@@ -12,9 +12,11 @@ using UnityEngine;
         public static List<CardDataSO> playerDeck = new List<CardDataSO>();   // 玩家牌组数据（跨关继承），空 = 用初始牌组
 
         // 地图相关（本局随机地图，跨场景保留）
-        public static List<MapNodeData> map = new List<MapNodeData>();   // 本局地图（一局只生成一次）
+        public static List<MapNodeData> map = new List<MapNodeData>();   // 当前章的地图
         public static int mapRow = 0;          // 玩家当前要选第几横排
         public static bool mapGenerated = false;
+        public static int currentSuit = 0;     // 当前第几章（0=♠ 1=♥ 2=♦ 3=♣）
+        public static int mapSuit = -1;        // 已生成的地图属于哪章（-1=还没生成）
 
         // 重新开始一局（玩家输光后重开用）
         public static void Reset()
@@ -25,5 +27,7 @@ using UnityEngine;
             map = new List<MapNodeData>();
             mapRow = 0;
             mapGenerated = false;
+            currentSuit = 0;
+            mapSuit = -1;
         }
     }

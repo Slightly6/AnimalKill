@@ -34,23 +34,18 @@ public class MapNode : MonoBehaviour
         RefreshVisual();
     }
 
-    // 按类型 + 是否可点，刷新颜色
+    // 类型靠"换图"区分，这里只做：不是当前横排就变暗
     void RefreshVisual()
     {
         if (spriteRenderer == null) return;
 
-        if (type == NodeType.Boss) spriteRenderer.color = Color.red;
-        else if (type == NodeType.Shop) spriteRenderer.color = Color.yellow;
-        else if (type == NodeType.Upgrade) spriteRenderer.color = Color.cyan;
-        else if (type == NodeType.Extra) spriteRenderer.color = Color.green;
-        else spriteRenderer.color = Color.white;
-
-        // 不是当前横排，整体变暗（表示还不能选）
-        if (row != GameProgress.mapRow)
+        if (row == GameProgress.mapRow)
         {
-            Color c = spriteRenderer.color;
-            c.r *= 0.4f; c.g *= 0.4f; c.b *= 0.4f;
-            spriteRenderer.color = c;
+            spriteRenderer.color = Color.white;                      // 可点：正常亮
+        }
+        else
+        {
+            spriteRenderer.color = new Color(0.4f, 0.4f, 0.4f, 1f); // 不可点：变暗
         }
     }
 
