@@ -31,7 +31,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.68, y: -2.8, z: -0.03276892}
-  m_LocalScale: {x: 0.8, y: 0.8, z: 0.8}
+  m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3403005192571407345}
@@ -107,11 +107,13 @@ MonoBehaviour:
   rankTexts:
   - {fileID: 5896373055710930085}
   - {fileID: 7920359150304433119}
-  Data: {fileID: 11400000, guid: 0138deda2881b394d92ee5d469a718f5, type: 2}
+  Data: {fileID: 0}
   CurrentPower: 0
   IsDead: 0
   IsPlayer: 0
+  IsPlayed: 0
   flipDuration: 0.3
+  ScaleX: 0.7
 --- !u!114 &678577280254055433
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -124,7 +126,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d66db8200baca741a5cc9fe87ec56ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  dragScale: 0.9
+  dragScale: 0.8
 --- !u!65 &5339620174248007879
 BoxCollider:
   m_ObjectHideFlags: 0

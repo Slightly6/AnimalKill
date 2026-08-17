@@ -21,6 +21,7 @@ public class ScreenHUD : MonoBehaviour
 
     private Transform deckPile;
     private Transform bell;
+    private Camera mainCam;   // 缓存主相机，避免每帧 Camera.main 查找
 
     void Start()
     {
@@ -30,12 +31,15 @@ public class ScreenHUD : MonoBehaviour
         // 把牌堆位置告诉 DeckManager（抽牌时卡从这里出生）
         if (deckPile != null && DeckManager.Instance != null)
             DeckManager.Instance.deckPile = deckPile;
+
+        mainCam = Camera.main;
     }
 
     void LateUpdate()
     {
-        if (Camera.main == null) return;
-        Camera cam = Camera.main;
+        if (mainCam == null) mainCam = Camera.main;   // 兜底：切场景后重新找
+        if (mainCam == null) return;
+        Camera cam = mainCam;
 
         if (deckPile != null) AnchorToViewport(deckPile, deckPileAnchor, cam);
         if (bell != null) AnchorToViewport(bell, bellAnchor, cam);

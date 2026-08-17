@@ -462,6 +462,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cardSpacing: 0.9
+  maxHandWidth: 4
+  selectLift: 0.4
   maxAngle: 8
   yOffset: 0.2
   handDist: 5
@@ -839,6 +841,7 @@ MonoBehaviour:
   focusPoint: {x: 0, y: 0, z: 0}
   fieldOfView: 55
   lerpSpeed: 6
+  handViewportY: 0.7
 --- !u!1 &530455315
 GameObject:
   m_ObjectHideFlags: 0

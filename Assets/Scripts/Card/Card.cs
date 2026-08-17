@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using UnityEngine.Rendering;
 /// <summary>
 /// 一张扑克牌动物卡。战力 = 攻 = 血，一个数值。
 /// </summary>
@@ -15,11 +16,19 @@ public class Card : MonoBehaviour
     public int CurrentPower;// 当前力量
     public bool IsDead;
     public bool IsPlayer;
+    public bool IsPlayed;   // 已经打出去的牌（不能再拖）
     public float flipDuration=0.3f;   // 翻面动画时长
     public float ScaleX=0.8f;       
     [System.NonSerialized] public bool IsFaceDown = true;   // 默认扣着（背面朝上），不在 Inspector 显示
+    [System.NonSerialized] public SortingGroup sortingGroup;   // 缓存引用，避免每帧 GetComponent
+    [System.NonSerialized] public bool IsSelected;   // 这张牌被点选（准备出牌）
 
     public string CardName { get { return Data.animalName; } }
+
+    void Awake()
+    {
+        sortingGroup = GetComponent<SortingGroup>();
+    }
 
     public void Init(CardDataSO data, bool isPlayer)
     {
