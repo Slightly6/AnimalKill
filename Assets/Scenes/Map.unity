@@ -275,11 +275,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   nodePrefab: {fileID: 3571298292194087496, guid: 5baf1b4077fc25c45b1ec29269fca94e, type: 3}
-  battleSprite: {fileID: 0}
-  bossSprite: {fileID: 0}
-  shopSprite: {fileID: 0}
-  upgradeSprite: {fileID: 0}
-  extraSprite: {fileID: 0}
+  battleSprite: {fileID: 21300000, guid: a9f78527ea61b234ab435d5c2c82c93d, type: 3}
+  bossSprite: {fileID: 21300000, guid: 640456d86cec4634993cd71e97ceaaac, type: 3}
+  shopSprite: {fileID: 21300000, guid: 16979812ad756f24ca7bc7152ab38c4d, type: 3}
+  upgradeSprite: {fileID: 21300000, guid: 3191d1432683e8a458fda6a80a13511f, type: 3}
+  extraSprite: {fileID: 21300000, guid: a9f78527ea61b234ab435d5c2c82c93d, type: 3}
   database: {fileID: 11400000, guid: 96062242ca8e09747a24d38b5519db23, type: 2}
   rankCount: 13
   startY: -4

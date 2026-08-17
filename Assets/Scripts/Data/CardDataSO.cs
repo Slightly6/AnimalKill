@@ -32,23 +32,16 @@ public class CardDataSO : ScriptableObject
     // 技能
     public string abilityName = "";
     public string abilityDesc = "";
-    public bool isAwakened = false;
 
     // 外观
     public Sprite artwork;
 
-    // 运行时叠加
-    [System.NonSerialized] public int bonusPower = 0;
-
     // ---- 数值 ----
 
-    // 战力（攻=血 同一个值）= 点数 + 觉醒+3 + 额外叠加
+    // 基础战力（攻=血 同一个值）= 点数（觉醒/额外加成在出牌时由 Card 算）
     public int GetPower()
     {
-        int p = (int)rank;
-        if (isAwakened) p += 3;
-        p += bonusPower;
-        return p;
+        return (int)rank;
     }
 
     // ---- 文字 ----
@@ -71,23 +64,4 @@ public class CardDataSO : ScriptableObject
         return ((int)rank).ToString();
     }
 
-    // ---- 操作 ----
-
-    public CardDataSO Clone()
-    {
-        var copy = Instantiate(this);
-        copy.name = name;
-        copy.bonusPower = 0;
-        return copy;
-    }
-
-    public void Awaken()
-    {
-        isAwakened = true;
-    }
-
-    public void AddBonus(int amount)
-    {
-        bonusPower += amount;
-    }
 }

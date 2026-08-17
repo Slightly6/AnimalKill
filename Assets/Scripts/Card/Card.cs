@@ -30,11 +30,11 @@ public class Card : MonoBehaviour
         sortingGroup = GetComponent<SortingGroup>();
     }
 
-    public void Init(CardDataSO data, bool isPlayer)
+    public void Init(CardDataSO data, bool isPlayer, int bonusPower = 0)
     {
         Data = data;
         IsPlayer = isPlayer;
-        CurrentPower = Data.GetPower();
+        CurrentPower = Data.GetPower() + bonusPower;   // 基础战力 + 运行时加成（觉醒/额外）
         IsDead = false;
         RefreshDisplay();
         SetFaceDown(IsFaceDown);

@@ -94,7 +94,7 @@ public class GameManager : Singleton<GameManager>
     public void AddTrophy(CardDataSO data)
     {
         if (IsGameOver) return;
-        trophy.Add(data.Clone());
+        trophy.Add(data);
 
         EventBus.Publish(new TrophyChangedEvent { count = trophy.Count });
         Debug.Log("[战利品] 收牌 " + data.GetSuitSymbol() + data.GetRankText()

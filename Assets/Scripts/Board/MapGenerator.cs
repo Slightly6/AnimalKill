@@ -69,7 +69,7 @@ public class MapGenerator : MonoBehaviour
             // 2. 每个必过关后（K 除外）插一段分岔区
             if (rank < rankCount - 1)
             {
-                int depth = Random.Range(1, 4);   // 分岔区 1~3 层
+                int depth = Random.Range(1, 3);   // 分岔区 1~3 层
                 for (int d = 0; d < depth; d++)
                 {
                     int count = Random.Range(2, 4);   // 每层 2~3 个叉

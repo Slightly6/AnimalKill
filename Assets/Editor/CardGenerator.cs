@@ -83,7 +83,6 @@ public class CardGenerator
                 card.description = "战力 " + card.GetPower();
                 card.abilityName = ability;
                 card.abilityDesc = GetDesc(suit, ability);
-                card.isAwakened = false;
                 card.artwork = null;
 
                 string fileName = suit + "_" + card.GetRankText() + "_" + animal + ".asset";

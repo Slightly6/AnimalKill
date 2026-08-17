@@ -143,8 +143,6 @@ public class DeckManager : Singleton<DeckManager>
             yield break;
         }
 
-        CardDataSO clone = data.Clone();
-
         GameObject go = Instantiate(cardPrefab);
         if (deckPile != null)
             go.transform.position = deckPile.position;
@@ -157,7 +155,7 @@ public class DeckManager : Singleton<DeckManager>
             yield break;
         }
 
-        card.Init(clone, true);   // Init 里默认扣着（背面朝上）
+        card.Init(data, true);   // Init 里默认扣着（背面朝上）
 
         yield return StartCoroutine(card.FlipAnim());
 

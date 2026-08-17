@@ -179,15 +179,15 @@ public class BoardManager : Singleton<BoardManager>
         if (slot == null || !slot.IsEmpty) return;
         if (currentConfig == null || currentConfig.enemyDeck.Count == 0 || enemyCardPrefab == null) return;
 
-        CardDataSO data = currentConfig.enemyDeck[Random.Range(0, currentConfig.enemyDeck.Count)].Clone();
-        if (currentConfig.enemyBonusPower != 0) data.AddBonus(currentConfig.enemyBonusPower);
-        if (currentConfig.enemyAwakened) data.Awaken();
+        CardDataSO data = currentConfig.enemyDeck[Random.Range(0, currentConfig.enemyDeck.Count)];
+        int bonus = currentConfig.enemyBonusPower;
+        if (currentConfig.enemyAwakened) bonus += 3;   // 觉醒 = 战力 +3
 
         GameObject go = Instantiate(enemyCardPrefab, slot.transform);
         Card card = go.GetComponent<Card>();
         if (card == null) { Destroy(go); return; }
 
-        card.Init(data, false);
+        card.Init(data, false, bonus);
         card.SetFaceDown(false);   // 敌方卡翻开显示正面
         slot.PlaceCard(card);
     }
