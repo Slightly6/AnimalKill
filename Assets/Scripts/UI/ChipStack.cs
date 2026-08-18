@@ -24,6 +24,18 @@ public class ChipStack : MonoBehaviour
     [Header("每个筹码厚度（和 prefab 的扁圆柱高度一致）")]
     public float chipHeight = 0.06f;
 
+    [Header("一列最多摞多少个筹码（摞满开新的一列）")]
+    public int chipsPerColumn = 10;
+
+    [Header("最多开几列（列都满了就只涨数字、不加筹码）")]
+    public int maxColumns = 5;
+
+    [Header("列与列的水平间距")]
+    public float columnSpacing = 0.65f;
+
+    [Header("不规则散落幅度（每列随机往旁边错开一点）")]
+    public float scatter = 0.12f;
+
     [Header("飞过去动画")]
     public float flyDuration = 0.5f;   // 单个筹码飞多久
     public float flyArcHeight = 0.6f;  // 飞行弧线最高点
@@ -35,8 +47,20 @@ public class ChipStack : MonoBehaviour
     private int lastPlayerChips = -1;
     private int lastEnemyChips = -1;
 
+    // 每列的不规则偏移（开局随机一次，之后摆列都稳定，不会每次重摆就乱跳）
+    private Vector3[] columnOffsets;
+
     void Start()
     {
+        // 开局随机每列的散落偏移（只随机一次，之后摆列都稳定）
+        columnOffsets = new Vector3[maxColumns];
+        for (int i = 0; i < maxColumns; i++)
+        {
+            float x = i * columnSpacing + Random.Range(-scatter, scatter);
+            float z = Random.Range(-scatter, scatter);
+            columnOffsets[i] = new Vector3(x, 0, z);
+        }
+
         EventBus.Subscribe<ChipsChangedEvent>(OnChipsChanged);
         EventBus.Subscribe<ChipTransferEvent>(OnChipTransfer);
 
@@ -126,27 +150,31 @@ public class ChipStack : MonoBehaviour
 
         if (anchor == null) return;
 
-        // 全部叠成一根柱子：大面值在底下、小面值在上面；有多少个筹码就叠多高
-        int[] sorted = SortedDenominations();
+        if (chipsPerColumn <= 0 || maxColumns <= 0) return;   // 配置非法，摆不了
 
-        int stackIndex = 0;   // 从底到顶第几层
-        for (int d = sorted.Length - 1; d >= 0; d--)
+        // 把金额拆成一个个筹码（大面值在底下）
+        List<int> parts = GreedyBreak(amount);
+
+        // 最多摆 chipsPerColumn × maxColumns 个筹码，超过就只涨数字、不再加筹码
+        int maxVisible = chipsPerColumn * maxColumns;
+        int visible = Mathf.Min(parts.Count, maxVisible);
+
+        // 一列摞满就开下一列；列之间按开局随机的不规则偏移散落摆放
+        int placed = 0;
+        for (int c = 0; c < maxColumns && placed < visible; c++)
         {
-            int denom = sorted[d];
-            int count = amount / denom;
-            amount -= count * denom;
-            if (count <= 0) continue;
-
-            GameObject prefab = ChipPrefabFor(denom);
-            if (prefab != null)
+            int inThisColumn = Mathf.Min(chipsPerColumn, visible - placed);
+            for (int j = 0; j < inThisColumn; j++)
             {
-                for (int j = 0; j < count; j++)
+                GameObject prefab = ChipPrefabFor(parts[placed]);
+                if (prefab != null)
                 {
                     GameObject chip = Instantiate(prefab, anchor);
-                    chip.transform.localPosition = new Vector3(0, chipHeight * 0.5f + stackIndex * chipHeight, 0);
+                    Vector3 offset = columnOffsets[c];
+                    chip.transform.localPosition = new Vector3(offset.x, chipHeight * 0.5f + j * chipHeight, offset.z);
                     list.Add(chip);
-                    stackIndex++;
                 }
+                placed++;
             }
         }
     }
@@ -157,7 +185,8 @@ public class ChipStack : MonoBehaviour
     float StackTop(bool isPlayer)
     {
         List<GameObject> list = isPlayer ? playerChips : enemyChips;
-        return list.Count * chipHeight;
+        int heightInChips = Mathf.Min(list.Count, chipsPerColumn);   // 最高那列有几层
+        return heightInChips * chipHeight;
     }
 
     IEnumerator FlyChips(int amount, bool toPlayer)

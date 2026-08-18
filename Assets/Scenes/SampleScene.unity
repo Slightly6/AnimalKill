@@ -1001,6 +1001,10 @@ MonoBehaviour:
   playerStackAnchor: {fileID: 700000005}
   enemyStackAnchor: {fileID: 700000007}
   chipHeight: 0.06
+  chipsPerColumn: 50
+  maxColumns: 5
+  columnSpacing: 0.65
+  scatter: 0.12
   flyDuration: 0.5
   flyArcHeight: 0.6
 --- !u!1 &700000004
