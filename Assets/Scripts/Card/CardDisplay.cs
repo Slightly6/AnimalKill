@@ -173,27 +173,9 @@ public class CardDisplay : MonoBehaviour
         // 检测鼠标下最近的玩家槽位
         CardSlot slot = GetSlotUnderMouse();
 
-        if (slot != null && slot.IsEmpty && slot.isPlayerSide)
-        {
-            // 放到槽位上
-            if (DeckManager.Instance != null)
-                DeckManager.Instance.RemoveFromHand(card);
-
-            card.IsPlayed = true;      // 打出后就不能再选了
-            card.IsSelected = false;   // 出牌后取消选中
-            if (selectedCard == this) selectedCard = null;
-
-            EventBus.Publish(new CardPlayedEvent
-            {
-                card = card,
-                laneIndex = slot.laneIndex,
-                isPlayerSide = true
-            });
-
-            if (card.Data != null)
-                Debug.Log("[出牌] " + card.CardName + " 拖到第" + (slot.laneIndex + 1) + "路");
-        }
-        else
+        // 打出去；没打成（没放到空槽）就弹回
+        bool played = PlayToSlot(slot);
+        if (!played)
         {
             // 弹回：位置、朝向、父物体、缩放、排序都恢复（选中态保持不变）
             transform.position = originalPos;
@@ -204,6 +186,32 @@ public class CardDisplay : MonoBehaviour
             SortingGroup sg = card.sortingGroup;
             if (sg != null) sg.sortingOrder = originalSortOrder;
         }
+    }
+
+    // 把这张牌打到槽位上（拖放、点选后点槽都走这里）。打成功返回 true。
+    public bool PlayToSlot(CardSlot slot)
+    {
+        if (slot == null || !slot.IsEmpty || !slot.isPlayerSide) return false;
+        if (!CanPlay()) return false;
+
+        if (DeckManager.Instance != null)
+            DeckManager.Instance.RemoveFromHand(card);
+
+        card.IsPlayed = true;      // 打出后就不能再选了
+        card.IsSelected = false;   // 出牌后取消选中
+        if (selectedCard == this) selectedCard = null;
+
+        EventBus.Publish(new CardPlayedEvent
+        {
+            card = card,
+            laneIndex = slot.laneIndex,
+            isPlayerSide = true
+        });
+
+        if (card.Data != null)
+            Debug.Log("[出牌] " + card.CardName + " 放到第" + (slot.laneIndex + 1) + "路");
+
+        return true;
     }
 
     // ========== 射线 ==========

@@ -16,28 +16,21 @@ MonoBehaviour:
   - levelName: 1
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 0cb69d00a3e004f42b0463228d0266f0, type: 2}
-    - {fileID: 11400000, guid: 0effb2fe63d05234293792cc6443c4ac, type: 2}
-    - {fileID: 11400000, guid: 9acb3a2c659915f4a9fa1e75cf250da6, type: 2}
-    - {fileID: 11400000, guid: c995e70832264604fafb98af7faa8d1c, type: 2}
-    - {fileID: 11400000, guid: b912c30d7e843ac4aa9ac85da7589c40, type: 2}
+    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
     maxPreviewCards: 2
     minRefillCards: 0
     maxRefillCards: 1
-    enemyStartingChips: 100
-    initialHandSize: 6
+    enemyStartingChips: 10
+    initialHandSize: 4
     drawPerTurn: 1
   - levelName: 2
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 0effb2fe63d05234293792cc6443c4ac, type: 2}
-    - {fileID: 11400000, guid: 2490c8e777737034ba3fc1cd2838cddb, type: 2}
-    - {fileID: 11400000, guid: 334e53668245639498702dcc2bbe90d3, type: 2}
-    - {fileID: 11400000, guid: 76dea8b63221da64180e242195c1b06e, type: 2}
-    - {fileID: 11400000, guid: c3fa879c11e7d434d940abc72b11106d, type: 2}
+    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
+    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -50,11 +43,9 @@ MonoBehaviour:
   - levelName: 3
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: c32a0b1ef11d8c3468d4922265de3129, type: 2}
-    - {fileID: 11400000, guid: da542635c64249d49a4c55273c6f12f9, type: 2}
-    - {fileID: 11400000, guid: 334e53668245639498702dcc2bbe90d3, type: 2}
-    - {fileID: 11400000, guid: 76dea8b63221da64180e242195c1b06e, type: 2}
-    - {fileID: 11400000, guid: 9acb3a2c659915f4a9fa1e75cf250da6, type: 2}
+    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
+    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
+    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1

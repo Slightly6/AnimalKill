@@ -10,6 +10,9 @@ public class GameManager : Singleton<GameManager>
 {
     private const int TROPHY_SIZE = 5;   // 战利品区容量
 
+    [Header("开局筹码")]
+    public int startingPlayerChips = 100;   // 玩家开局筹码数（在 Inspector 里填）
+
     // 玩家当前筹码（别的脚本只读，不要直接改）
     public int PlayerChips { get; private set; }
 
@@ -34,7 +37,7 @@ public class GameManager : Singleton<GameManager>
     protected override void Awake()
     {
         base.Awake();               // 让 Singleton 正确设 _instance
-        PlayerChips = GameProgress.playerChips;   // 整局只初始化一次
+        PlayerChips = startingPlayerChips;   // 开局筹码从 Inspector 填的数字开始
     }
 
     private void Start()
@@ -106,15 +109,13 @@ public class GameManager : Singleton<GameManager>
         }
     }
 
-    // 凑满 5 张，判定牌型，玩家加牌型筹码（敌人不减）
+    // 凑满 5 张，判定牌型。暂时不加筹码（以后改成：按牌型给临时技能）
     private void SettleTrophy()
     {
         HandType type = PokerHandEvaluator.Evaluate(trophy);
-        int chips = PokerHandEvaluator.GetChips(type);
         trophy.Clear();
 
-        Debug.Log("[结算] 牌型=" + type + "，+ " + chips + " 筹码");
-        AddChips(chips);        // 玩家加牌型筹码
+        Debug.Log("[结算] 牌型=" + type + "（暂时不加筹码）");
     }
 
     // ========== 筹码 ==========
@@ -152,6 +153,27 @@ public class GameManager : Singleton<GameManager>
         if (IsGameOver) return;
         EnemyChips -= amount;
         SendChipsChanged();
+        CheckWin();
+    }
+
+    // 筹码转移（打脸）：一次从一方转到另一方。toPlayer=true 敌→我，false 我→敌
+    public void TransferChips(int amount, bool toPlayer)
+    {
+        if (IsGameOver) return;
+
+        if (toPlayer)
+        {
+            EnemyChips -= amount;
+            PlayerChips += amount;
+        }
+        else
+        {
+            PlayerChips -= amount;
+            EnemyChips += amount;
+        }
+
+        SendChipsChanged();   // 刷新数字 + 让筹码堆校正数量
+        EventBus.Publish(new ChipTransferEvent { amount = amount, toPlayer = toPlayer });   // 播飞过去动画
         CheckWin();
     }
 

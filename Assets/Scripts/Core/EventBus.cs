@@ -113,6 +113,13 @@ public struct ChipsChangedEvent
     public int enemyChips;    // 敌人当前筹码
 }
 
+// 筹码转移（打脸：从一方转到另一方，用于飞过去动画）
+public struct ChipTransferEvent
+{
+    public int amount;       // 转移多少点
+    public bool toPlayer;    // true = 敌→我（我赢）；false = 我→敌（我输）
+}
+
 // 战利品变化（打脸收牌）
 public struct TrophyChangedEvent
 {

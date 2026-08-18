@@ -114,6 +114,12 @@ MonoBehaviour:
   IsPlayed: 0
   flipDuration: 0.3
   ScaleX: 0.7
+  arcHeight: 1.2
+  tiltAngle: 15
+  rushDuration: 0.3
+  returnDuration: 0.1
+  thrustPivotOffset: 0.9
+  recoilAngle: 14
 --- !u!114 &678577280254055433
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -127,6 +133,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   dragScale: 0.8
+  dragPixels: 15
 --- !u!65 &5339620174248007879
 BoxCollider:
   m_ObjectHideFlags: 0

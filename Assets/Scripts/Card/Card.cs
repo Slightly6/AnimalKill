@@ -18,7 +18,13 @@ public class Card : MonoBehaviour
     public bool IsPlayer;
     public bool IsPlayed;   // 已经打出去的牌（不能再拖）
     public float flipDuration=0.3f;   // 翻面动画时长
-    public float ScaleX=0.8f;       
+    public float ScaleX=0.8f;
+    public float arcHeight=1.2f;          // 半圆弧猛冲的高度（跳多高）
+    public float tiltAngle=30f;           // 猛冲时前倾的角度
+    public float rushDuration=0.15f;      // 猛冲出去的时间（快）
+    public float returnDuration=0.2f;     // 回原位的时间（慢）
+    public float thrustPivotOffset=0.9f;  // 后仰支点离中心多远 = 半张牌长（牌高2.6×缩放0.7÷2）
+    public float recoilAngle=14f;         // 被打后仰的角度
     [System.NonSerialized] public bool IsFaceDown = true;   // 默认扣着（背面朝上），不在 Inspector 显示
     [System.NonSerialized] public SortingGroup sortingGroup;   // 缓存引用，避免每帧 GetComponent
     [System.NonSerialized] public bool IsSelected;   // 这张牌被点选（准备出牌）
@@ -114,75 +120,108 @@ public class Card : MonoBehaviour
             damage = damage
         });
 
+        // 从攻击者指向目标的方向（目标朝这个方向后仰）
+        Vector3 hitDir = target.transform.position - transform.position;
+        hitDir.y = 0;
+        hitDir.Normalize();
+
         if (target.CurrentPower <= 0)
         {
+            // 打死：死亡动画接管
             target.CurrentPower = 0;
             target.Die();
         }
         else
         {
+            // 没死：后仰 + 刷新战力
+            target.PlayHitReaction(hitDir);
             target.RefreshDisplay();
         }
     }
 
-    // 通用攻击动作：冲过去打一下，再回原位（this 是出手方，target 是被打方）
+    // 被打的反馈：后仰一下再回正（攻击方调用，没打死时）
+    public void PlayHitReaction(Vector3 hitDir)
+    {
+        StartCoroutine(HitReactionRoutine(hitDir));
+    }
+
+    IEnumerator HitReactionRoutine(Vector3 hitDir)
+    {
+        Vector3 homePos = transform.position;
+        Quaternion homeRot = transform.rotation;
+
+        // ① 后仰：朝被打方向相反侧倾一下（朝向攻击者那一侧翘起）
+        Vector3 pivot = homePos + hitDir * thrustPivotOffset;   // 背对攻击者那一侧当支点
+        Vector3 axis = Vector3.Cross(Vector3.up, hitDir);
+        yield return CardAnimator.ThrustOut(transform, pivot, axis, recoilAngle, 0.07f);
+
+        // ② 回正
+        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, 0.14f);
+    }
+
+    // 通用攻击动作：前倾 + 半圆弧猛冲过去，再拉回原位。
     public IEnumerator StrikeAndReturn(Card target)
     {
         Vector3 homePos = transform.position;
         Quaternion homeRot = transform.rotation;
+
+        // 攻击方向（桌面 XZ 平面，指向目标）
         Vector3 dir = target.transform.position - homePos;
-        dir.y = 0;   // 只在桌面 XZ 平面冲锋
+        dir.y = 0;
         dir.Normalize();
-        Vector3 slamPos = target.transform.position - dir * 0.5f;
 
-        // 冲锋时往前进方向侧倾一点，像真的扑过去
-        Vector3 tiltAxis = Vector3.Cross(dir, Vector3.up);
-        Quaternion lungeRot = Quaternion.AngleAxis(15f, tiltAxis) * homeRot;
+        // 打出去的牌全程显示在最上面，避免穿模
+        int oldOrder = sortingGroup.sortingOrder;
+        sortingGroup.sortingOrder = 50;
 
-        // ① 边旋转边冲过去（快）
-        yield return CardAnimator.MoveAndRotate(transform, slamPos, lungeRot, 0.12f);
+        // ① 前倾 + 半圆弧猛冲（快），落在目标身上
+        yield return CardAnimator.ArcWithTilt(transform, target.transform.position, arcHeight, tiltAngle, dir, rushDuration);
 
         // ② 命中：扣血
         int damage = CurrentPower;
         DealDamage(target, damage);
         Debug.Log("[战斗] " + CardName + " 打 " + target.CardName + " " + damage + " 点");
 
-        // ③ 边旋转边回原位（慢）
-        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, 0.2f);
+        // ③ 拉回原位
+        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, returnDuration);
+
+        sortingGroup.sortingOrder = oldOrder;
     }
 
-    // 打脸动画：对面没卡，冲出去打对方脸，然后回来
+    // 打脸动画：对面没卡，前倾 + 半圆弧猛冲打向对方脸，再拉回原位
     public IEnumerator FaceAnim()
     {
         Vector3 homePos = transform.position;
         Quaternion homeRot = transform.rotation;
         // 玩家朝 -Z（打向敌人远端），敌方朝 +Z（打向玩家）
         Vector3 dir = IsPlayer ? -Vector3.forward : Vector3.forward;
-        Vector3 lungePos = homePos + dir * 1.0f;
 
-        Vector3 tiltAxis = Vector3.Cross(dir, Vector3.up);
-        Quaternion lungeRot = Quaternion.AngleAxis(15f, tiltAxis) * homeRot;
+        Vector3 reachPos = homePos + dir * 1.0f;   // 冲过去落在对方脸前面一点
 
-        // ① 边旋转边冲出去（快）
-        yield return CardAnimator.MoveAndRotate(transform, lungePos, lungeRot, 0.12f);
+        // 打出去的牌全程显示在最上面，避免穿模
+        int oldOrder = sortingGroup.sortingOrder;
+        sortingGroup.sortingOrder = 50;
+
+        // ① 前倾 + 半圆弧猛冲（快）
+        yield return CardAnimator.ArcWithTilt(transform, reachPos, arcHeight, tiltAngle, dir, rushDuration);
 
         // ② 命中：打脸
         int damage = CurrentPower;
         if (IsPlayer)
         {
             GameManager.Instance.AddTrophy(Data);          // 收牌凑德州
-            GameManager.Instance.EnemyLoseChips(damage);   // 扣敌人筹码
-            GameManager.Instance.AddChips(damage);         // 玩家加 damage 筹码（打脸赢的）
+            GameManager.Instance.TransferChips(damage, true);   // 敌人筹码转给我（打脸赢的）
         }
         else
         {
-            GameManager.Instance.LoseChips(damage);        // 敌人扣玩家筹码
-            GameManager.Instance.EnemyAddChips(damage);    // 敌人自己加上
+            GameManager.Instance.TransferChips(damage, false);  // 我的筹码转给敌人（被打脸输的）
         }
         Debug.Log("[战斗] " + CardName + " 打脸 " + damage + " 点");
 
-        // ③ 边旋转边回原位（慢）
-        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, 0.2f);
+        // ③ 拉回原位
+        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, returnDuration);
+
+        sortingGroup.sortingOrder = oldOrder;
     }
 
     void Die()

@@ -9,7 +9,7 @@ using TMPro;
 public class ScoreDisplay : MonoBehaviour
 {
     public bool isPlayer = true;          // 勾上=玩家筹码，不勾=敌人筹码
-    public TextMeshProUGUI text;          // 要刷新的那个数字
+    public TextMeshPro text;          // 要刷新的那个数字
 
     void Start()
     {
