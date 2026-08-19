@@ -15,6 +15,7 @@ using System.Collections;
       [Header("场景名（要和 Build Settings 里一致）")]
       public string mapSceneName = "Map";            // 地图场景
       public string battleSceneName = "SampleScene"; // 战斗场景
+      public GameObject Chest;                    
 
       void Start()
       {
@@ -87,6 +88,8 @@ using System.Collections;
       void EnterNonBattleNode()
       {
           Debug.Log("[节点] 进入 " + GameProgress.currentNodeType + "（面板下一步做）");
+          GameObject chestObj = Instantiate(Chest, new Vector3(0,7,-1), Quaternion.identity);
+          
       }
 
       // 过关：K（章节 Boss）→ 解锁下一章 / 胜利；普通关 → 回地图

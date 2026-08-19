@@ -35,7 +35,14 @@ public class CameraRig : Singleton<CameraRig>
 
     void LateUpdate()
     {
-        UpdateTarget();
+        if(GameProgress.currentNodeType == NodeType.Upgrade)
+        {
+            return; // 非战斗节点不动相机
+        }
+        else
+        {
+            UpdateTarget();
+        }
 
         // 位置往目标机位靠（帧率相关平滑，平民写法）
         Vector3 targetPos = targetHigh ? highPosition : lowPosition;

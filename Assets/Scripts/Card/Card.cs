@@ -8,10 +8,9 @@ using UnityEngine.Rendering;
 public class Card : MonoBehaviour
 {
     [Header("渲染（拖入）")]
-    public SpriteRenderer backRenderer;      // 背面
     public TextMeshPro[] rankTexts;          // 正面花色点数文字
-    public SpriteRenderer frontRenderer;     // 正面动物图
-    public SpriteRenderer skillIconRenderer; // 正面技能图标（小）
+    public MeshRenderer frontRenderer;       // 正面动物图
+    public MeshRenderer skillIconRenderer;   // 正面技能图标（小）
     public float frontArtScale = 0.12f;      // 正面动物图大小
     public Sprite stackedSkillIcon;          // 叠加得到的技能图标（献祭来的，没叠是 null）
     // ---- 运行时状态 ----
@@ -47,33 +46,35 @@ public class Card : MonoBehaviour
         IsDead = false;
         RefreshDisplay();
 
-        // 换正面动物图 + 按 frontArtScale 缩放
-        if (frontRenderer != null)
+        // 换正面动物图（材质贴图，运行时替换）
+        if (frontRenderer != null && Data.artwork != null)
         {
-            frontRenderer.sprite = Data.artwork;
-            frontRenderer.transform.localScale = new Vector3(frontArtScale, frontArtScale, 1f);
+            frontRenderer.material.mainTexture = Data.artwork.texture;
         }
 
         // 技能图标：有叠加技能显示叠加的，否则显示卡牌自带技能图标
         if (skillIconRenderer != null)
         {
             Sprite icon = stackedSkillIcon != null ? stackedSkillIcon : Data.abilityIcon;
-            skillIconRenderer.sprite = icon;
+            if (icon != null) skillIconRenderer.material.mainTexture = icon.texture;
         }
 
         SetFaceDown(IsFaceDown);
     }
 
-    // 瞬间切换正反面（FlipAnim 中间那一步用）
+    // 瞬间切换正反面：绕 Y 轴转（0° 正面朝上，180° 背面朝上），文字只在正面显示
     public void SetFaceDown(bool faceDown)
     {
-        bool showFront = !faceDown;
+        IsFaceDown = faceDown;
+        transform.localRotation = Quaternion.Euler(0, faceDown ? 180f : 0f, 0);
+        SetTextsVisible(!faceDown);
+    }
 
+    // 点数文字只在正面显示（背面时被背图盖住，这里只控文字的显隐）
+    void SetTextsVisible(bool showFront)
+    {
         for (int i = 0; i < rankTexts.Length; i++)
             if (rankTexts[i] != null) rankTexts[i].gameObject.SetActive(showFront);
-        if (backRenderer != null) backRenderer.gameObject.SetActive(faceDown);
-        if (frontRenderer != null) frontRenderer.gameObject.SetActive(showFront);
-        if (skillIconRenderer != null) skillIconRenderer.gameObject.SetActive(showFront && skillIconRenderer.sprite != null);
     }
 
     // 把某个技能图标叠到这张牌上（奖励关献祭后调用）
@@ -82,36 +83,29 @@ public class Card : MonoBehaviour
         stackedSkillIcon = icon;
         if (skillIconRenderer != null)
         {
-            skillIconRenderer.sprite = icon;
+            if (icon != null) skillIconRenderer.material.mainTexture = icon.texture;
             skillIconRenderer.gameObject.SetActive(icon != null);
         }
     }
 
-    // 翻面动画：压扁 → 切面 → 展开
+    // 翻面动画：绕 Y 轴从当前面转到另一面（像翻真卡）
     public System.Collections.IEnumerator FlipAnim()
     {
-        Vector3 scale = transform.localScale;
+        float fromY = IsFaceDown ? 180f : 0f;
+        float toY = IsFaceDown ? 0f : 180f;
 
-        // ① 压扁
         float t = 0;
         while (t < flipDuration)
         {
             t += Time.deltaTime;
-            transform.localScale = new Vector3(Mathf.Lerp(ScaleX, 0, t / flipDuration), scale.y, scale.z);
+            float p = t / flipDuration;
+            transform.localRotation = Quaternion.Euler(0, Mathf.Lerp(fromY, toY, p), 0);
             yield return null;
         }
 
-        // ② 切面
-        SetFaceDown(!IsFaceDown);
-
-        // ③ 展开
-        t = 0;
-        while (t < flipDuration)
-        {
-            t += Time.deltaTime;
-            transform.localScale = new Vector3(Mathf.Lerp(0, ScaleX, t / flipDuration), scale.y, scale.z);
-            yield return null;
-        }
+        IsFaceDown = !IsFaceDown;
+        transform.localRotation = Quaternion.Euler(0, toY, 0);
+        SetTextsVisible(!IsFaceDown);
     }
 
     public void RefreshDisplay()

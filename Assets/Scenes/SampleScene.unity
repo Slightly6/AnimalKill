@@ -658,7 +658,7 @@ Camera:
   m_GameObject: {fileID: 519420028}
   m_Enabled: 1
   serializedVersion: 2
-  m_ClearFlags: 1
+  m_ClearFlags: 2
   m_BackGroundColor: {r: 0.02865787, g: 0.13207549, b: 0.07768406, a: 0}
   m_projectionMatrixMode: 1
   m_GateFitMode: 2
@@ -886,8 +886,8 @@ Transform:
   m_GameObject: {fileID: 630567779}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -5.8081756, y: 4.621571, z: 4.757533}
-  m_LocalScale: {x: 1, y: 0.17, z: 1}
+  m_LocalPosition: {x: -5.91, y: 4.621571, z: 4.35}
+  m_LocalScale: {x: 1, y: 0.17, z: 1.5}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 873745236}
@@ -1619,6 +1619,7 @@ MonoBehaviour:
   database: {fileID: 11400000, guid: 96062242ca8e09747a24d38b5519db23, type: 2}
   mapSceneName: Map
   battleSceneName: SampleScene
+  Chest: {fileID: 6859440673156371544, guid: 67a3d2582e81c0641825eb3d90977662, type: 3}
 --- !u!1 &1617787669
 GameObject:
   m_ObjectHideFlags: 0
@@ -1754,7 +1755,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 06472bd1dabe7ab4b8ba8fdea49044c8, type: 2}
+  - {fileID: 2100000, guid: 83869aa0c85a1f442867b2db4513cffc, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
