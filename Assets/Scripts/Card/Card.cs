@@ -66,7 +66,7 @@ public class Card : MonoBehaviour
     public void SetFaceDown(bool faceDown)
     {
         IsFaceDown = faceDown;
-        transform.localRotation = Quaternion.Euler(0, faceDown ? 180f : 0f, 0);
+        transform.localRotation = Quaternion.Euler(0, faceDown ? 0f : 180f, 0);
         SetTextsVisible(!faceDown);
     }
 
@@ -89,10 +89,10 @@ public class Card : MonoBehaviour
     }
 
     // 翻面动画：绕 Y 轴从当前面转到另一面（像翻真卡）
-    public System.Collections.IEnumerator FlipAnim()
+    public IEnumerator FlipAnim()
     {
-        float fromY = IsFaceDown ? 180f : 0f;
-        float toY = IsFaceDown ? 0f : 180f;
+        float fromY = IsFaceDown ? 0f : 180f;
+        float toY = IsFaceDown ? 180f : 0f;
 
         float t = 0;
         while (t < flipDuration)

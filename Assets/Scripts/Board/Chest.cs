@@ -150,7 +150,7 @@ public class Chest : MonoBehaviour
         StartCoroutine(ReturnToMap());
     }
 
-    // 生一张卡：支架朝镜头（让卡立起来），卡挂支架下面、背面朝上
+    // 生一张卡：立起来、背面朝你（镜头在 +Z），三张横向并排、不朝镜头斜
     Card SpawnCard(CardDataSO data, int index, int total)
     {
         GameObject prefab = cardPrefab;
@@ -166,33 +166,17 @@ public class Chest : MonoBehaviour
         Vector3 pos = transform.position + cardSpawnOffset;
         pos.x += (index - (total - 1) / 2f) * cardSpacing;
 
-        // 支架：正面朝镜头、头朝上（垂直立在桌上）
-        Vector3 toCam = Vector3.forward;
-        Camera cam = Camera.main;
-        if (cam != null)
-        {
-            toCam = cam.transform.position - pos;
-            toCam.y = 0;
-        }
-        if (toCam.sqrMagnitude < 0.0001f) toCam = Vector3.forward;
-
-        GameObject stand = new GameObject("RewardCard");
-        stand.transform.position = pos;
-        stand.transform.rotation = Quaternion.LookRotation(toCam, Vector3.up);
-
-        GameObject go = Instantiate(prefab, stand.transform);
-        go.transform.localPosition = Vector3.zero;
-        go.transform.localRotation = Quaternion.identity;
+        // 直接生成，固定朝向：绕 Y 转 180°，让背面（-Z）朝 +Z 镜头方向
+        GameObject go = Instantiate(prefab,pos,Quaternion.Euler(0, 180, 0));
 
         Card card = go.GetComponent<Card>();
         if (card == null)
         {
-            Destroy(stand);
+            Destroy(go);
             return null;
         }
 
         card.Init(data, true);   // Init 里默认扣着（背面朝上）
-
         // 关掉卡自带的拖拽交互（那是战斗里用的），改用宝箱点击
         CardDisplay cd = go.GetComponent<CardDisplay>();
         if (cd != null) cd.enabled = false;
