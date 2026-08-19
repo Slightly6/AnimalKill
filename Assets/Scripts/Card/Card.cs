@@ -10,7 +10,10 @@ public class Card : MonoBehaviour
     [Header("渲染（拖入）")]
     public SpriteRenderer backRenderer;      // 背面
     public TextMeshPro[] rankTexts;          // 正面花色点数文字
-
+    public SpriteRenderer frontRenderer;     // 正面动物图
+    public SpriteRenderer skillIconRenderer; // 正面技能图标（小）
+    public float frontArtScale = 0.12f;      // 正面动物图大小
+    public Sprite stackedSkillIcon;          // 叠加得到的技能图标（献祭来的，没叠是 null）
     // ---- 运行时状态 ----
     public CardDataSO Data;
     public int CurrentPower;// 当前力量
@@ -43,6 +46,21 @@ public class Card : MonoBehaviour
         CurrentPower = Data.GetPower() + bonusPower;   // 基础战力 + 运行时加成（觉醒/额外）
         IsDead = false;
         RefreshDisplay();
+
+        // 换正面动物图 + 按 frontArtScale 缩放
+        if (frontRenderer != null)
+        {
+            frontRenderer.sprite = Data.artwork;
+            frontRenderer.transform.localScale = new Vector3(frontArtScale, frontArtScale, 1f);
+        }
+
+        // 技能图标：有叠加技能显示叠加的，否则显示卡牌自带技能图标
+        if (skillIconRenderer != null)
+        {
+            Sprite icon = stackedSkillIcon != null ? stackedSkillIcon : Data.abilityIcon;
+            skillIconRenderer.sprite = icon;
+        }
+
         SetFaceDown(IsFaceDown);
     }
 
@@ -54,6 +72,19 @@ public class Card : MonoBehaviour
         for (int i = 0; i < rankTexts.Length; i++)
             if (rankTexts[i] != null) rankTexts[i].gameObject.SetActive(showFront);
         if (backRenderer != null) backRenderer.gameObject.SetActive(faceDown);
+        if (frontRenderer != null) frontRenderer.gameObject.SetActive(showFront);
+        if (skillIconRenderer != null) skillIconRenderer.gameObject.SetActive(showFront && skillIconRenderer.sprite != null);
+    }
+
+    // 把某个技能图标叠到这张牌上（奖励关献祭后调用）
+    public void ApplyStackedSkill(Sprite icon)
+    {
+        stackedSkillIcon = icon;
+        if (skillIconRenderer != null)
+        {
+            skillIconRenderer.sprite = icon;
+            skillIconRenderer.gameObject.SetActive(icon != null);
+        }
     }
 
     // 翻面动画：压扁 → 切面 → 展开

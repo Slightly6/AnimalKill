@@ -10,13 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 6c24f5aa9dbdbe3468b022dc770b2e83, type: 3}
-  m_Name: "Spade_2_\u9F20"
+  m_Name: "Spade_2_\u58C1\u864E"
   m_EditorClassIdentifier: 
   suit: 0
   rank: 2
-  animalName: "\u9F20"
+  animalName: "\u58C1\u864E"
   description: "\u6218\u529B 2"
-  abilityName: "\u761F\u75AB"
-  abilityDesc: "\u3010\u761F\u75AB\u3011\u51FB\u6740\u654C\u65B9\u540E +3 \u7B79\u7801\u3002\u89C9\u9192\u653B+3\u3002"
-  isAwakened: 0
-  artwork: {fileID: 0}
+  abilityName: "\u65AD\u5C3E"
+  abilityDesc: "\u62B5\u6321\u81F4\u547D\u653B\u51FB"
+  artwork: {fileID: 21300000, guid: 8dabf5820d1503c44add207ab54b746a, type: 3}

@@ -32,6 +32,7 @@ public class CardDataSO : ScriptableObject
     // 技能
     public string abilityName = "";
     public string abilityDesc = "";
+    public Sprite abilityIcon;   // 技能图标（显示在卡牌正面，以后图鉴也用）
 
     // 外观
     public Sprite artwork;

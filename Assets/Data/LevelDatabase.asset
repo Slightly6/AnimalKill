@@ -37,7 +37,7 @@ MonoBehaviour:
     maxPreviewCards: 3
     minRefillCards: 0
     maxRefillCards: 2
-    enemyStartingChips: 200
+    enemyStartingChips: 15
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 3
@@ -52,6 +52,22 @@ MonoBehaviour:
     maxPreviewCards: 3
     minRefillCards: 0
     maxRefillCards: 3
-    enemyStartingChips: 300
+    enemyStartingChips: 20
+    initialHandSize: 6
+    drawPerTurn: 1
+  - levelName: 4
+    isBoss: 0
+    enemyDeck:
+    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
+    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
+    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
+    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
+    enemyBonusPower: 0
+    enemyAwakened: 0
+    minPreviewCards: 1
+    maxPreviewCards: 3
+    minRefillCards: 0
+    maxRefillCards: 3
+    enemyStartingChips: 25
     initialHandSize: 6
     drawPerTurn: 1

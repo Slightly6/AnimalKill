@@ -39,9 +39,9 @@ public class MapNode : MonoBehaviour
     {
         if (spriteRenderer == null) return;
 
-        if (row == GameProgress.mapRow)
+        if (GameProgress.cheatMode || row == GameProgress.mapRow)
         {
-            spriteRenderer.color = Color.white;                      // 可点：正常亮
+            spriteRenderer.color = Color.white;                      // 开挂或可点：正常亮
         }
         else
         {
@@ -51,8 +51,8 @@ public class MapNode : MonoBehaviour
 
     void OnMouseDown()
     {
-        // 不是当前横排，不让点
-        if (row != GameProgress.mapRow)
+        // 开挂模式随便点；否则只有当前横排能点
+        if (!GameProgress.cheatMode && row != GameProgress.mapRow)
         {
             Debug.Log("这排还不能选");
             return;
@@ -61,6 +61,9 @@ public class MapNode : MonoBehaviour
         // 前进到下一排
         GameProgress.mapRow = row + 1;
 
+        // 记住进的哪种节点（跨场景：掉兽皮 / 决定进战斗还是面板用）
+        GameProgress.currentNodeType = type;
+
         if (type == NodeType.Battle || type == NodeType.Boss)
         {
             GameProgress.currentLevel = levelIndex;
@@ -68,8 +71,8 @@ public class MapNode : MonoBehaviour
         }
         else
         {
-            Debug.Log("分岔节点（占位）：" + type);
-            SceneManager.LoadScene(mapSceneName);   // 重进地图刷新（占位做法）
+            // 小关(Extra)复用上一关敌人正常打；商店(Shop)/奖励关(Upgrade)进战斗场景但不摆棋盘
+            SceneManager.LoadScene(battleSceneName);
         }
     }
 }

@@ -5,7 +5,7 @@ public class DeckPile : MonoBehaviour
 {
     void Awake()
     {
-        BoxCollider collider = GetComponent<BoxCollider>(); 
+        BoxCollider collider = GetComponent<BoxCollider>();
         collider.isTrigger = true;
     }
     void OnMouseDown()

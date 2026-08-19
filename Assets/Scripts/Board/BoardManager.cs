@@ -31,6 +31,9 @@ public class BoardManager : Singleton<BoardManager>
 
     void Start()
     {
+        // 商店/奖励关：不摆棋盘
+        if (GameProgress.IsNonBattleNode()) return;
+
         playerSlots = GenerateSlots(playerRowZ, true, slotPrefab, 3);
         enemySlots = GenerateSlots(enemyRowZ, false, slotPrefab, 2);
         enemyPreviewSlots = GenerateSlots(previewRowZ, false, PreviewPrefab(), 1);

@@ -9,6 +9,8 @@ using UnityEngine;
     {
         public static int currentLevel = 0;      // 当前要打的关卡index（0~51），默认 0 = 第1关
         public static int playerChips = 100;     // 玩家筹码（跨关继承），默认 100= 开局筹码
+        public static bool cheatMode = false;    // 开挂模式（跨场景，勾 GameManager 上的开关）
+        public static bool chipsInitialized = false;   // 筹码是否初始化过（第一关用开局筹码，之后跨关继承）
         public static List<CardDataSO> playerDeck = new List<CardDataSO>();   // 玩家牌组数据（跨关继承），空 = 用初始牌组
 
         // 地图相关（本局随机地图，跨场景保留）
@@ -17,17 +19,28 @@ using UnityEngine;
         public static bool mapGenerated = false;
         public static int currentSuit = 0;     // 当前第几章（0=♠ 1=♥ 2=♦ 3=♣）
         public static int mapSuit = -1;        // 已生成的地图属于哪章（-1=还没生成）
+        public static int hides = 0;                    // 兽皮数（跨关继承，奖励关献祭用）
+        public static NodeType currentNodeType = NodeType.Battle;   // 当前进的哪种节点（跨场景）
 
         // 重新开始一局（玩家输光后重开用）
         public static void Reset()
         {
             currentLevel = 0;
             playerChips = 100;
+            chipsInitialized = false;
             playerDeck = new List<CardDataSO>();
             map = new List<MapNodeData>();
             mapRow = 0;
             mapGenerated = false;
             currentSuit = 0;
             mapSuit = -1;
+            hides = 0;
+            currentNodeType = NodeType.Battle;
+        }
+
+        // 是不是不用战斗的节点（商店/奖励关：进去不摆棋盘、不抽手牌）
+        public static bool IsNonBattleNode()
+        {
+            return currentNodeType == NodeType.Shop || currentNodeType == NodeType.Upgrade;
         }
     }

@@ -12,6 +12,12 @@ public class BellButton : MonoBehaviour
         col.isTrigger = true;
     }
 
+    void Start()
+    {
+        // 商店/奖励关没有战斗，藏掉铃铛
+        if (GameProgress.IsNonBattleNode()) gameObject.SetActive(false);
+    }
+
     void OnMouseDown()
     {
         // 发出"结束出牌阶段"信号，BattleManager 收到就进入战斗

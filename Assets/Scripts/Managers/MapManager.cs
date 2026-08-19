@@ -37,6 +37,13 @@ using System.Collections;
       // 开始一关
       void StartLevel(int index)
       {
+          // 商店/奖励关：不摆棋盘不抽手牌，直接进面板（面板下一步做）
+          if (GameProgress.IsNonBattleNode())
+          {
+              EnterNonBattleNode();
+              return;
+          }
+
           if (database == null)
           {
               Debug.LogError("MapManager 没设置 LevelDatabase！");
@@ -57,9 +64,36 @@ using System.Collections;
           BattleManager.Instance.StartLevel(cfg);    // 开打
       }
 
+      // 过关给兽皮：小关(Extra) 33% 掉 1 / 大关(Battle必过关) 稳定 1 / Boss 3
+      void AwardHide()
+      {
+          NodeType t = GameProgress.currentNodeType;
+          if (t == NodeType.Boss)
+          {
+              GameProgress.hides += 3;
+          }
+          else if (t == NodeType.Extra)
+          {
+              if (Random.value < 0.33f) GameProgress.hides += 1;
+          }
+          else if (t == NodeType.Battle)
+          {
+              GameProgress.hides += 1;
+          }
+          Debug.Log("[兽皮] 现在共 " + GameProgress.hides + " 片");
+      }
+
+      // 商店/奖励关（非战斗节点）：面板下一步做，这里先占位
+      void EnterNonBattleNode()
+      {
+          Debug.Log("[节点] 进入 " + GameProgress.currentNodeType + "（面板下一步做）");
+      }
+
       // 过关：K（章节 Boss）→ 解锁下一章 / 胜利；普通关 → 回地图
       void OnLevelCleared(LevelClearedEvent e)
       {
+          AwardHide();   // 按刚打完的节点给兽皮
+
           int rank = GameProgress.currentLevel % 13;   // 0=A ... 12=K
 
           if (rank == 12)   // 打的是 K = 章节 Boss

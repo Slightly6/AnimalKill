@@ -13,6 +13,9 @@ public class GameManager : Singleton<GameManager>
     [Header("开局筹码")]
     public int startingPlayerChips = 100;   // 玩家开局筹码数（在 Inspector 里填）
 
+    [Header("开挂模式（勾上：无限筹码 / 地图全亮 / 可跳过此关）")]
+    public bool cheatMode = false;
+
     // 玩家当前筹码（别的脚本只读，不要直接改）
     public int PlayerChips { get; private set; }
 
@@ -37,7 +40,16 @@ public class GameManager : Singleton<GameManager>
     protected override void Awake()
     {
         base.Awake();               // 让 Singleton 正确设 _instance
-        PlayerChips = startingPlayerChips;   // 开局筹码从 Inspector 填的数字开始
+
+        // 第一关用 Inspector 开局筹码并记进进度；之后跨关继承上次剩的筹码
+        if (!GameProgress.chipsInitialized)
+        {
+            GameProgress.playerChips = startingPlayerChips;
+            GameProgress.chipsInitialized = true;
+        }
+        PlayerChips = GameProgress.playerChips;
+
+        GameProgress.cheatMode = cheatMode;  // 开挂开关同步到全局（跨场景）
     }
 
     private void Start()
@@ -133,6 +145,7 @@ public class GameManager : Singleton<GameManager>
     public void LoseChips(int amount)
     {
         if (IsGameOver) return;
+        if (GameProgress.cheatMode) return;   // 开挂：玩家筹码不扣
         PlayerChips -= amount;
         SendChipsChanged();
         CheckWin();
@@ -168,13 +181,31 @@ public class GameManager : Singleton<GameManager>
         }
         else
         {
-            PlayerChips -= amount;
+            if (!GameProgress.cheatMode) PlayerChips -= amount;   // 开挂：玩家筹码不扣
             EnemyChips += amount;
         }
 
         SendChipsChanged();   // 刷新数字 + 让筹码堆校正数量
         EventBus.Publish(new ChipTransferEvent { amount = amount, toPlayer = toPlayer });   // 播飞过去动画
         CheckWin();
+    }
+
+    // ========== 开挂模式 ==========
+
+    // 强制跳过当前关（开挂模式用）
+    public void SkipLevel()
+    {
+        EventBus.Publish(new LevelClearedEvent());
+    }
+
+    // 开挂时屏幕左上角画一个「跳过此关」按钮
+    void OnGUI()
+    {
+        if (!GameProgress.cheatMode) return;
+        if (GUI.Button(new Rect(12, 12, 120, 42), "跳过此关"))
+        {
+            SkipLevel();
+        }
     }
 
     private void SendChipsChanged()

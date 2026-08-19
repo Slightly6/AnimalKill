@@ -934,6 +934,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startingPlayerChips: 20
+  cheatMode: 1
 --- !u!4 &673086852
 Transform:
   m_ObjectHideFlags: 0
