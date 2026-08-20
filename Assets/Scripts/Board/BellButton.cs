@@ -20,6 +20,7 @@ public class BellButton : MonoBehaviour
 
     void OnMouseDown()
     {
+        AudioManager.Instance.PlayBell();   // 铃铛音效
         // 发出"结束出牌阶段"信号，BattleManager 收到就进入战斗
         EventBus.Publish(new EndPlayPhaseEvent());
         Debug.Log("[铃铛] 结束出牌，开始战斗");

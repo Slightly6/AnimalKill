@@ -67,12 +67,12 @@ public class MapNode : MonoBehaviour
         if (type == NodeType.Battle || type == NodeType.Boss)
         {
             GameProgress.currentLevel = levelIndex;
-            SceneManager.LoadScene(battleSceneName);
+            FadeManager.Go(battleSceneName);
         }
         else
         {
             // 小关(Extra)复用上一关敌人正常打；商店(Shop)/奖励关(Upgrade)进战斗场景但不摆棋盘
-            SceneManager.LoadScene(battleSceneName);
+            FadeManager.Go(battleSceneName);
         }
     }
 }

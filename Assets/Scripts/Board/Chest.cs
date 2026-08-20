@@ -258,7 +258,7 @@ public class Chest : MonoBehaviour
 
         string mapScene = "Map";
         if (MapManager.Instance != null) mapScene = MapManager.Instance.mapSceneName;
-        SceneManager.LoadScene(mapScene);
+        FadeManager.Go(mapScene);
     }
 
     // 权重 = 1/点数 抽 count 张（去重）

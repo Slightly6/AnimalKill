@@ -145,7 +145,7 @@ public class DeckManager : Singleton<DeckManager>
 
         GameObject go = Instantiate(cardPrefab);
         if (deckPile != null)
-            go.transform.position = deckPile.position;
+            go.transform.position = deckPile.position + Vector3.up * 0.1f;   // 略高于牌堆顶，别叠穿
 
         Card card = go.GetComponent<Card>();
         if (card == null)
@@ -156,8 +156,10 @@ public class DeckManager : Singleton<DeckManager>
         }
 
         card.Init(data, true);   // Init 里默认扣着（背面朝上）
+        go.transform.rotation = Quaternion.Euler(90, 0, 0);   // 平放在牌堆上，面朝下（不竖着穿模）
+        AudioManager.Instance.PlayDraw();   // 抽牌音效
 
-        yield return StartCoroutine(card.FlipAnim());
+        yield return StartCoroutine(card.FlatFlipAnim());   // 平着翻到正面
 
         card.transform.SetParent(handPanel);
         HandCards.Add(card);

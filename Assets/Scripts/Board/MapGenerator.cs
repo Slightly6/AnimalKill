@@ -69,6 +69,7 @@ public class MapGenerator : MonoBehaviour
             // 2. 每个必过关后（K 除外）插一段分岔区
             if (rank < rankCount - 1)
             {
+                int startIndex = GameProgress.map.Count;   // 这段分岔区从哪开始
                 int depth = Random.Range(1, 3);   // 分岔区 1~3 层
                 for (int d = 0; d < depth; d++)
                 {
@@ -84,6 +85,12 @@ public class MapGenerator : MonoBehaviour
                     }
                     row++;
                 }
+
+                // 保底：这段分岔区至少要有一个奖励关，没有就把第一个改成奖励关
+                if (!HasReward(startIndex))
+                {
+                    GameProgress.map[startIndex].type = NodeType.Upgrade;
+                }
             }
         }
 
@@ -97,6 +104,16 @@ public class MapGenerator : MonoBehaviour
         if (r < 0.4f) return NodeType.Extra;
         if (r < 0.7f) return NodeType.Shop;
         return NodeType.Upgrade;
+    }
+
+    // 从 startIndex 到末尾这段分岔区里有没有奖励关
+    bool HasReward(int startIndex)
+    {
+        for (int i = startIndex; i < GameProgress.map.Count; i++)
+        {
+            if (GameProgress.map[i].type == NodeType.Upgrade) return true;
+        }
+        return false;
     }
 
     // ========== 摆节点 ==========

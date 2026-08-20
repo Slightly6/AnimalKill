@@ -96,6 +96,7 @@ using System.Collections;
       void OnLevelCleared(LevelClearedEvent e)
       {
           AwardHide();   // 按刚打完的节点给兽皮
+          SaveManager.Instance.Save();   // 打完一关存档一次（进度写进 PlayerPrefs）
 
           int rank = GameProgress.currentLevel % 13;   // 0=A ... 12=K
 
@@ -108,12 +109,12 @@ using System.Collections;
               else
               {
                   GameProgress.currentSuit++;   // 解锁下一章
-                  SceneManager.LoadScene(mapSceneName);
+                  FadeManager.Go(mapSceneName);
               }
           }
           else
           {
-              SceneManager.LoadScene(mapSceneName);   // 普通关 → 回地图
+              FadeManager.Go(mapSceneName);   // 普通关 → 回地图
           }
       }
   }

@@ -91,6 +91,7 @@ public class Card : MonoBehaviour
     // 翻面动画：绕 Y 轴从当前面转到另一面（像翻真卡）
     public IEnumerator FlipAnim()
     {
+        AudioManager.Instance.PlayFlip();   // 翻面音效
         float fromY = IsFaceDown ? 0f : 180f;
         float toY = IsFaceDown ? 180f : 0f;
 
@@ -105,6 +106,30 @@ public class Card : MonoBehaviour
 
         IsFaceDown = !IsFaceDown;
         transform.localRotation = Quaternion.Euler(0, toY, 0);
+        SetTextsVisible(!IsFaceDown);
+    }
+
+    // 平着翻面（抽牌用）：牌躺在牌堆上，绕世界 Z 轴（长边）翻过去露出正面。
+    // 宝箱还走上面的 FlipAnim（绕 Y 轴竖着翻），这里单独给抽牌加个平翻，互不影响。
+    public IEnumerator FlatFlipAnim()
+    {
+        AudioManager.Instance.PlayFlip();   // 翻面音效
+        Quaternion flatDown = Quaternion.Euler(90, 0, 0);   // 平放、面朝下
+        float from = IsFaceDown ? 0f : 180f;
+        float to = IsFaceDown ? 180f : 0f;
+
+        float t = 0;
+        while (t < flipDuration)
+        {
+            t += Time.deltaTime;
+            float p = t / flipDuration;
+            float angle = Mathf.Lerp(from, to, p);
+            transform.localRotation = Quaternion.AngleAxis(angle, Vector3.forward) * flatDown;
+            yield return null;
+        }
+
+        IsFaceDown = !IsFaceDown;
+        transform.localRotation = Quaternion.AngleAxis(to, Vector3.forward) * flatDown;
         SetTextsVisible(!IsFaceDown);
     }
 
@@ -137,6 +162,7 @@ public class Card : MonoBehaviour
     void DealDamage(Card target, int damage)
     {
         target.CurrentPower -= damage;
+        AudioManager.Instance.PlayHit();   // 命中音效
 
         EventBus.Publish(new CardAttackedEvent
         {
@@ -232,6 +258,7 @@ public class Card : MonoBehaviour
 
         // ② 命中：打脸
         int damage = CurrentPower;
+        AudioManager.Instance.PlayFace();   // 打脸音效
         if (IsPlayer)
         {
             GameManager.Instance.AddTrophy(Data);          // 收牌凑德州
@@ -253,6 +280,7 @@ public class Card : MonoBehaviour
     {
         if (IsDead) return;
         IsDead = true;
+        AudioManager.Instance.PlayDeath();   // 死亡音效
 
         CardSlot slot = BoardManager.Instance.FindSlotOfCard(this);
         EventBus.Publish(new CardDiedEvent

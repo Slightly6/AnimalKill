@@ -1,7 +1,8 @@
 /// <summary>
 /// 地图上一个节点的数据（纯数据，不挂场景）。
-/// 存进 GameProgress 跨场景保留。
+/// 存进 GameProgress 跨场景保留。[System.Serializable] 让 JsonUtility 能存它。
 /// </summary>
+[System.Serializable]
 public class MapNodeData
 {
     public NodeType type;      // 节点类型
