@@ -19,5 +19,5 @@ MonoBehaviour:
   abilityName: "\u8840\u8165\u8FFD\u8E2A"
   abilityDesc: "\u3010\u8840\u8165\u8FFD\u8E2A\u3011\u51FB\u6740\u654C\u65B9\u540E
     +3 \u7B79\u7801\u3002\u89C9\u9192\u653B+3\u3002"
-  isAwakened: 0
-  artwork: {fileID: 0}
+  abilityIcon: {fileID: 0}
+  artwork: {fileID: 21300000, guid: 8961203789e82144dba387e4a7324ae6, type: 3}

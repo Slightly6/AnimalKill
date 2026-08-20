@@ -16,6 +16,7 @@ using UnityEngine;
         // 地图相关（本局随机地图，跨场景保留）
         public static List<MapNodeData> map = new List<MapNodeData>();   // 当前章的地图
         public static int mapRow = 0;          // 玩家当前要选第几横排
+        public static int mapCol = 0;          // 上一排选的是第几列（锁定走哪条线）
         public static bool mapGenerated = false;
         public static int currentSuit = 0;     // 当前第几章（0=♠ 1=♥ 2=♦ 3=♣）
         public static int mapSuit = -1;        // 已生成的地图属于哪章（-1=还没生成）
@@ -31,6 +32,7 @@ using UnityEngine;
             playerDeck = new List<CardDataSO>();
             map = new List<MapNodeData>();
             mapRow = 0;
+            mapCol = 0;
             mapGenerated = false;
             currentSuit = 0;
             mapSuit = -1;
@@ -42,5 +44,25 @@ using UnityEngine;
         public static bool IsNonBattleNode()
         {
             return currentNodeType == NodeType.Shop || currentNodeType == NodeType.Upgrade;
+        }
+
+        // 找某排某列的节点（找不到返回 null）
+        public static MapNodeData FindNode(int row, int col)
+        {
+            for (int i = 0; i < map.Count; i++)
+            {
+                if (map[i].row == row && map[i].col == col) return map[i];
+            }
+            return null;
+        }
+
+        // 这个节点现在能不能点：必须是当前横排，且上一排选的线能走到这一列
+        public static bool CanSelectNode(int row, int col)
+        {
+            if (row != mapRow) return false;   // 不是当前横排
+            if (row == 0) return true;         // 第一排就一个节点，随便点
+            MapNodeData from = FindNode(row - 1, mapCol);
+            if (from == null) return true;     // 找不到上一排节点（兜底放行）
+            return from.nextCols.Contains(col);   // 上一排那条线连不连得到这一列
         }
     }

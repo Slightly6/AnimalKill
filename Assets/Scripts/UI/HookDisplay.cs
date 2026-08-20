@@ -84,7 +84,6 @@ public class HookDisplay : MonoBehaviour
         GameObject go = Instantiate(cardPrefab, pivot.transform);
         go.transform.localPosition = new Vector3(0f, -hangDrop, 0f);
         go.transform.localScale = Vector3.one * cardScale;
-        go.transform.localRotation = Quaternion.Euler(0, 90f, 0);
 
         Card card = go.GetComponent<Card>();
         if (card != null)

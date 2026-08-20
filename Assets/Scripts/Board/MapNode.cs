@@ -12,7 +12,7 @@ public class MapNode : MonoBehaviour
     public NodeType type = NodeType.Battle;
     public int levelIndex = 0;
     public int row = 0;
-
+    public int col = 0;
     public string battleSceneName = "SampleScene";
     public string mapSceneName = "Map";
 
@@ -31,6 +31,7 @@ public class MapNode : MonoBehaviour
         type = data.type;
         levelIndex = data.levelIndex;
         row = data.row;
+        col = data.col;
         RefreshVisual();
     }
 
@@ -39,9 +40,9 @@ public class MapNode : MonoBehaviour
     {
         if (spriteRenderer == null) return;
 
-        if (GameProgress.cheatMode || row == GameProgress.mapRow)
+        if (GameProgress.cheatMode || GameProgress.CanSelectNode(row, col))
         {
-            spriteRenderer.color = Color.white;                      // 开挂或可点：正常亮
+            spriteRenderer.color = Color.white;                      // 可点：正常亮
         }
         else
         {
@@ -51,15 +52,16 @@ public class MapNode : MonoBehaviour
 
     void OnMouseDown()
     {
-        // 开挂模式随便点；否则只有当前横排能点
-        if (!GameProgress.cheatMode && row != GameProgress.mapRow)
+        // 开挂模式随便点；否则只能点当前横排、且上一排选的线能走到的节点
+        if (!GameProgress.cheatMode && !GameProgress.CanSelectNode(row, col))
         {
-            Debug.Log("这排还不能选");
+            Debug.Log("这条线走不到");
             return;
         }
 
-        // 前进到下一排
+        // 前进到下一排，并记住选了哪条线
         GameProgress.mapRow = row + 1;
+        GameProgress.mapCol = col;
 
         // 记住进的哪种节点（跨场景：掉兽皮 / 决定进战斗还是面板用）
         GameProgress.currentNodeType = type;

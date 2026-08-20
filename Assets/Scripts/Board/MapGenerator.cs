@@ -41,6 +41,7 @@ public class MapGenerator : MonoBehaviour
             GameProgress.mapGenerated = true;
             GameProgress.mapSuit = GameProgress.currentSuit;
         }
+        ComputeConnections();   // 每次进地图都算一遍连线（生成/读档都覆盖，结果只由 row/col 决定）
         BuildNodes();
         DrawConnections();
     }
@@ -166,9 +167,16 @@ public class MapGenerator : MonoBehaviour
     }
 
     // ========== 连线：像邪恶铭刻那样，分岔再汇聚，不全连 ==========
-    void DrawConnections()
+
+    // 算连线：每个节点的 nextCols = 下一排能走到的列。画线和点击判定都用这一份数据。
+    void ComputeConnections()
     {
-        if (lineMaterial == null) return;
+        // 先清空旧连线（读档回来的 nextCols 可能是 null，先补上再算）
+        for (int i = 0; i < GameProgress.map.Count; i++)
+        {
+            if (GameProgress.map[i].nextCols == null) GameProgress.map[i].nextCols = new List<int>();
+            else GameProgress.map[i].nextCols.Clear();
+        }
 
         int maxRow = 0;
         for (int i = 0; i < GameProgress.map.Count; i++)
@@ -178,85 +186,84 @@ public class MapGenerator : MonoBehaviour
 
         for (int r = 0; r < maxRow; r++)
         {
-            int countA = CountInRow(r);       // 这一排几个节点
-            int countB = CountInRow(r + 1);   // 下一排几个节点
+            int countA = CountInRow(r);
+            int countB = CountInRow(r + 1);
 
             if (countA == 1 || countB == 1)
             {
-                ConnectAll(r, countA, countB);       // 必经点 ↔ 分岔层：全连（发散/汇聚）
+                // 必经点 ↔ 分岔层：全连（发散/汇聚）
+                for (int i = 0; i < GameProgress.map.Count; i++)
+                {
+                    MapNodeData a = GameProgress.map[i];
+                    if (a.row != r) continue;
+                    for (int j = 0; j < GameProgress.map.Count; j++)
+                    {
+                        MapNodeData b = GameProgress.map[j];
+                        if (b.row != r + 1) continue;
+                        a.nextCols.Add(b.col);
+                    }
+                }
             }
             else
             {
-                ConnectSparse(r, countA, countB);    // 分岔层 ↔ 分岔层：就近稀疏连
+                // 分岔层之间：就近稀疏连，保证每个节点都有路（不断链）
+                List<MapNodeData> rowA = new List<MapNodeData>();
+                List<MapNodeData> rowB = new List<MapNodeData>();
+                for (int i = 0; i < GameProgress.map.Count; i++)
+                {
+                    if (GameProgress.map[i].row == r) rowA.Add(GameProgress.map[i]);
+                    if (GameProgress.map[i].row == r + 1) rowB.Add(GameProgress.map[i]);
+                }
+
+                // 每个下游就近连一个上游，保证下游不孤立
+                bool[] aUsed = new bool[rowA.Count];
+                for (int bi = 0; bi < rowB.Count; bi++)
+                {
+                    int bestA = 0;
+                    int bestDist = 9999;
+                    for (int ai = 0; ai < rowA.Count; ai++)
+                    {
+                        int d = Mathf.Abs(rowA[ai].col - rowB[bi].col);
+                        if (d < bestDist) { bestDist = d; bestA = ai; }
+                    }
+                    rowA[bestA].nextCols.Add(rowB[bi].col);
+                    aUsed[bestA] = true;
+                }
+
+                // 还没连出去的上游，就近连一个下游（保证走到这还能继续）
+                for (int ai = 0; ai < rowA.Count; ai++)
+                {
+                    if (aUsed[ai]) continue;
+                    int bestB = 0;
+                    int bestDist = 9999;
+                    for (int bi = 0; bi < rowB.Count; bi++)
+                    {
+                        int d = Mathf.Abs(rowA[ai].col - rowB[bi].col);
+                        if (d < bestDist) { bestDist = d; bestB = bi; }
+                    }
+                    rowA[ai].nextCols.Add(rowB[bestB].col);
+                }
             }
         }
     }
 
-    // 必经点（单节点）与分岔层之间：全连（发散/汇聚）
-    void ConnectAll(int r, int countA, int countB)
+    // 按算好的 nextCols 画线（和点击判定用同一份数据，不会各走各的）
+    void DrawConnections()
     {
+        if (lineMaterial == null) return;
+
         for (int i = 0; i < GameProgress.map.Count; i++)
         {
             MapNodeData a = GameProgress.map[i];
-            if (a.row != r) continue;
-
-            for (int j = 0; j < GameProgress.map.Count; j++)
+            int countA = CountInRow(a.row);
+            for (int k = 0; k < a.nextCols.Count; k++)
             {
-                MapNodeData b = GameProgress.map[j];
-                if (b.row != r + 1) continue;
-                DrawOne(a, b, countA, countB);
+                MapNodeData b = GameProgress.FindNode(a.row + 1, a.nextCols[k]);
+                if (b == null) continue;
+                int countB = CountInRow(b.row);
+                DrawLine(NodePosition(a.row, a.col, countA), NodePosition(b.row, b.col, countB));
             }
         }
-    }
-
-    // 分岔层之间：就近稀疏连，保证每个节点都有路（不断链）
-    void ConnectSparse(int r, int countA, int countB)
-    {
-        // 收集这两排的节点
-        List<MapNodeData> rowA = new List<MapNodeData>();
-        List<MapNodeData> rowB = new List<MapNodeData>();
-        for (int i = 0; i < GameProgress.map.Count; i++)
-        {
-            if (GameProgress.map[i].row == r) rowA.Add(GameProgress.map[i]);
-            if (GameProgress.map[i].row == r + 1) rowB.Add(GameProgress.map[i]);
-        }
-
-        // 第一步：每个下游（rowB）就近连一个上游，保证下游不孤立
-        bool[] aUsed = new bool[rowA.Count];
-        for (int bi = 0; bi < rowB.Count; bi++)
-        {
-            int bestA = 0;
-            int bestDist = 9999;
-            for (int ai = 0; ai < rowA.Count; ai++)
-            {
-                int d = Mathf.Abs(rowA[ai].col - rowB[bi].col);
-                if (d < bestDist) { bestDist = d; bestA = ai; }
-            }
-            DrawOne(rowA[bestA], rowB[bi], countA, countB);
-            aUsed[bestA] = true;
-        }
-
-        // 第二步：还没连出去的上游，就近连一个下游（保证走到这还能继续）
-        for (int ai = 0; ai < rowA.Count; ai++)
-        {
-            if (aUsed[ai]) continue;
-
-            int bestB = 0;
-            int bestDist = 9999;
-            for (int bi = 0; bi < rowB.Count; bi++)
-            {
-                int d = Mathf.Abs(rowA[ai].col - rowB[bi].col);
-                if (d < bestDist) { bestDist = d; bestB = bi; }
-            }
-            DrawOne(rowA[ai], rowB[bestB], countA, countB);
-        }
-    }
-
-    void DrawOne(MapNodeData a, MapNodeData b, int countA, int countB)
-    {
-        Vector3 pa = NodePosition(a.row, a.col, countA);
-        Vector3 pb = NodePosition(b.row, b.col, countB);
-        DrawLine(pa, pb);
     }
 
     void DrawLine(Vector3 a, Vector3 b)

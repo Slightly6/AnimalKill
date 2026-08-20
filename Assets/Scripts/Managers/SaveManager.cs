@@ -21,6 +21,7 @@ public class SaveManager : Singleton<SaveManager>
         public bool chipsInitialized;
         public int hides;
         public int mapRow;
+        public int mapCol;
         public bool mapGenerated;
         public int mapSuit;
         public int currentNodeType;                              // NodeType 转成 int 存
@@ -37,6 +38,7 @@ public class SaveManager : Singleton<SaveManager>
         data.chipsInitialized = GameProgress.chipsInitialized;
         data.hides = GameProgress.hides;
         data.mapRow = GameProgress.mapRow;
+        data.mapCol = GameProgress.mapCol;
         data.mapGenerated = GameProgress.mapGenerated;
         data.mapSuit = GameProgress.mapSuit;
         data.currentNodeType = (int)GameProgress.currentNodeType;
@@ -62,6 +64,7 @@ public class SaveManager : Singleton<SaveManager>
         GameProgress.chipsInitialized = data.chipsInitialized;
         GameProgress.hides = data.hides;
         GameProgress.mapRow = data.mapRow;
+        GameProgress.mapCol = data.mapCol;
         GameProgress.mapGenerated = data.mapGenerated;
         GameProgress.mapSuit = data.mapSuit;
         GameProgress.currentNodeType = (NodeType)data.currentNodeType;
