@@ -9,6 +9,7 @@ public class Card : MonoBehaviour
 {
     [Header("渲染（拖入）")]
     public TextMeshPro[] rankTexts;          // 正面花色点数文字
+    public TextMeshPro bonusText;            // 战力加/减的浮动文字（+1 / -1，没拖就空着不显示）
     public MeshRenderer frontRenderer;       // 正面动物图
     public MeshRenderer skillIconRenderer;   // 正面技能图标（小）
     public float frontArtScale = 0.12f;      // 正面动物图大小
@@ -16,6 +17,7 @@ public class Card : MonoBehaviour
     // ---- 运行时状态 ----
     public CardDataSO Data;
     public int CurrentPower;// 当前力量
+    [System.NonSerialized] public int PowerBonus;   // 技能累计加的战力（显示在 bonusText 上，+1/-1）
     public bool IsDead;
     public bool IsPlayer;
     public bool IsPlayed;   // 已经打出去的牌（不能再拖）
@@ -43,6 +45,7 @@ public class Card : MonoBehaviour
         Data = data;
         IsPlayer = isPlayer;
         CurrentPower = Data.GetPower() + bonusPower;   // 基础战力 + 运行时加成（觉醒/额外）
+        PowerBonus = 0;   // 技能加的战力，每张牌从 0 开始
         IsDead = false;
         RefreshDisplay();
 
@@ -75,6 +78,7 @@ public class Card : MonoBehaviour
     {
         for (int i = 0; i < rankTexts.Length; i++)
             if (rankTexts[i] != null) rankTexts[i].gameObject.SetActive(showFront);
+        RefreshBonusText();   // 加/减的文字只在正面显示，且只有非 0 才显示
     }
 
     // 把某个技能图标叠到这张牌上（奖励关献祭后调用）
@@ -144,6 +148,26 @@ public class Card : MonoBehaviour
             if (rankTexts[i] != null)
                 rankTexts[i].text = suitStr + rankStr;
         }
+    }
+
+    // 加/减战力（技能用）。delta 正数加、负数减，并在 bonusText 上显示 +N / -N。
+    public void AddPower(int delta)
+    {
+        if (delta == 0) return;
+        CurrentPower += delta;
+        if (CurrentPower < 1) CurrentPower = 1;   // 战力最低 1，别减成 0 或负数
+        PowerBonus += delta;
+        RefreshDisplay();
+        RefreshBonusText();
+    }
+
+    // 把累计的战力加成显示到 bonusText（+1 / -1），没有加成或没拖文字就不显示
+    void RefreshBonusText()
+    {
+        if (bonusText == null) return;
+        bool show = !IsFaceDown && PowerBonus != 0;
+        bonusText.gameObject.SetActive(show);
+        if (show) bonusText.text = PowerBonus > 0 ? "+" + PowerBonus : PowerBonus.ToString();
     }
 
     // 战力数值 → 点数文字  例: 1→A  13→K  8→8
@@ -261,7 +285,6 @@ public class Card : MonoBehaviour
         AudioManager.Instance.PlayFace();   // 打脸音效
         if (IsPlayer)
         {
-            GameManager.Instance.AddTrophy(Data);          // 收牌凑德州
             GameManager.Instance.TransferChips(damage, true);   // 敌人筹码转给我（打脸赢的）
         }
         else

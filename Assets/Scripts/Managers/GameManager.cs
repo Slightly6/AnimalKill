@@ -3,7 +3,7 @@ using UnityEngine;
 
 /// <summary>
 /// 总管理。管筹码、战利品、胜负。
-/// 打脸 → 收牌凑德州牌型 → 玩家加牌型筹码 → 打光敌人筹码过关。
+/// 击杀敌方卡 → 收牌上钩凑德州牌型 → 满 5 张按牌型给技能 → 打光敌人筹码过关。
 /// 敌人筹码归零 = 过关（非整局胜利），玩家筹码归零 = 整局失败。
 /// </summary>
 public class GameManager : Singleton<GameManager>
@@ -34,7 +34,7 @@ public class GameManager : Singleton<GameManager>
 
     public bool IsGameOver { get; private set; }
 
-    // 战利品区：打脸收的牌，凑满 5 张结算
+    // 战利品区（钩子）：击杀敌方收的牌，凑满 5 张结算
     private List<CardDataSO> trophy = new List<CardDataSO>();
 
     protected override void Awake()
@@ -66,11 +66,12 @@ public class GameManager : Singleton<GameManager>
         EventBus.Unsubscribe<CardPlayedEvent>(OnCardPlayed);
     }
 
-    // 卡死了
+    // 卡死了：只有敌方的卡被击杀才上钩（我方的卡死不上钩）
     private void OnCardDied(CardDiedEvent e)
     {
         if (IsGameOver) return;
-        // 后续在这里做觉醒或掉落
+        if (e.isPlayerSide) return;
+        AddTrophy(e.card.Data);
     }
 
     // 玩家出牌：扣筹码（按牌点数，1~13，A=1）
@@ -105,7 +106,7 @@ public class GameManager : Singleton<GameManager>
 
     // ========== 战利品 ==========
 
-    // 打脸收牌：把出手牌的花色+点数存进战利品区，满 5 张结算
+    // 击杀收牌：把被击杀牌的花色+点数存进钩子，满 5 张结算
     public void AddTrophy(CardDataSO data)
     {
         if (IsGameOver) return;
@@ -121,13 +122,51 @@ public class GameManager : Singleton<GameManager>
         }
     }
 
-    // 凑满 5 张，判定牌型。暂时不加筹码（以后改成：按牌型给临时技能）
+    // 凑满 5 张，判定牌型，按牌型给技能，然后清空钩子
     private void SettleTrophy()
     {
         HandType type = PokerHandEvaluator.Evaluate(trophy);
+        ApplyHandSkill(type);
         trophy.Clear();
 
-        Debug.Log("[结算] 牌型=" + type + "（暂时不加筹码）");
+        EventBus.Publish(new TrophyChangedEvent { count = 0 });   // 让钩子 UI 清空
+        Debug.Log("[结算] 牌型=" + type + "，技能已生效");
+    }
+
+    // 按牌型给技能（想调数值就改这里）
+    // 高牌 +2筹码 / 一对 +5筹码 / 两对 +1兽皮 / 三条 我方全体+1攻 / 顺子 敌方全体-1攻
+    // 同花 +12筹码 / 葫芦 +20筹码+1兽皮 / 四条 我方全体+2攻 / 同花顺 +30筹码+我方全体+1攻
+    void ApplyHandSkill(HandType type)
+    {
+        if (type == HandType.HighCard)            AddChips(2);
+        else if (type == HandType.OnePair)        AddChips(5);
+        else if (type == HandType.TwoPair)        GameProgress.hides += 1;
+        else if (type == HandType.ThreeOfAKind)   BuffPlayerCards(1);
+        else if (type == HandType.Straight)       BuffEnemyCards(-1);
+        else if (type == HandType.Flush)          AddChips(12);
+        else if (type == HandType.FullHouse)      { AddChips(20); GameProgress.hides += 1; }
+        else if (type == HandType.FourOfAKind)    BuffPlayerCards(2);
+        else if (type == HandType.StraightFlush)  { AddChips(30); BuffPlayerCards(1); }
+    }
+
+    // 本关我方所有在场牌 +delta 战力（三条/四条/同花顺等）
+    void BuffPlayerCards(int delta)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            Card card = BoardManager.Instance.GetCardAt(i, true);
+            if (card != null) card.AddPower(delta);
+        }
+    }
+
+    // 本关敌方所有在场牌 +delta 战力（delta 负数 = 减，顺子用）
+    void BuffEnemyCards(int delta)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            Card card = BoardManager.Instance.GetCardAt(i, false);
+            if (card != null) card.AddPower(delta);
+        }
     }
 
     // ========== 筹码 ==========

@@ -17,7 +17,7 @@ public enum HandType
 /// <summary>
 /// 德州牌型判定：5 张牌 → 牌型，牌型 → 筹码。
 /// 纯函数，不碰 Unity 对象，跟 CardAnimator 一样是静态工具类。
-/// 点数 1~13，A = 1（最小），K = 13（最大）。最小顺子是 A-2-3-4-5，最大是 9-10-J-Q-K。
+/// 点数 1~13，A = 1（最小），K = 13（最大）。最小顺子是 A-2-3-4-5，最大是 10-J-Q-K-A（A 当 14）。
 /// </summary>
 public static class PokerHandEvaluator
 {
@@ -46,8 +46,16 @@ public static class PokerHandEvaluator
             }
         }
 
-        // ③ 判断顺子（排序后连续）
+        // ③ 判断顺子（排序后连续）。A 默认是 1（最小），但 10-J-Q-K-A 里 A 得当 14（最大）
         bool isStraight = IsConsecutive(ranks);
+        if (!isStraight && ranks[0] == 1 && ranks[ranks.Length - 1] == 13)
+        {
+            // 把 A 从 1 挪到最后当 14，再判一次顺子（10-J-Q-K-A）
+            int[] high = new int[ranks.Length];
+            for (int i = 0; i < ranks.Length - 1; i++) high[i] = ranks[i + 1];
+            high[ranks.Length - 1] = 14;
+            isStraight = IsConsecutive(high);
+        }
 
         // ④ 统计每种点数的张数（index 1~13）
         int[] count = new int[14];
