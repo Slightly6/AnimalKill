@@ -1,67 +1,73 @@
 using UnityEngine;
 
-/// <summary>
-/// 桌面摄像机：透视 + 两个机位之间平滑切换。
-/// 挂在 Main Camera 上。
-/// 视角规则：长按拖拽牌时强制高视角；否则鼠标 Y 轴高于手牌区就高视角，低于就低视角。
-/// 点击选中、鼠标左右移动都不额外动相机。
-/// </summary>
-public class CameraRig : Singleton<CameraRig>
-{
-    [Header("两个预设机位（世界坐标）")]
-    public Vector3 lowPosition = new Vector3(0f, 3.2f, 6.5f);   // 低位：低、靠后，看远端
-    public Vector3 highPosition = new Vector3(0f, 8.0f, 3.0f);  // 高位：高、靠中，俯瞰全桌
+  /// <summary>
+  /// 桌面摄像机：透视 + 滚轮在多个预设机位之间循环切换。
+  /// 挂在 Main Camera 上。
+  /// 滚轮向上 → 下一个机位；向下 → 上一个机位（循环）。
+  /// </summary>
+  public class CameraRig : Singleton<CameraRig>
+  {
+      [Header("多个预设机位（世界坐标，想加几个加几个）")]
+      public Vector3[] positions = new Vector3[]
+      {
+          new Vector3(0f, 3.2f, 6.5f),   // 机位1：低、靠后，看远端
+          new Vector3(0f, 8.0f, 3.0f)    // 机位2：高、靠中，俯瞰全桌
+      };
 
-    [Header("看向桌面中心")]
-    public Vector3 focusPoint = new Vector3(0f, 0f, -1f);
+      [Header("看向桌面中心")]
+      public Vector3 focusPoint = new Vector3(0f, 0f, -1f);
 
-    [Header("镜头参数")]
-    public float fieldOfView = 55f;   // 透视视野
-    public float lerpSpeed = 6f;      // 机位切换速度（越大越快）
+      [Header("镜头参数")]
+      public float fieldOfView = 55f;   // 透视视野
+      public float lerpSpeed = 6f;      // 机位切换速度（越大越快）
 
-    [Header("鼠标驱动视角")]
-    public float handViewportY = 0.25f;   // 手牌区上边缘（viewport 0~1），鼠标 Y 高于它 → 高视角
+      [Header("桌面高度（和 BoardManager 保持一致）")]
+      public float boardHeight = 10f;
 
-    private Camera cam;
-    private bool targetHigh;          // 当前目标是高位还是低位
+      private Camera cam;
+      private int currentIndex = 0;     // 当前是第几个机位
 
-    void Start()
-    {
-        cam = GetComponent<Camera>();
-        cam.orthographic = false;     // 强制透视
-        cam.fieldOfView = fieldOfView;
-        transform.position = lowPosition;
-    }
+      void Start()
+      {
+          cam = GetComponent<Camera>();
+          cam.orthographic = false;     // 强制透视
+          cam.fieldOfView = fieldOfView;
+          if (positions != null && positions.Length > 0)
+          {
+              transform.position = positions[0] + Vector3.up * boardHeight;   // 一上来待在第一个机位
+          }
+      }
 
-    void LateUpdate()
-    {
-        if(GameProgress.currentNodeType == NodeType.Upgrade)
-        {
-            return; // 非战斗节点不动相机
-        }
-        else
-        {
-            UpdateTarget();
-        }
+      void Update()
+      {
+          if (GameProgress.currentNodeType == NodeType.Upgrade) return;   // 非战斗节点不动相机
+          if (positions == null || positions.Length == 0) return;
 
-        // 位置往目标机位靠（帧率相关平滑，平民写法）
-        Vector3 targetPos = targetHigh ? highPosition : lowPosition;
-        transform.position = Vector3.Lerp(transform.position, targetPos, lerpSpeed * Time.deltaTime);
+          float wheel = Input.mouseScrollDelta.y;
 
-        // 始终看向桌面中心
-        transform.LookAt(focusPoint, Vector3.up);
-    }
+          // 滚轮向上 → 下一个机位；向下 → 上一个机位（循环）
+          if (wheel > 0f)
+          {
+              currentIndex++;
+              if (currentIndex >= positions.Length) currentIndex = 0;
+          }
+          else if (wheel < 0f)
+          {
+              currentIndex--;
+              if (currentIndex < 0) currentIndex = positions.Length - 1;
+          }
+      }
 
-    // 长按拖拽强制高视角；否则鼠标 Y 轴驱动
-    void UpdateTarget()
-    {
-        if (CardDisplay.draggingCard != null)
-        {
-            targetHigh = true;   // 拿牌拖拽 → 俯瞰
-            return;
-        }
+      void LateUpdate()
+      {
+          if (GameProgress.currentNodeType == NodeType.Upgrade) return;   // 非战斗节点不动相机
+          if (positions == null || positions.Length == 0) return;
 
-        float mouseViewportY = Input.mousePosition.y / (float)Screen.height;   // 0=底 1=顶
-        targetHigh = mouseViewportY > handViewportY;
-    }
-}
+          // 位置往当前机位靠（帧率相关平滑，平民写法）
+          Vector3 targetPos = positions[currentIndex] + Vector3.up * boardHeight;
+          transform.position = Vector3.Lerp(transform.position, targetPos, lerpSpeed * Time.deltaTime);
+
+          // 始终看向桌面中心
+          transform.LookAt(focusPoint + Vector3.up * boardHeight, Vector3.up);
+      }
+  }

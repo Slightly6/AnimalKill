@@ -19,6 +19,9 @@ public class BoardManager : Singleton<BoardManager>
     public float enemyRowZ = -1.2f;     // 敌方当前
     public float playerRowZ = 1.0f;     // 最近：玩家
 
+    [Header("桌面高度（整张桌抬多高，Y=0 留给 3D 战斗地面）")]
+    public float boardHeight = 10f;
+
     private List<CardSlot> playerSlots = new List<CardSlot>();
     private List<CardSlot> enemySlots = new List<CardSlot>();
     private List<CardSlot> enemyPreviewSlots = new List<CardSlot>();
@@ -51,7 +54,7 @@ public class BoardManager : Singleton<BoardManager>
         for (int i = 0; i < 5; i++)
         {
             GameObject go = Instantiate(prefab, transform);
-            go.transform.position = new Vector3(startX + i * slotSpacing, 0, z);
+            go.transform.position = new Vector3(startX + i * slotSpacing, boardHeight, z);
             go.transform.rotation = Quaternion.Euler(90, 180, 0);   // 槽位躺平（牌面朝上 +Y），卡作子物体自动躺平
             go.name = (isPlayer ? "Player" : "Enemy") + "_Slot_" + i;
             CardSlot slot = go.GetComponent<CardSlot>();

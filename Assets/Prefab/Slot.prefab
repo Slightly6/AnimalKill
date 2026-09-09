@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 6606948394365160224}
   - component: {fileID: 3367535623655163496}
   - component: {fileID: 1285787064659844880}
+  - component: {fileID: 1188470604044247289}
   m_Layer: 0
   m_Name: Slot
   m_TagString: Slot
@@ -99,3 +100,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   laneIndex: 0
   isPlayerSide: 0
+  tableSortOrder: 0
+--- !u!114 &1188470604044247289
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 536724667344661820}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13a0ac2163deb0d419ef4ef611eaef01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  destroyWhenDone: 1
+  dissolveNoise: {fileID: 0}

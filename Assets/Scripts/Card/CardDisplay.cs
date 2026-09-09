@@ -28,7 +28,7 @@ public class CardDisplay : MonoBehaviour
     public float dragPixels = 15f;
     private Vector3 pressMousePos;   // 按下时的鼠标屏幕坐标（判拖用）
 
-    // 桌面平面（y=0），拖拽时射线打它
+    // 桌面平面（boardHeight 高度），拖拽时射线打它
     private Plane tablePlane;
 
     // 当前正在长按拖拽的牌（全局标记，让 HandManager 别抢）
@@ -48,7 +48,10 @@ public class CardDisplay : MonoBehaviour
         col.isTrigger = true;
         col.size = new Vector3(1.8f, 2.6f, 0.05f);
 
-        tablePlane = new Plane(Vector3.up, Vector3.zero);
+        // 桌面整体抬到了 boardHeight，射线平面跟着抬
+        float h = 0f;
+        if (BoardManager.Instance != null) h = BoardManager.Instance.boardHeight;
+        tablePlane = new Plane(Vector3.up, new Vector3(0f, h, 0f));
     }
 
     void Update()
@@ -216,7 +219,7 @@ public class CardDisplay : MonoBehaviour
 
     // ========== 射线 ==========
 
-    // 鼠标射线打到桌面（y=0 平面）上的点
+    // 鼠标射线打到桌面（boardHeight 高度的平面）上的点
     Vector3 RayToTable()
     {
         Ray ray = mainCam.ScreenPointToRay(Input.mousePosition);
