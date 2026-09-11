@@ -30,7 +30,8 @@ public class LevelConfig
 
     [Header("筹码")]
     public int enemyStartingChips = 100;     // 敌人开局筹码（玩家筹码跨关继承，不在这）
-
+    [Header("少于多少筹码,棋盘消失进入boss战")]
+    public int bossThreshold = 0;      // 敌人筹码掉到多少触发 Boss 战（从关卡配置读）
     [Header("手牌")]
     public int initialHandSize = 6;          // 开局手牌数
     public int drawPerTurn = 1;              // 每回合抽牌数

@@ -21,7 +21,12 @@ public class GameManager : Singleton<GameManager>
 
     // 敌人当前筹码
     public int EnemyChips { get; private set; }
+    public bool BossTriggered { get { return bossTriggered; } }
+    private int bossThreshold = 0;      // 敌人筹码掉到多少触发 Boss 战（从关卡配置读）
+    private bool bossTriggered = false; // 敌人筹码掉到阈值后，Boss 战触发（棋盘溶解，进入 Boss 单挑）
 
+    [Header("Boss 战（拖场景里的 Boss 进来）")]
+    public BossSquirrel bossSquirrel;   // Boss AI 脚本，触发 Boss 战时调用它的 StartBossFight()
     // 战利品区当前张数
     public int TrophyCount { get { return trophy.Count; } }
 
@@ -91,6 +96,9 @@ public class GameManager : Singleton<GameManager>
     public void LoadLevel(LevelConfig cfg)
     {
         EnemyChips = cfg.enemyStartingChips;
+        bossThreshold = cfg.bossThreshold;   // 从配置读"敌人筹码掉到多少进 Boss 战"
+        bossTriggered = false;   
+
         trophy.Clear();
 
         SendChipsChanged();
@@ -205,6 +213,7 @@ public class GameManager : Singleton<GameManager>
         if (IsGameOver) return;
         EnemyChips -= amount;
         SendChipsChanged();
+        CheckBossTrigger();
         CheckWin();
     }
 
@@ -226,7 +235,26 @@ public class GameManager : Singleton<GameManager>
 
         SendChipsChanged();   // 刷新数字 + 让筹码堆校正数量
         EventBus.Publish(new ChipTransferEvent { amount = amount, toPlayer = toPlayer });   // 播飞过去动画
+        CheckBossTrigger();
         CheckWin();
+    }
+
+    // ========== Boss 战 ==========
+    public void CheckBossTrigger()
+    {
+        if (bossTriggered) return;      // 已经触发过，不再重复
+        if (bossThreshold <= 0) return; // 没设阈值（0 或负数），不触发
+
+        if (EnemyChips <= bossThreshold)
+        {
+            EnemyChips = bossThreshold;   // 敌人筹码归零前先锁住阈值，Boss 战后续再扣
+            bossTriggered = true;
+            DissolveManager.Instance.DissolveAll();   // 棋盘溶解
+            CutsceneManager.Instance.EnterBossFight();// 切第一人称，HeroCtroller 重新接管
+            if (bossSquirrel != null) bossSquirrel.StartBossFight();   // Boss 播登场动画，然后开打
+            Debug.Log("[Boss战] 敌人筹码掉到 " + EnemyChips + "，触发溶解");
+            // 后续：切第一人称、进入 Boss 单挑（下一步做）
+        }
     }
 
     // ========== 开挂模式 ==========

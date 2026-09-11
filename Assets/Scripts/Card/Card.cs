@@ -256,7 +256,13 @@ public class Card : MonoBehaviour
         int damage = CurrentPower;
         DealDamage(target, damage);
         Debug.Log("[战斗] " + CardName + " 打 " + target.CardName + " " + damage + " 点");
-
+        
+        // Boss 战触发了：别再拉回原位，直接停
+        if (GameManager.Instance.BossTriggered)
+        {
+            sortingGroup.sortingOrder = oldOrder;
+            yield break;
+        }
         // ③ 拉回原位
         yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, returnDuration);
 
@@ -292,7 +298,12 @@ public class Card : MonoBehaviour
             GameManager.Instance.TransferChips(damage, false);  // 我的筹码转给敌人（被打脸输的）
         }
         Debug.Log("[战斗] " + CardName + " 打脸 " + damage + " 点");
-
+            // Boss 战触发了：别再拉回原位，直接停在这里（开始溶解）
+        if (GameManager.Instance.BossTriggered)
+        {
+            sortingGroup.sortingOrder = oldOrder;
+            yield break;
+        }
         // ③ 拉回原位
         yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, returnDuration);
 

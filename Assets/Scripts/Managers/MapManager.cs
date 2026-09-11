@@ -32,9 +32,15 @@ using System.Collections;
       IEnumerator BeginRun()
       {
           yield return null;
-          StartLevel(GameProgress.currentLevel);
+            if (GameProgress.IsNonBattleNode())
+            {
+            StartLevel(GameProgress.currentLevel);
+            }
       }
-
+    public void StartCurrentLevel()
+    {
+        StartLevel(GameProgress.currentLevel);
+    }
       // 开始一关
       void StartLevel(int index)
       {

@@ -108,7 +108,18 @@ public class DissolveController : MonoBehaviour
         }
         dissolving = false;
     }
+    [ContextMenu("全部还原")]
+    public void ResetAll()
+    {
+        DissolveManager.Instance.isDissolving = false;   // 你加的标志顺便复位
 
+        DissolveController[] all =
+    FindObjectsByType<DissolveController>(FindObjectsSortMode.None);
+        for (int i = 0; i < all.Length; i++)
+        {
+            all[i].ResetDissolve();
+        }
+    }
     // 真正的溶解过程：进度从 0 慢慢涨到 1
     IEnumerator DissolveRoutine()
     {

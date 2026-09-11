@@ -5,6 +5,12 @@ using UnityEngine;
 /// 跨场景进度。静态变量不随场景切换销毁，整个游戏过程一直保留。
 /// 存：当前关卡、玩家筹码、玩家牌组。
 /// </summary>
+    public enum GameStage
+    {
+        FirstPerson,   // 第一人称探索：能走路、能开门
+        Cutscene,      // 过场动画中：玩家不能操作
+        Playing        // 打牌中：CameraRig 俯视，出牌
+    }
     public static class GameProgress
     {
         public static int currentLevel = 0;      // 当前要打的关卡index（0~51），默认 0 = 第1关
@@ -22,7 +28,7 @@ using UnityEngine;
         public static int mapSuit = -1;        // 已生成的地图属于哪章（-1=还没生成）
         public static int hides = 0;                    // 兽皮数（跨关继承，奖励关献祭用）
         public static NodeType currentNodeType = NodeType.Battle;   // 当前进的哪种节点（跨场景）
-
+        public static GameStage currentStage = GameStage.FirstPerson;   // 当前游戏阶段（跨场景）
         // 重新开始一局（玩家输光后重开用）
         public static void Reset()
         {
@@ -38,6 +44,7 @@ using UnityEngine;
             mapSuit = -1;
             hides = 0;
             currentNodeType = NodeType.Battle;
+            currentStage = GameStage.FirstPerson;
         }
 
         // 是不是不用战斗的节点（商店/奖励关：进去不摆棋盘、不抽手牌）

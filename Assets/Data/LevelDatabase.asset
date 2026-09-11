@@ -24,6 +24,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 1
     enemyStartingChips: 10
+    bossThreshold: 5
     initialHandSize: 4
     drawPerTurn: 1
   - levelName: 2
@@ -38,6 +39,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 2
     enemyStartingChips: 15
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 3
@@ -53,6 +55,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 20
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 4
@@ -69,6 +72,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 5
@@ -86,6 +90,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 6
@@ -102,6 +107,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 7
@@ -120,6 +126,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 8
@@ -139,6 +146,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 9
@@ -160,6 +168,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 10
@@ -182,6 +191,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 11
@@ -205,6 +215,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 12
@@ -229,6 +240,7 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 13
@@ -254,5 +266,6 @@ MonoBehaviour:
     minRefillCards: 0
     maxRefillCards: 3
     enemyStartingChips: 25
+    bossThreshold: 0
     initialHandSize: 6
     drawPerTurn: 1

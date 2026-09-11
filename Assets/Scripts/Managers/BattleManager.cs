@@ -54,7 +54,7 @@ public class BattleManager : Singleton<BattleManager>
     // 主循环：跑到本关结束
     private IEnumerator GameLoop()
     {
-        while (!levelEnded && !GameManager.Instance.IsGameOver)
+        while (!levelEnded && !GameManager.Instance.IsGameOver&&!GameManager.Instance.BossTriggered)
         {
             yield return StartCoroutine(RunTurn());
         }
@@ -109,7 +109,7 @@ public class BattleManager : Singleton<BattleManager>
         // 阶段1：玩家所有卡挨个攻击
         for (int i = 0; i < 5; i++)
         {
-            if (levelEnded || GameManager.Instance.IsGameOver) yield break;
+            if (levelEnded || GameManager.Instance.IsGameOver || GameManager.Instance.BossTriggered) yield break;
             Card attacker = BoardManager.Instance.GetCardAt(i, true);
             Card defender = BoardManager.Instance.GetCardAt(i, false);
 
@@ -139,7 +139,7 @@ public class BattleManager : Singleton<BattleManager>
         // 阶段3：敌方所有卡挨个攻击
         for (int i = 0; i < 5; i++)
         {
-            if (levelEnded || GameManager.Instance.IsGameOver) yield break;
+            if (levelEnded || GameManager.Instance.IsGameOver || GameManager.Instance.BossTriggered) yield break;
             Card attacker = BoardManager.Instance.GetCardAt(i, false);
             Card defender = BoardManager.Instance.GetCardAt(i, true);
 
