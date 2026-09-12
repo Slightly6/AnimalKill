@@ -357,8 +357,8 @@ Transform:
   m_GameObject: {fileID: 160825912}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 76, y: 4.58, z: 13.5}
-  m_LocalScale: {x: 0.97580093, y: 10.283903, z: 53.377663}
+  m_LocalPosition: {x: 76, y: 4.58, z: 3.6}
+  m_LocalScale: {x: 0.97580093, y: 10.283903, z: 92.55153}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1571896305}
@@ -968,6 +968,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 2978230160488443440, guid: c20372ad75e65b0478f444f5e53b9aa9, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1099252417}
+    - targetCorrespondingSourceObject: {fileID: 7824835185668200350, guid: c20372ad75e65b0478f444f5e53b9aa9, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1386137515}
   m_SourcePrefab: {fileID: 100100000, guid: c20372ad75e65b0478f444f5e53b9aa9, type: 3}
 --- !u!1 &408445291
 GameObject:
@@ -1796,8 +1799,8 @@ Transform:
   m_GameObject: {fileID: 736123281}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 49.94, y: 4.58, z: 41.15}
-  m_LocalScale: {x: 0.97580093, y: 10.283903, z: 35.05788}
+  m_LocalPosition: {x: 57, y: 4.58, z: 41.4}
+  m_LocalScale: {x: 0.97580093, y: 10.283903, z: 49.065346}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1571896305}
@@ -2322,15 +2325,47 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd85188f439febd42914589ab949dc41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attacks:
+  - name: 
+    stateValue: 0
+    stateName: 
+    minDistance: 0
+    maxDistance: 0
+    groupId: 0
+    cooldown: 0
+    recoveryTime: 0
+  - name: 
+    stateValue: 0
+    stateName: 
+    minDistance: 0
+    maxDistance: 0
+    groupId: 0
+    cooldown: 0
+    recoveryTime: 0
+  - name: 
+    stateValue: 0
+    stateName: 
+    minDistance: 0
+    maxDistance: 0
+    groupId: 0
+    cooldown: 0
+    recoveryTime: 0
+  - name: 
+    stateValue: 0
+    stateName: 
+    minDistance: 0
+    maxDistance: 0
+    groupId: 0
+    cooldown: 0
+    recoveryTime: 0
+  farExtraCd: 3
+  nearMidExtraCd: 2
   player: {fileID: 1051405100}
   moveSpeed: 2
   moveDurationMin: 1.5
   moveDurationMax: 3
-  turnSpeed: 6
+  turnSpeed: 3
   fovAngle: 160
-  attackCooldown: 5
-  attackDuration: 2
-  attackRootMotionScale: 5
   stateParam: State
   isPhaseTwo: 0
   attackOffset: 17
@@ -2616,10 +2651,16 @@ PrefabInstance:
     - target: {fileID: 3547880330087536478, guid: c20372ad75e65b0478f444f5e53b9aa9, type: 3}
       propertyPath: m_Controller
       value: 
-      objectReference: {fileID: 9100000, guid: 0319ca6060c990042b43e9a93ed66ae0, type: 2}
+      objectReference: {fileID: 9100000, guid: e914a9aa3ad9ea34985e0e09e9b0208f, type: 2}
     - target: {fileID: 3547880330087536478, guid: c20372ad75e65b0478f444f5e53b9aa9, type: 3}
       propertyPath: m_WarningMessage
-      value: 
+      value: "\nBinding warning: Some generic clip(s) animate transforms that are
+        already bound by a Humanoid avatar. These transforms can only be changed
+        by Humanoid clips.\n\tTransform 'mixamorig:Hips'\n\tTransform 'mixamorig:LeftFoot'\n\tTransform
+        'mixamorig:Spine1'\n\tTransform 'mixamorig:RightArm'\n\tTransform 'mixamorig:LeftLeg'\n\tTransform
+        'mixamorig:LeftShoulder'\n\tTransform 'mixamorig:RightFoot'\n\tTransform
+        'mixamorig:Head'\n\tTransform 'mixamorig:LeftUpLeg'\n\tTransform 'mixamorig:LeftArm'\n\tand
+        more ...\n\tFrom animation clip 'Walk Strafe Right'"
       objectReference: {fileID: 0}
     - target: {fileID: 7396669449867306524, guid: c20372ad75e65b0478f444f5e53b9aa9, type: 3}
       propertyPath: m_Enabled
@@ -2720,8 +2761,8 @@ Transform:
   m_GameObject: {fileID: 1227044675}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 12.15, y: 4.58, z: 41.15}
-  m_LocalScale: {x: 0.9758, y: 10.283899, z: 30.552069}
+  m_LocalPosition: {x: -7.4, y: 4.58, z: 41.15}
+  m_LocalScale: {x: 0.9758, y: 10.283899, z: 69.387726}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1571896305}
@@ -3007,6 +3048,25 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1357246576}
   m_Mesh: {fileID: 10207, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1386137512 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 7824835185668200350, guid: c20372ad75e65b0478f444f5e53b9aa9, type: 3}
+  m_PrefabInstance: {fileID: 299830772}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1386137515
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1386137512}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 10caff2e8d7b01441b55b4aff89e5602, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  root: {fileID: 0}
+  scale: 1
 --- !u!1 &1399965891
 GameObject:
   m_ObjectHideFlags: 0
@@ -3814,6 +3874,63 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   fadeDuration: 0.5
+--- !u!1001 &1768963557
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: -212285753890768171, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_Name
+      value: Hi3D_Stylized Anime Horse Girl Bikini 3D Model_allparts_20260905
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: -50.975857
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.673
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 12.473861
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5766545926158600912, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: -8037938140082288066, guid: 7288891a631b6c94eb90268e6abad3ee, type: 3}
 --- !u!1 &1862345134
 GameObject:
   m_ObjectHideFlags: 0
@@ -4025,7 +4142,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: -29.6, y: 4.58, z: 15.45247}
-  m_LocalScale: {x: 0.97580093, y: 10.283903, z: 53.377663}
+  m_LocalScale: {x: 0.97580093, y: 10.283903, z: 108.297935}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1571896305}
@@ -4148,8 +4265,8 @@ Transform:
   m_GameObject: {fileID: 2091038744}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: 0.7071068, z: -0, w: 0.7071068}
-  m_LocalPosition: {x: 28.4, y: 4.58, z: -30.3}
-  m_LocalScale: {x: 0.97580093, y: 10.283903, z: 53.377666}
+  m_LocalPosition: {x: 24.5, y: 4.58, z: -39.2}
+  m_LocalScale: {x: 0.97580093, y: 10.283903, z: 118.61051}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1571896305}
@@ -4249,3 +4366,4 @@ SceneRoots:
   - {fileID: 299830772}
   - {fileID: 1051405100}
   - {fileID: 1184773036}
+  - {fileID: 1768963557}
