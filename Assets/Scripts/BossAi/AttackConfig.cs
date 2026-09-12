@@ -21,5 +21,7 @@ public class AttackConfig
 
     [Header("节奏")]
     public float cooldown;        // 这个攻击自己的 CD（秒）
-    public float recoveryTime;    // 后摇：动画播完停几秒，hero 抓后摇
+
+    [Header("出招方式")]
+    public bool useOffset;        // true=偏移出招（朝玩家右侧 attackOffset 米，只有旋风劈勾）；false=正对玩家出招
 }

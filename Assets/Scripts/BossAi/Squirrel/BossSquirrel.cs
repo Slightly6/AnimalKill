@@ -7,7 +7,7 @@ using UnityEngine;
 /// 行为：
 ///   登场怒吼（SIT → IDLE → ROAR）→ 前后左右随机走 + 一直面向玩家；
 ///   玩家进入视野、进入某个攻击的距离范围、且该攻击 CD 好了 → 按距离放 4 个攻击之一；
-///   攻击播完 → 后摇（顿 recoveryTime，hero 抓后摇窗口）→ 转向玩家 → 继续随机走。
+///   攻击播完 → 切回 idle 转向玩家 → 继续随机走。
 ///
 /// 走路用代码驱动（applyRootMotion = false），动画只当「走路姿势」。
 /// 攻击则临时打开 root motion，把动画自带的前冲+跳起转发到根节点（BossRootMotionForwarder）。
@@ -23,15 +23,12 @@ public class BossSquirrel : MonoBehaviour
         Intro,   // 登场怒吼
         Move,    // 前后左右随机移动
         Attack,  // 放攻击动画（root motion 驱动位移）
-        Recover, // 后摇（顿 recoveryTime，hero 抓后摇窗口）
         Turn     // 转向（原地慢慢面向玩家）
     }
 
     [Header("攻击配置（近→远排）")]
-    public AttackConfig[] attacks;         // 4 个攻击，每个带自己的距离/CD/后摇
+    public AttackConfig[] attacks;         // 4 个攻击，每个带自己的距离/CD
     private float[] cooldownTimers;        // 每个攻击自己的 CD 倒计时
-    private int currentAttackIndex = -1;   // 当前放的攻击下标
-    private float recoverTimer = 0f;       // 后摇剩余时间
 
     [Header("CD 联动")]
     public float farExtraCd = 3f;          // 放完近/中攻击，给「远组」多加的 CD（秒）
@@ -148,7 +145,6 @@ public class BossSquirrel : MonoBehaviour
             case BossState.Intro: break;
             case BossState.Move: UpdateMove(); break;
             case BossState.Attack: UpdateAttack(); break;
-            case BossState.Recover: UpdateRecover(); break;
             case BossState.Turn: UpdateTurn(); break;
         }
     }
@@ -197,7 +193,11 @@ public class BossSquirrel : MonoBehaviour
         // 3. 玩家在视野内 + 距离匹配某个攻击 + 该攻击 CD 好了 → 攻击
         if (IsPlayerInFOV())
         {
-            float distance = Vector3.Distance(player.position, transform.position);
+            // 只算水平距离（忽略 Y），不然 Boss 和玩家高度不一样会把距离算大
+            Vector3 toPlayer = player.position - transform.position;
+            toPlayer.y = 0f;
+            float distance = toPlayer.magnitude;
+
             int idx = SelectAttack(distance);
             if (idx >= 0)
             {
@@ -275,7 +275,6 @@ public class BossSquirrel : MonoBehaviour
     void EnterAttack(int idx)
     {
         state = BossState.Attack;
-        currentAttackIndex = idx;
 
         AttackConfig cast = attacks[idx];
         int castGroup = cast.groupId;
@@ -312,7 +311,14 @@ public class BossSquirrel : MonoBehaviour
         }
 
 
-        SnapFacePlayerWithOffset();                    // 出招瞬间锁定玩家位置
+        if (cast.useOffset)
+        {
+            SnapFacePlayerWithOffset();   // 旋风劈：朝玩家右侧偏移 attackOffset 米出招
+        }
+        else
+        {
+            SnapFacePlayer();             // 其他三个：正对玩家当前位置出招
+        }
 
         if (floor != null) floor.enabled = false;      // 攻击时不限制 Y，跳劈自由跳起+落地
         SetAnimSpeed(1f);
@@ -322,7 +328,7 @@ public class BossSquirrel : MonoBehaviour
 
     void UpdateAttack()
     {
-        // 攻击动画播完（非循环动画 normalizedTime 会停在 1）→ 进后摇。
+        // 攻击动画播完（非循环动画 normalizedTime 会停在 1）→ 切回 idle 转向玩家。
         // 注意：攻击状态必须是「非循环」且「没有自动 exit 到 idle 的转换」，
         //       否则播不到最后就切走了，这里永远检测不到。
         AnimatorStateInfo info = anim.GetCurrentAnimatorStateInfo(0);
@@ -336,25 +342,7 @@ public class BossSquirrel : MonoBehaviour
             transform.position = pos;
             if (floor != null) floor.enabled = true;
 
-            EnterRecover();
-        }
-    }
-
-    // ========== 后摇（攻击播完 → 顿 recoveryTime，hero 抓后摇） ==========
-    void EnterRecover()
-    {
-        state = BossState.Recover;
-        recoverTimer = attacks[currentAttackIndex].recoveryTime; // 当前攻击自己的后摇时间
-        if (anim != null) anim.applyRootMotion = false;          // 后摇阶段不动
-        // 不切动画：保持攻击最后一帧当「后摇姿势」，顿 recoveryTime
-    }
-
-    void UpdateRecover()
-    {
-        recoverTimer -= Time.deltaTime;
-        if (recoverTimer <= 0f)
-        {
-            EnterTurn();
+            EnterTurn();   // 直接切 idle 转向玩家（不再后摇顿住）
         }
     }
 
@@ -362,7 +350,8 @@ public class BossSquirrel : MonoBehaviour
     void EnterTurn()
     {
         state = BossState.Turn;
-        SetState(IDLE);   // 后摇结束，切回 idle
+        if (anim != null) anim.applyRootMotion = false;   // 攻击结束，关 root motion，回代码驱动
+        SetState(IDLE);   // 切回 idle
     }
 
     void UpdateTurn()
