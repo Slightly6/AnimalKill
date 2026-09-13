@@ -12,6 +12,9 @@ using UnityEngine;
       public float walkSpeed = 3f;        // 走路速度
       public float runSpeed = 7f;         // 跑步速度（按 Shift）
 
+      [Header("体力")]
+      public Stamina stamina;              // 体力脚本（挂同一物体，拖进来；不拖也能跑）
+
       [Header("鼠标视角")]
       public float lookSpeed = 2f;        // 鼠标灵敏度
       public float maxLookUp = 80f;       // 最多抬头/低头多少度
@@ -52,8 +55,8 @@ using UnityEngine;
 
       void Update()
       {
-          // （测试移动时暂时注释掉阶段判断，正式版再放开）
-          // if (GameProgress.currentStage != GameStage.FirstPerson) return;
+          // 只在第一人称能操作；过场(Cutscene)/打牌(Playing)时锁住，不能动不能转视角
+          if (GameProgress.currentStage != GameStage.FirstPerson) return;
 
           Look();
           Move();
@@ -118,7 +121,12 @@ using UnityEngine;
           float h = Input.GetAxis("Horizontal");   // A / D
           float v = Input.GetAxis("Vertical");     // W / S
 
-          bool running = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+          // 想跑 = 按了 Shift 且真的在动；能不能跑 = 还有体力
+          bool wantRun = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && (h != 0f || v != 0f);
+          bool running = wantRun && (stamina == null || stamina.canRun);   // 没挂体力脚本就永远能跑
+
+          // 告诉体力脚本现在在不在跑（它靠这个扣/回体力）
+          if (stamina != null) stamina.isRunning = running;
 
           // 混合树参数：MoveX=左右(-1左/+1右)  MoveY=前后(+1前/-1后)
           if (anim != null)

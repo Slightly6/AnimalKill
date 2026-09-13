@@ -8,7 +8,7 @@ using System.Collections;
 /// 挂在一个空物体上（自动建全屏黑图），跨场景保留。
 /// 用法：任何地方写 FadeManager.Go("场景名")，代替 SceneManager.LoadScene。
 /// </summary>
-public class FadeManager : MonoBehaviour
+public class FadeManager : Singleton<FadeManager>
 {
     public static FadeManager Instance { get; private set; }
 
@@ -79,6 +79,11 @@ public class FadeManager : MonoBehaviour
     // alpha 从 from 渐变到 to
     IEnumerator Fade(float from, float to)
     {
+        if (fadeImage == null)
+    {
+        Debug.LogError("FadeImage 是 null！FadeManager 可能被销毁了");
+        yield break;
+    }
         float t = 0;
         while (t < fadeDuration)
         {
@@ -89,4 +94,10 @@ public class FadeManager : MonoBehaviour
         }
         fadeImage.color = new Color(0, 0, 0, to);
     }
+
+    // 只变黑（不切场景）：给过场「黑屏时换相机/换人」用
+    public IEnumerator FadeToBlack() { yield return Fade(0f, 1f); }
+
+    // 只变亮（不切场景）
+    public IEnumerator FadeToClear() { yield return Fade(1f, 0f); }
 }
