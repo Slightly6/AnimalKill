@@ -12,9 +12,10 @@ using UnityEngine;
 /// 走路用代码驱动（applyRootMotion = false），动画只当「走路姿势」。
 /// 攻击则临时打开 root motion，把动画自带的前冲+跳起转发到根节点（BossRootMotionForwarder）。
 ///
-/// Animator 参数：int 参数 State
-///   0=左横移 1=右横移 2=前进走 4=坐 5=待机 6=怒吼 7=镜像前进
+/// Animator 参数：
+///   int 参数 State：4=坐 5=待机 6=怒吼 11=移动（混合树）
 ///   攻击动画的 State 值在 AttackConfig 里配（stateValue）
+///   float 参数 MoveX / MoveY：移动混合树的方向（MoveX=-1左/+1右，MoveY=+1前/-1后）
 /// </summary>
 public class BossSquirrel : MonoBehaviour
 {
@@ -41,6 +42,7 @@ public class BossSquirrel : MonoBehaviour
     public float moveSpeed = 2f;           // 移动速度（米/秒），调成和走路动画匹配，避免脚底打滑
     public float moveDurationMin = 1.5f;   // 每次朝一个方向走多久（最小，秒）
     public float moveDurationMax = 3f;     // 每次朝一个方向走多久（最大，秒）
+    public float moveDirSmooth = 120f;     // 方向平滑速度（度/秒）：越小方向切换越缓、越丝滑
 
     [Header("转身")]
     public float turnSpeed = 3f;           // 面向玩家的转身速度
@@ -55,19 +57,17 @@ public class BossSquirrel : MonoBehaviour
     [Header("是否进入 Boss 战")]
     public bool isPhaseTwo = false;
 
-    private const int STRAFE_LEFT = 0;     // 左横移
-    private const int STRAFE_RIGHT = 1;    // 右横移
-    private const int STRUT = 2;           // 前进走
-    private const int STRUT_MIRROR = 7;    // 镜像前进（当后退用）
     private const int SIT = 4;             // 坐
     private const int IDLE = 5;            // 待机
     private const int ROAR = 6;            // 怒吼
+    private const int MOVE = 11;           // 移动（混合树）
 
     private Animator anim;
     private BossState state = BossState.Intro;
 
     private float moveTimer = 0f;          // 当前方向段剩余时间
-    private int moveType = 0;              // 当前移动方向：0=前 1=后 2=左 3=右
+    private float targetAngle = 90f;       // 目标移动方向（角度）：0=右 90=前 180=左 270=后
+    private float curAngle = 90f;          // 当前平滑后的方向角度（每帧朝 targetAngle 靠近）
 
     private Floor floor;                   // 地面检测器：走路贴地，攻击时关掉不限制 Y
     private float attackStartY = 0f;       // 攻击前记录的世界 Y 坐标，攻击后复位用
@@ -213,45 +213,31 @@ public class BossSquirrel : MonoBehaviour
             PickRandomMove();
         }
 
-        // 5. 代码移动（方向相对 Boss 当前朝向，所以面向玩家后左右 = 绕玩家转圈）
-        transform.position += GetMoveDir() * moveSpeed * Time.deltaTime;
+        // 5. 方向角度平滑（贴着圆走，不会穿过中心 Idle 卡一下），
+        //    再按平滑后的方向驱动混合树 + 代码位移
+        curAngle = Mathf.MoveTowardsAngle(curAngle, targetAngle, moveDirSmooth * Time.deltaTime);
+        float rad = curAngle * Mathf.Deg2Rad;
+        float moveX = Mathf.Cos(rad);   // 右分量（-1 左 / +1 右）
+        float moveY = Mathf.Sin(rad);   // 前分量（+1 前 / -1 后）
+
+        SetMove(moveX, moveY);   // 混合树参数平滑过渡
+        Vector3 moveDir = transform.forward * moveY + transform.right * moveX;
+        transform.position += moveDir * moveSpeed * Time.deltaTime;
     }
 
-    // 随机选一个方向（前/后/左/右）并切对应动画
+    // 随机选一个方向（前/后/左/右），只设目标角度；实际过渡在 UpdateMove 里平滑
     void PickRandomMove()
     {
         moveTimer = Random.Range(moveDurationMin, moveDurationMax);
-        moveType = Random.Range(0, 4);   // 0=前 1=后 2=左 3=右
+        int dir = Random.Range(0, 4);   // 0=前 1=后 2=左 3=右
 
-        if (moveType == 1)               // 后：用镜像前进动画（State=7），边面朝玩家边后撤
-        {
-            SetAnimSpeed(1f);
-            SetState(STRUT_MIRROR);
-        }
-        else if (moveType == 2)          // 左
-        {
-            SetAnimSpeed(1f);
-            SetState(STRAFE_LEFT);
-        }
-        else if (moveType == 3)          // 右
-        {
-            SetAnimSpeed(1f);
-            SetState(STRAFE_RIGHT);
-        }
-        else                             // 前
-        {
-            SetAnimSpeed(1f);
-            SetState(STRUT);
-        }
-    }
+        if (dir == 0)      targetAngle = 90f;   // 前
+        else if (dir == 1) targetAngle = 270f;  // 后
+        else if (dir == 2) targetAngle = 180f;  // 左
+        else               targetAngle = 0f;    // 右
 
-    // 根据当前朝向算移动方向（每帧现算，保证「左右」相对玩家方向不变）
-    Vector3 GetMoveDir()
-    {
-        if (moveType == 0) return transform.forward;     // 前：朝玩家
-        if (moveType == 1) return -transform.forward;    // 后：远离玩家
-        if (moveType == 2) return -transform.right;      // 左
-        return transform.right;                          // 右
+        SetAnimSpeed(1f);
+        SetState(MOVE);   // 进混合树
     }
 
     // 距离选攻击：在「CD 好了 + 距离落在范围内」的攻击里挑；同一段有多个就随机挑一个
@@ -380,6 +366,14 @@ public class BossSquirrel : MonoBehaviour
     {
         if (anim == null) return;
         anim.SetInteger(stateParam, value);
+    }
+
+    // 驱动移动混合树：MoveX=-1左/+1右，MoveY=+1前/-1后
+    void SetMove(float x, float y)
+    {
+        if (anim == null) return;
+        anim.SetFloat("MoveX", x);
+        anim.SetFloat("MoveY", y);
     }
 
     void SetAnimSpeed(float s)

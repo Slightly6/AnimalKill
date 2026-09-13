@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;   // 要用 Image 做血条
 using System;           // 要用 Action 做事件
 
-public class SquirrelHp : MonoBehaviour, HpInterface
+public class HeroHp : MonoBehaviour, HpInterface
 {
     [Header("血量设置")]
     public int maxHp = 100; // 最大血量
@@ -64,8 +64,7 @@ public class SquirrelHp : MonoBehaviour, HpInterface
 
     private void Die()
     {
-        Debug.Log("Squirrel died.");
-        // 在这里添加死亡逻辑，例如播放死亡动画、销毁对象等
-        Destroy(gameObject);
+        Debug.Log("Hero died.");
+        // 玩家死亡逻辑以后填：重生、回标题、扣筹码之类（别直接销毁玩家）
     }
 }
