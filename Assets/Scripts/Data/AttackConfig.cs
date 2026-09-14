@@ -24,4 +24,6 @@ public class AttackConfig
 
     [Header("出招方式")]
     public bool useOffset;        // true=偏移出招（朝玩家右侧 attackOffset 米，只有旋风劈勾）；false=正对玩家出招
+    [Header("伤害")]
+    public float damage;          // 伤害值
 }

@@ -1,153 +1,243 @@
 using UnityEngine;
 
-  /// <summary>
-  /// 第一人称控制器：WASD 走路 + 鼠标转视角（身体+眼睛分开的版本）。
-  /// 挂在自己的"身体"（Cube）上，相机是它的子物体当眼睛。
-  /// 左右转 = 转身体；上下看 = 只转相机。
-  /// 移动用 transform 直接位移（不用 CharacterController），跟 Boss 一致。
-  /// </summary>
-  public class HeroController : MonoBehaviour
-  {
-      [Header("移动")]
-      public float walkSpeed = 3f;        // 走路速度
-      public float runSpeed = 7f;         // 跑步速度（按 Shift）
+public class HeroController : MonoBehaviour
+{
+    [Header("移动")]
+    public float walkSpeed = 3f;
+    public float runSpeed = 7f;
 
-      [Header("体力")]
-      public Stamina stamina;              // 体力脚本（挂同一物体，拖进来；不拖也能跑）
+    [Header("体力")]
+    public Stamina stamina;
 
-      [Header("鼠标视角")]
-      public float lookSpeed = 2f;        // 鼠标灵敏度
-      public float maxLookUp = 80f;       // 最多抬头/低头多少度
+    [Header("鼠标视角")]
+    public float lookSpeed = 2f;
+    public float maxLookUp = 80f;
 
-      [Header("眼睛（第一人称相机，是身体的子物体）")]
-      public Camera playerCamera;         // 拖进来；不拖就自动找子物体里的相机
+    [Header("眼睛")]
+    public Camera playerCamera;
 
-      [Header("动画")]
-      public Animator anim;               // 拖进来；不拖自动找子物体里的 Animator
-      public float blendSmooth = 8f;      // 走/跑切换的平滑速度（越大越跟手）
-      private float currentBlend = 0f;    // 当前 Speed 参数（0待机 0.5走 1跑）
+    [Header("动画")]
+    public Animator anim;
+    public float blendSmooth = 8f;
+    private float currentBlend = 0f;
 
-      [Header("相机跟头 / 藏头（第一人称）")]
-      public Transform headBone;           // 拖 mixamorig:Head
-      public float cameraSmooth = 0f;      // 0=完全贴头(稳)，设5~10=更平但略延迟
+    [Header("相机跟头 / 藏头")]
+    public Transform headBone;
+    public float cameraSmooth = 0f;
 
-      private float pitch = 0f;           // 抬头低头角度（只作用于相机）
+    [Header("攻击（Root Motion 开关）")]
+    public bool isAttacking = false;      // 攻击中：开 Root Motion，禁用移动输入
+    public float attackScale = 1f;        // 攻击位移放大倍数
 
-      void Start()
-      {
-          // 没手动拖 Animator，就自动找子物体里的
-          if (anim == null)
-          {
-              anim = GetComponentInChildren<Animator>();
-              anim.applyRootMotion = false;  
-          }
+    [Header("第三人称视角")]
+    public bool isThirdPerson = false;           // 当前是不是第三人称
+    public Camera thirdPersonCamera;             // 第三人称相机（拖进来）
+    public float thirdPersonDistance = 3f;       // 镜头离角色多远（米）
+    public float thirdPersonHeight = 1.5f;       // 镜头相对角色的基础高度
+    public float thirdPersonLookHeight = 1.5f;   // 镜头看向角色身上多高（胸口/头）
+    public float thirdPersonTurnSpeed = 10f;     // 第三人称走路时角色转身速度（越大越快）
 
-          // 没手动拖相机，就自动找子物体里的 Camera
-          if (playerCamera == null)
-          {
-              playerCamera = GetComponentInChildren<Camera>();
-          }
+    private float pitch = 0f;
+    private float cameraYaw = 0f;                // 第三人称相机绕角色的水平角度（360 环绕）
+    private AnimationEventRelay forwarder;
 
-          // 锁鼠标
-          Cursor.lockState = CursorLockMode.Locked;
-          Cursor.visible = false;
-      }
+    void Start()
+    {
+        if (anim == null) anim = GetComponentInChildren<Animator>();
 
-      void Update()
-      {
-          // 只在第一人称能操作；过场(Cutscene)/打牌(Playing)时锁住，不能动不能转视角
-          if (GameProgress.currentStage != GameStage.FirstPerson) return;
+        if (anim != null)
+        {
+             anim.applyRootMotion = false;   // 默认关：走路用代码驱动
 
-          Look();
-          Move();
-      }
+            // 给 Animator 所在物体挂一个转发器，把攻击时的根位移转到根节点
+            forwarder = anim.GetComponent<AnimationEventRelay>();
+            if (forwarder == null)
+                forwarder = anim.gameObject.AddComponent<AnimationEventRelay>();
 
-      // 相机贴头（防晃）+ 藏头/恢复头：第一人称藏头贴头，切第三人称恢复
-      void LateUpdate()
-      {
-          bool firstPerson = GameProgress.currentStage == GameStage.FirstPerson;
+            forwarder.scale = attackScale;
+        }
 
-          if (headBone == null) return;   // 没拖头骨就不处理（相机停在原地）
+        if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>();
 
-          if (firstPerson)
-          {
-              // 第一人称：把头骨压成0，头这张皮塌进脖子顶看不见，身体(胸/手/腿)还在
-              headBone.localScale = Vector3.zero;
+        Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
 
-              // 相机只跟头的位置、不跟头的旋转，在眼睛高度又不会被头骨动画带得乱晃
-              if (playerCamera != null)
-              {
-                  if (cameraSmooth > 0f)
-                  {
-                      Vector3 targetPos = headBone.position + headBone.forward * 0.5f;
+        ApplyCameraMode();   // 按初始视角（第一人称）开关相机
+    }
 
-                        playerCamera.transform.position = Vector3.Lerp(
-                            playerCamera.transform.position,
-                            targetPos,
-                            cameraSmooth * Time.deltaTime
-                        );
-                  }
-                  else
-                  {
-                      playerCamera.transform.position = headBone.position;
-                  }
-              }
-          }
-          else
-          {
-              // 第三人称/过场：把头恢复正常大小
-              headBone.localScale = Vector3.one;
-          }
-      }
+    void Update()
+    {
+        if (GameProgress.currentStage != GameStage.FirstPerson) return;
 
-      // 鼠标转视角
-      void Look()
-      {
-          float mouseX = Input.GetAxis("Mouse X") * lookSpeed;
-          float mouseY = Input.GetAxis("Mouse Y") * lookSpeed;
+        // 攻击中：不接受移动输入（位移交给动画），但可以转视角
+        Look();
+        if (!isAttacking) Move();
 
-          // 左右转：转整个身体（身体 + 眼睛一起转）
-          transform.Rotate(0f, mouseX, 0f);
+        // V 键：第一/第三人称来回切换
+        if (Input.GetKeyDown(KeyCode.V))
+        {
+            isThirdPerson = !isThirdPerson;
+            if (isThirdPerson)
+            {
+                // 切到第三人称时，让相机先转到角色当前身后，避免镜头乱跳
+                cameraYaw = transform.eulerAngles.y;
+            }
+            ApplyCameraMode();
+        }
+    }
 
-          // 上下看：只转相机（身体不动，所以不会翻跟头）
-          pitch -= mouseY;
-          pitch = Mathf.Clamp(pitch, -maxLookUp, maxLookUp);
-          playerCamera.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
-      }
+    void LateUpdate()
+    {
+        bool firstPerson = GameProgress.currentStage == GameStage.FirstPerson;
+        if (headBone == null) return;
 
-      // WASD 走路 / Shift 跑
-      void Move()
-      {
-          float h = Input.GetAxis("Horizontal");   // A / D
-          float v = Input.GetAxis("Vertical");     // W / S
+        if (firstPerson && !isThirdPerson)
+        {
+            // 第一人称：藏头，相机贴头
+            headBone.localScale = Vector3.zero;
 
-          // 想跑 = 按了 Shift 且真的在动；能不能跑 = 还有体力
-          bool wantRun = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && (h != 0f || v != 0f);
-          bool running = wantRun && (stamina == null || stamina.canRun);   // 没挂体力脚本就永远能跑
+            if (playerCamera != null)
+            {
+                if (cameraSmooth > 0f)
+                {
+                    Vector3 targetPos = headBone.position + headBone.forward * 0.5f;
+                    playerCamera.transform.position = Vector3.Lerp(
+                        playerCamera.transform.position, targetPos, cameraSmooth * Time.deltaTime);
+                }
+                else
+                {
+                    playerCamera.transform.position = headBone.position;
+                }
+            }
+        }
+        else
+        {
+            // 第三人称（或非第一人称阶段）：露头
+            headBone.localScale = Vector3.one;
 
-          // 告诉体力脚本现在在不在跑（它靠这个扣/回体力）
-          if (stamina != null) stamina.isRunning = running;
+            // 第一人称阶段 + 第三人称视角 → 更新环绕相机
+            if (firstPerson && isThirdPerson)
+            {
+                UpdateThirdPersonCamera();
+            }
+        }
+    }
 
-          // 混合树参数：MoveX=左右(-1左/+1右)  MoveY=前后(+1前/-1后)
-          if (anim != null)
-          {
-              anim.SetFloat("MoveX", h);
-              anim.SetFloat("MoveY", v);
-              // Speed：0=待机 0.5=走 1=跑，平滑过渡别一帧硬跳
-              float targetSpeed = 0f;
-              if (h != 0f || v != 0f) targetSpeed = running ? 1f : 0.5f;
-              currentBlend = Mathf.MoveTowards(currentBlend, targetSpeed, blendSmooth * Time.deltaTime);
-              anim.SetFloat("Speed", currentBlend);
-          }
+    void Look()
+    {
+        float mouseX = Input.GetAxis("Mouse X") * lookSpeed;
+        float mouseY = Input.GetAxis("Mouse Y") * lookSpeed;
 
-          // 身体的 forward 已经是水平的（身体只有左右转），直接用，不用去掉俯仰
-          Vector3 dir = transform.forward * v + transform.right * h;
-          if (dir.magnitude > 1f) dir.Normalize();   // 斜着走别变快
+        if (isThirdPerson)
+        {
+            // 第三人称：鼠标左右转「相机」绕角色 360 转，上下调俯仰；
+            // 角色本身不跟鼠标转（转角色交给移动时的转身）
+            cameraYaw += mouseX;
+            pitch -= mouseY;
+            pitch = Mathf.Clamp(pitch, -maxLookUp, maxLookUp);
+        }
+        else
+        {
+            // 第一人称：鼠标左右转「角色」，上下调俯仰
+            transform.Rotate(0f, mouseX, 0f);
 
-          // 实际移动速度：跑快走慢
-          float speed = running ? runSpeed : walkSpeed;
+            pitch -= mouseY;
+            pitch = Mathf.Clamp(pitch, -maxLookUp, maxLookUp);
+            playerCamera.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+        }
+    }
 
-          // 直接用 transform 位移（不用 CharacterController）：只动 XZ，Y 保持不动
-          transform.position += dir * speed * Time.deltaTime;
-      }
-  }
+    void Move()
+    {
+        float h = Input.GetAxis("Horizontal");
+        float v = Input.GetAxis("Vertical");
+
+        bool wantRun = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && (h != 0f || v != 0f);
+        bool running = wantRun && (stamina == null || stamina.canRun);
+
+        if (stamina != null) stamina.isRunning = running;
+
+        if (anim != null)
+        {
+            anim.SetFloat("MoveX", h);
+            anim.SetFloat("MoveY", v);
+
+            float targetSpeed = 0f;
+            if (h != 0f || v != 0f) targetSpeed = running ? 1f : 0.5f;
+            currentBlend = Mathf.MoveTowards(currentBlend, targetSpeed, blendSmooth * Time.deltaTime);
+            anim.SetFloat("Speed", currentBlend);
+        }
+
+        Vector3 dir;
+        if (isThirdPerson && thirdPersonCamera != null)
+        {
+            // 第三人称：移动方向相对「镜头」，把镜头朝向投影到地面（去掉 Y）
+            Vector3 camForward = thirdPersonCamera.transform.forward;
+            camForward.y = 0f;
+            camForward.Normalize();
+            Vector3 camRight = thirdPersonCamera.transform.right;
+            camRight.y = 0f;
+            camRight.Normalize();
+            dir = camForward * v + camRight * h;
+        }
+        else
+        {
+            // 第一人称：移动方向相对角色朝向
+            dir = transform.forward * v + transform.right * h;
+        }
+        if (dir.magnitude > 1f) dir.Normalize();
+
+        float speed = running ? runSpeed : walkSpeed;
+        transform.position += dir * speed * Time.deltaTime;
+
+        // 第三人称：走路时角色转身面向移动方向（角色不跟鼠标转，只跟移动转）
+        if (isThirdPerson && dir.magnitude > 0.01f)
+        {
+            Quaternion targetRot = Quaternion.LookRotation(dir);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, thirdPersonTurnSpeed * Time.deltaTime);
+        }
+    }
+
+    // ========== 第一/第三人称切换 ==========
+
+    // 按当前视角开关相机（第一人称关第三人称，反之亦然）
+    void ApplyCameraMode()
+    {
+        if (playerCamera != null) playerCamera.enabled = !isThirdPerson;
+        if (thirdPersonCamera != null) thirdPersonCamera.enabled = isThirdPerson;
+    }
+
+    // 第三人称环绕相机：以角色为圆心，按 cameraYaw（水平 360）+ pitch（上下）绕角色转
+    void UpdateThirdPersonCamera()
+    {
+        if (thirdPersonCamera == null) return;
+
+        // 环绕偏移：先往身后 -Z 拉 thirdPersonDistance，再抬高 thirdPersonHeight
+        Vector3 offset = new Vector3(0f, thirdPersonHeight, -thirdPersonDistance);
+
+        // 用 cameraYaw（水平 360）+ pitch（上下）旋转偏移，镜头绕角色任意转
+        offset = Quaternion.Euler(pitch, cameraYaw, 0f) * offset;
+
+        // 相机放到「角色 + 偏移」的世界位置
+        thirdPersonCamera.transform.position = transform.position + offset;
+
+        // 看向角色身上（胸口/头的高度）
+        thirdPersonCamera.transform.LookAt(transform.position + Vector3.up * thirdPersonLookHeight);
+    }
+
+    // ========== 攻击相关：由动画事件或代码调用 ==========
+
+    /// <summary>攻击开始：开 Root Motion，锁定移动输入</summary>
+    public void StartAttack()
+    {
+        isAttacking = true;
+        if (anim != null) anim.applyRootMotion = true;
+    }
+
+    /// <summary>攻击结束：关 Root Motion，恢复移动</summary>
+    public void EndAttack()
+    {
+        isAttacking = false;
+        if (anim != null) anim.applyRootMotion = false;
+    }
+}

@@ -109,13 +109,31 @@ public class CutsceneManager : Singleton<CutsceneManager>
           if (timelineCamera != null) timelineCamera.gameObject.SetActive(on);   // 整个 TimeCamera 激活/失活（它默认是失活的）
           if (fakeHero != null) fakeHero.SetActive(on);
           if (player != null) player.SetActive(!on);
+
+          // 过场时把第三人称相机也关掉（它是独立相机，不随 player 失活，会跟过场相机打架）
+          if (on)
+          {
+              HeroController hero = player != null ? player.GetComponent<HeroController>() : null;
+              if (hero != null && hero.thirdPersonCamera != null)
+              {
+                  hero.thirdPersonCamera.enabled = false;
+              }
+          }
       }
 
-      // 切相机：useTableCamera = true 用桌面相机，false 用第一人称相机
+      // 切相机：useTableCamera = true 用桌面相机，false 用第一/第三人称相机（按玩家当前视角）
       void SetCamera(bool useTableCamera)
       {
-          if (firstPersonCamera != null) firstPersonCamera.enabled = !useTableCamera;
+          // 玩家当前是不是第三人称（打牌时不管视角，都只看桌面；回第一人称才按它恢复）
+          HeroController hero = player != null ? player.GetComponent<HeroController>() : null;
+          bool useThird = hero != null && hero.isThirdPerson;
+
+          if (firstPersonCamera != null) firstPersonCamera.enabled = !useTableCamera && !useThird;
           if (tableCamera != null) tableCamera.enabled = useTableCamera;
+          if (hero != null && hero.thirdPersonCamera != null)
+          {
+              hero.thirdPersonCamera.enabled = !useTableCamera && useThird;
+          }
       }
 
   }

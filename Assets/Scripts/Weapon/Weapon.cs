@@ -2,20 +2,24 @@ using UnityEngine;
 
 /// <summary>
 /// 武器：挂在每个武器预制体根上。
-/// 每个武器预制体 = 模型 + 自己的 Animator + 这个 Weapon 组件。
-/// 每把武器有自己的收纳节点（背/腰间），拔刀挂手，收刀收回收纳节点。
+/// 每把武器自己设置两个节点：收纳节点（收刀挂哪）+ 手上节点（拿刀挂哪）。
+/// 拔刀挂手上节点，收刀挂回收纳节点。
+/// 数值（伤害、攻速等）放在 WeaponData（ScriptableObject）里，用 data 引用。
 /// </summary>
 public class Weapon : MonoBehaviour
 {
-    [Header("武器名")]
-    public string weaponName = "武器";
+    [Header("武器数据（伤害、攻速等，拖一个 WeaponData 资源进来）")]
+    public WeaponData data;
 
-    [Header("这把武器收刀时挂哪（它自己的背后/腰间节点）")]
-    public Transform backNode;   // 每把武器自己的收纳位置
+    [Header("这把武器收刀时挂哪（背后/腰间节点）")]
+    public Transform backNode;
+
+    [Header("这把武器拿刀时挂哪（手上节点）")]
+    public Transform handNode;
 
     void Start()
     {
-        // 一开始先挂到自己的收纳节点
+        // 一开始先挂到收纳节点
         if (backNode != null) Attach(backNode);
     }
 
@@ -28,20 +32,15 @@ public class Weapon : MonoBehaviour
         transform.localRotation = Quaternion.identity;
     }
 
-    // 收刀：挂回自己的收纳节点
+    // 收刀：挂回收纳节点
     public void Sheathe()
     {
         if (backNode != null) Attach(backNode);
     }
 
-    // 拔刀：挂到手上节点
-    public void Draw(Transform handNode)
+    // 拿刀：挂到手上节点
+    public void Draw()
     {
         if (handNode != null) Attach(handNode);
-    }
-
-    // 攻击：播放这个武器自己的攻击动画
-    public void Attack()
-    {
     }
 }

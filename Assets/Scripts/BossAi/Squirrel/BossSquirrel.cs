@@ -26,6 +26,8 @@ public class BossSquirrel : MonoBehaviour
         Attack,  // 放攻击动画（root motion 驱动位移）
         Turn     // 转向（原地慢慢面向玩家）
     }
+    [Header("武器")]
+    public WeaponDamage weaponDamage;   // 拖入武器的 WeaponDamage
 
     [Header("攻击配置（近→远排）")]
     public AttackConfig[] attacks;         // 4 个攻击，每个带自己的距离/CD
@@ -74,6 +76,8 @@ public class BossSquirrel : MonoBehaviour
 
     [Header("攻击偏移")]
     public float attackOffset = 1f;        // 攻击时朝玩家右边偏多少米
+    [Header("最小距离")]
+    public float minDistanceToPlayer = 3f;
 
     void Start()
     {
@@ -121,12 +125,12 @@ public class BossSquirrel : MonoBehaviour
     void SetupCollision()
     {
         Rigidbody hitRb = GetComponentInChildren<Rigidbody>();
-        if (hitRb != null)
-        {
-            BoxCollider hitBox = hitRb.GetComponent<BoxCollider>();
-            if (hitBox != null) hitBox.isTrigger = true;
-            hitRb.isKinematic = true;
-        }
+        // if (hitRb != null)
+        // {
+        //     BoxCollider hitBox = hitRb.GetComponent<BoxCollider>();
+        //     if (hitBox != null) hitBox.isTrigger = true;
+        //     hitRb.isKinematic = true;
+        // }
     }
 
     public void StartBossFight()
@@ -230,8 +234,10 @@ public class BossSquirrel : MonoBehaviour
     {
         moveTimer = Random.Range(moveDurationMin, moveDurationMax);
         int dir = Random.Range(0, 4);   // 0=前 1=后 2=左 3=右
-
-        if (dir == 0)      targetAngle = 90f;   // 前
+        Vector3 toPlayer = player.position - transform.position;
+        toPlayer.y = 0f;
+        float distance = toPlayer.magnitude;
+        if (dir == 0&&minDistanceToPlayer<distance)      targetAngle = 90f;   // 前
         else if (dir == 1) targetAngle = 270f;  // 后
         else if (dir == 2) targetAngle = 180f;  // 左
         else               targetAngle = 0f;    // 右
@@ -309,6 +315,14 @@ public class BossSquirrel : MonoBehaviour
         if (floor != null) floor.enabled = false;      // 攻击时不限制 Y，跳劈自由跳起+落地
         SetAnimSpeed(1f);
         if (anim != null) anim.applyRootMotion = true; // 攻击时开 root motion，靠动画自带位移
+
+        // 按这一招的伤害值设置武器：不同攻击打不同伤害。
+        // 要在切攻击动画之前设好，这样动画事件开碰撞盒时伤害已经是对的。
+        if (weaponDamage != null)
+        {
+            weaponDamage.SetDamage(cast.damage);
+        }
+
         SetState(cast.stateValue);                     // 切这个攻击动画
     }
 
