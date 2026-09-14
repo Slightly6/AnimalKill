@@ -2,12 +2,15 @@ using UnityEngine;
 
 /// <summary>
 /// 武器管理器：挂在 Hero 上。
-/// 背包 = 一个 Weapon 数组；每个武器有自己的收纳节点，共用一个手上节点。
-/// 切换时旧武器收回收纳节点，新武器拿出来（正拔刀就挂手，没收刀就挂收纳节点）。
+/// 用 Hero 动画器的参数（Hold Knife / Knife Type / AttackType）驱动拿刀、收刀、攻击。
+/// 拿刀 = 武器从收纳节点挂到手上节点；收刀 = 挂回收纳节点。
 /// </summary>
 public class WeaponManager : MonoBehaviour
 {
-    [Header("背包（所有武器，有几把拖几把）")]
+    [Header("Hero 的动画器（拖 Hero 上的 Animator）")]
+    public Animator animator;
+
+    [Header("装备格（所有武器，有几把拖几把）")]
     public Weapon[] weapons;
 
     [Header("手上节点（手骨的子物体）")]
@@ -17,7 +20,6 @@ public class WeaponManager : MonoBehaviour
     public int currentIndex = 0;
 
     private Weapon currentWeapon;   // 当前武器
-    private bool isDrawn = false;   // 当前武器在不在手上（true=拔刀 false=收刀）
 
     void Start()
     {
@@ -28,10 +30,9 @@ public class WeaponManager : MonoBehaviour
 
         currentWeapon = weapons[currentIndex];
         if (currentWeapon != null) currentWeapon.Sheathe();   // 一开场先收刀
-        isDrawn = false;
     }
 
-    // 换到第 index 把
+    // 换到第 index 把武器（只换武器，不拿刀）
     public void Equip(int index)
     {
         if (weapons == null || weapons.Length == 0) return;
@@ -42,50 +43,58 @@ public class WeaponManager : MonoBehaviour
         currentIndex = index;
         currentWeapon = weapons[currentIndex];
 
-        if (currentWeapon == null) return;
-
-        // 本来拔着刀，就立刻把新武器拿到手上；本来收刀，就挂收纳节点
-        if (isDrawn) currentWeapon.Draw(handNode);
-        else currentWeapon.Sheathe();
+        // 告诉动画器现在用哪把武器（Knife Type：0=第一把 1=第二把…）
+        if (animator != null) animator.SetInteger("Knife Type", currentIndex);
     }
 
-    // 切下一把（循环）
-    public void NextWeapon()
-    {
-        if (weapons == null || weapons.Length == 0) return;
-        int next = currentIndex + 1;
-        if (next >= weapons.Length) next = 0;
-        Equip(next);
-    }
-
-    // 切上一把（循环）
-    public void PreviousWeapon()
-    {
-        if (weapons == null || weapons.Length == 0) return;
-        int prev = currentIndex - 1;
-        if (prev < 0) prev = weapons.Length - 1;
-        Equip(prev);
-    }
-
-    // 拔刀动画事件：当前武器挂到手上
+    // 拿刀：设 Hold Knife = true，武器挂到手上
     public void DrawWeapon()
     {
-        if (currentWeapon == null) return;
-        currentWeapon.Draw(handNode);
-        isDrawn = true;
+        if (animator != null) animator.SetBool("Hold Knife", true);
+        MoveToHand();
     }
 
-    // 收刀动画事件：当前武器挂回收纳节点
+    // 收刀：设 Hold Knife = false，武器挂回收纳节点
     public void SheatheWeapon()
     {
-        if (currentWeapon == null) return;
-        currentWeapon.Sheathe();
-        isDrawn = false;
+        if (animator != null) animator.SetBool("Hold Knife", false);
+        MoveToBack();
     }
 
-    // 攻击当前武器
-    public void AttackCurrent()
+    // 把武器挂到手上（想更自然，就在「拿刀」动画手摸到刀那一帧加动画事件调这个）
+    public void MoveToHand()
     {
-        if (currentWeapon != null) currentWeapon.Attack();
+        if (currentWeapon != null) currentWeapon.Draw(handNode);
+    }
+
+    // 把武器挂回收纳节点（「收刀」动画刀贴回背那一帧加事件调这个）
+    public void MoveToBack()
+    {
+        if (currentWeapon != null) currentWeapon.Sheathe();
+    }
+
+    // 攻击：设 AttackType 参数（0=攻击1，1=攻击2）
+    public void Attack(int attackType)
+    {
+        if (animator != null) animator.SetInteger("AttackType", attackType);
+    }
+
+    void Update()
+    {
+        // 只在第一人称能操作
+        if (GameProgress.currentStage != GameStage.FirstPerson) return;
+
+        // 按 0/1/2 选武器（0=第一把），选完自动拿刀
+        if (Input.GetKeyDown(KeyCode.Alpha0)) { Equip(0); DrawWeapon(); }
+        if (Input.GetKeyDown(KeyCode.Alpha1)) { Equip(1); DrawWeapon(); }
+        if (Input.GetKeyDown(KeyCode.Alpha2)) { Equip(2); DrawWeapon(); }
+
+        // 按 F 收刀 / 再按 F 拿刀（来回切换）
+        if (Input.GetKeyDown(KeyCode.F))
+        {
+            bool holding = animator != null && animator.GetBool("Hold Knife");
+            if (holding) SheatheWeapon();
+            else DrawWeapon();
+        }
     }
 }
