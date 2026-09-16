@@ -10,16 +10,16 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7d3235a8f3406db478c366649f63fc8f, type: 3}
-  m_Name: "\u4E2D\u5200"
+  m_Name: "\u72FC\u7259\u68D2"
   m_EditorClassIdentifier: 
-  Picture: {fileID: 21300000, guid: 70cd2ddf4abf505479ff8c41ad961560, type: 3}
-  weaponName: Knife
+  Picture: {fileID: 21300000, guid: 3155adb590e499544bd68564d00fafc2, type: 3}
+  weaponName: Mace
   weaponType: 0
-  weaponModel: {fileID: 1929802468205383229, guid: 0e2ced31176d82d4a83e123d994398fc, type: 3}
-  mountOffset: {x: 0, y: 0, z: 0}
-  mountRotation: {x: 0, y: 0, z: 0}
+  weaponModel: {fileID: 7389171394136565708, guid: 22fe0d727212168439cabf1926cae2e9, type: 3}
+  mountOffset: {x: 1.891, y: 1.7, z: -0.237}
+  mountRotation: {x: 22.692, y: -186.867, z: -181.596}
   mountScale: 1
-  damage: 10
+  damage: 15
   attackSpeed: 1
   attackRange: 2
   knockback: 0

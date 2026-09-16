@@ -11,7 +11,6 @@ GameObject:
   - component: {fileID: 1923103592417724648}
   - component: {fileID: 434070823110730902}
   - component: {fileID: 4156594074216984284}
-  - component: {fileID: 147422169615220653}
   m_Layer: 0
   m_Name: Mace
   m_TagString: Untagged
@@ -27,13 +26,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 7389171394136565708}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.9256274, y: -0.2010105, z: -0.26668596, w: 0.17800958}
-  m_LocalPosition: {x: -4.7363396, y: 10.092056, z: -8.953899}
-  m_LocalScale: {x: 0.075635, y: 0.07563502, z: 0.075635016}
+  m_LocalRotation: {x: -0.72590554, y: -0.34843755, z: -0.026162535, w: -0.5924256}
+  m_LocalPosition: {x: -0.69, y: -0.373, z: 47.051}
+  m_LocalScale: {x: 0.028102225, y: 0.028102234, z: 0.028102234}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -154.103, y: -27.985992, z: -17.945984}
 --- !u!33 &434070823110730902
 MeshFilter:
   m_ObjectHideFlags: 0
@@ -84,24 +83,3 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!65 &147422169615220653
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7389171394136565708}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 0
-  serializedVersion: 3
-  m_Size: {x: 20.460188, y: 132.14166, z: 26.802362}
-  m_Center: {x: -68.42557, y: 65.44541, z: 20.2696}

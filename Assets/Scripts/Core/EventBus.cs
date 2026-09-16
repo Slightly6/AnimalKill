@@ -98,6 +98,17 @@ public struct DiedEvent
     public bool isPlayer;    // true = 玩家（英雄）死了；false = Boss 死了
 }
 
+// 背包变化了（获得武器 / 换武器，UI 要刷新）
+public struct InventoryChangedEvent
+{
+}
+
+// 获得了武器（弹提示用）
+public struct WeaponGetEvent
+{
+    public string weaponName;   // 武器名，比如「狼牙锤」
+}
+
 // 卡死了
 public struct CardDiedEvent
 {
