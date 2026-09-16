@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.UI;
+
 
 /// <summary>
 /// 武器：挂在每个武器预制体根上。
@@ -8,6 +10,7 @@ using UnityEngine;
 /// </summary>
 public class Weapon : MonoBehaviour
 {
+    
     [Header("武器数据（伤害、攻速等，拖一个 WeaponData 资源进来）")]
     public WeaponData data;
 

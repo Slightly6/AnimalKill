@@ -10,6 +10,7 @@ public abstract class Interactive : MonoBehaviour
 {
     [Header("交互设置")]
     public string interactText = "按 E 交互"; // 鼠标悬停时显示的提示文字
+    public bool canInteract = true;  // false = 不走"按 E 交互"（比如触发器门，经过就触发，不显示提示）
 
     public abstract void Interact(); // 交互事件：子类实现它，写清楚"自己被交互时要干什么"
 

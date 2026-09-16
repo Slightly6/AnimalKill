@@ -5,7 +5,7 @@ public class HeroController : MonoBehaviour
     [Header("移动")]
     public float walkSpeed = 3f;
     public float runSpeed = 7f;
-
+    public bool isMove=false;
     [Header("体力")]
     public Stamina stamina;
 
@@ -35,11 +35,15 @@ public class HeroController : MonoBehaviour
     public float thirdPersonDistance = 3f;       // 镜头离角色多远（米）
     public float thirdPersonHeight = 1.5f;       // 镜头相对角色的基础高度
     public float thirdPersonLookHeight = 1.5f;   // 镜头看向角色身上多高（胸口/头）
-    public float thirdPersonTurnSpeed = 10f;     // 第三人称走路时角色转身速度（越大越快）
+    public float thirdPersonTurnSpeed = 10f;     // 第三人称角色面向镜头前方的转身速度（越大越快）
 
     private float pitch = 0f;
     private float cameraYaw = 0f;                // 第三人称相机绕角色的水平角度（360 环绕）
     private AnimationEventRelay forwarder;
+    [Header("撞墙检测")]
+    public LayerMask wallLayer;           // 哪些层算墙
+    public float wallCheckRadius = 0.5f;  // 角色半径
+    public float wallCheckHeight = 2f;    // 角色高度
 
     void Start()
     {
@@ -149,9 +153,16 @@ public class HeroController : MonoBehaviour
 
     void Move()
     {
+        
         float h = Input.GetAxis("Horizontal");
         float v = Input.GetAxis("Vertical");
-
+        if(h>0&&v>0)
+        {
+            isMove=true;
+        }else
+        {
+            isMove=false;
+        }
         bool wantRun = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift)) && (h != 0f || v != 0f);
         bool running = wantRun && (stamina == null || stamina.canRun);
 
@@ -179,6 +190,11 @@ public class HeroController : MonoBehaviour
             camRight.y = 0f;
             camRight.Normalize();
             dir = camForward * v + camRight * h;
+
+            // 第三人称：角色始终面朝镜头前方（和第一人称一样，S 后退时角色不掉头转身，
+            // 而是直接朝镜头后方倒退，靠 MoveY=-1 播后退动画）
+            Quaternion targetRot = Quaternion.LookRotation(camForward);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, thirdPersonTurnSpeed * Time.deltaTime);
         }
         else
         {
@@ -188,14 +204,11 @@ public class HeroController : MonoBehaviour
         if (dir.magnitude > 1f) dir.Normalize();
 
         float speed = running ? runSpeed : walkSpeed;
-        transform.position += dir * speed * Time.deltaTime;
 
-        // 第三人称：走路时角色转身面向移动方向（角色不跟鼠标转，只跟移动转）
-        if (isThirdPerson && dir.magnitude > 0.01f)
-        {
-            Quaternion targetRot = Quaternion.LookRotation(dir);
-            transform.rotation = Quaternion.Slerp(transform.rotation, targetRot, thirdPersonTurnSpeed * Time.deltaTime);
-        }
+        Vector3 move = dir * speed * Time.deltaTime;
+        move = ClampMoveByWall(move);   // ★ 撞墙检测
+        transform.position += move;
+
     }
 
     // ========== 第一/第三人称切换 ==========
@@ -239,5 +252,28 @@ public class HeroController : MonoBehaviour
     {
         isAttacking = false;
         if (anim != null) anim.applyRootMotion = false;
+    }
+    // 返回“经过撞墙检测后的实际位移”
+    Vector3 ClampMoveByWall(Vector3 desiredMove)
+    {
+        if (desiredMove.magnitude < 0.001f) return desiredMove;
+
+        Vector3 dir = desiredMove.normalized;
+        float dist = desiredMove.magnitude;
+
+        if (Physics.CapsuleCast(
+            transform.position + Vector3.up * wallCheckRadius,
+            transform.position + Vector3.up * (wallCheckHeight - wallCheckRadius),
+            wallCheckRadius,
+            dir,
+            out RaycastHit hit,
+            dist + 0.1f,
+            wallLayer))
+        {
+            // 撞墙，砍到墙前面
+            return dir * Mathf.Max(0f, hit.distance - 0.1f);
+        }
+
+        return desiredMove;   // 没撞墙，原样返回
     }
 }

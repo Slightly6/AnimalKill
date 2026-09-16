@@ -2,7 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;   // 要用 Image 做血条
-using System;           // 要用 Action 做事件
 
 public class SquirrelHp : MonoBehaviour, HpInterface
 {
@@ -10,47 +9,34 @@ public class SquirrelHp : MonoBehaviour, HpInterface
     public int maxHp = 100; // 最大血量
     private int currentHp;  // 当前血量
 
+    public bool isDie=false;
     [Header("血条")]
     public Image hpFill;   // 血条填充（Image，Type=Filled），拖进来
-
-    [Header("音效")]
-    public bool playHitSound = true;   // 掉血时放命中音效
-
-    // 掉血事件：每次扣血广播一次，参数是这次扣的血量。
-    // 谁想监听（放音效、屏幕震动、飘伤害数字），就 += 订阅它。
-    public event Action<float> OnDamaged;
-
+    private Animator anim;
     public int MaxHp { get { return maxHp; } }
     public int CurrentHp { get { return currentHp; } }
-
+    
     void Start()
     {
+        anim = GetComponentInChildren<Animator>();
         currentHp = maxHp;
         UpdateHpBar();   // 开局满血
 
-        // 订阅掉血事件：掉血就放音效（方法订阅，不是 lambda）
-        if (playHitSound) OnDamaged += PlayHitSound;
+        // 打牌阶段结束（Boss 战）前血条先藏起来，Boss 战开始才显示
+        ShowHpBar(false);
     }
 
     public void TakeDamage(float damage)
     {
+        if (isDie) return; 
         currentHp -= (int)damage;
         if (currentHp < 0) currentHp = 0;   // 别扣成负数
         UpdateHpBar();                       // 每次扣血都刷新血条
-
-        // 广播掉血事件（有订阅者才通知，比如放音效）
-        if (OnDamaged != null) OnDamaged(damage);
 
         if (currentHp <= 0)
         {
             Die();
         }
-    }
-
-    // 订阅的方法：掉血时放命中音效
-    void PlayHitSound(float damage)
-    {
-        AudioManager.Instance.PlayHit();
     }
 
     // 血条填充比例 = 当前血 / 最大血（0=空 1=满）
@@ -62,10 +48,49 @@ public class SquirrelHp : MonoBehaviour, HpInterface
         }
     }
 
-    private void Die()
+    // 显示/隐藏血条（打牌阶段藏起来，Boss 战开始才显示）
+    public void ShowHpBar(bool on)
     {
+        if (hpFill != null)
+        {
+            hpFill.gameObject.SetActive(on);
+        }
+    }
+
+    public void Die()
+    {
+        if (isDie) return;
         Debug.Log("Squirrel died.");
-        // 在这里添加死亡逻辑，例如播放死亡动画、销毁对象等
+        // 广播死亡事件（走全局事件总线，谁想听就 EventBus.Subscribe）
+        EventBus.Publish(new DiedEvent { isPlayer = false });
+        isDie=true;
+
+        BossSquirrel boss = GetComponent<BossSquirrel>();
+        if (boss != null)
+        {
+            boss.enabled = false;        // 停掉 Boss AI 的 Update（移动/攻击/转向）
+            boss.StopAllCoroutines();    // 停掉还在跑的协程（登场怒吼等），防止它再 SetState 干扰死亡
+        }
+
+        if (anim != null)
+        {
+            anim.applyRootMotion = false;   // 关根运动：死亡时不再转发攻击位移，Boss 原地倒下不乱动
+
+            // 把 State 设成不匹配任何「Any State 过渡」的值（0），
+            // 否则死亡动画会被 State==3~11 的过渡立刻切走，只播一帧就被打断
+            anim.SetInteger("State", 0);
+
+            // 立即强制切到死亡动画（跳过过渡，打断当前攻击/移动/怒吼）
+            anim.Play("Die", 0, 0f);
+        }
+
+        StartCoroutine(DieRoutine());
+    }
+    IEnumerator DieRoutine()
+    {
+        // 等死亡动画播完（比如 2 秒）
+        yield return new WaitForSeconds(4f);
+
         Destroy(gameObject);
     }
 }

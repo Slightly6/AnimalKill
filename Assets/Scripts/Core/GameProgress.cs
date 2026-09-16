@@ -7,7 +7,7 @@ using UnityEngine;
 /// </summary>
     public enum GameStage
     {
-        FirstPerson,   // 第一人称探索：能走路、能开门
+        FirstPerson,   // 第一/三人称探索：能走路、能开门
         Cutscene,      // 过场动画中：玩家不能操作
         Playing        // 打牌中：CameraRig 俯视，出牌
     }

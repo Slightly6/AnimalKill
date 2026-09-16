@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7d3235a8f3406db478c366649f63fc8f, type: 3}
   m_Name: "\u4E2D\u5200"
   m_EditorClassIdentifier: 
+  Picture: {fileID: 21300000, guid: 70cd2ddf4abf505479ff8c41ad961560, type: 3}
   weaponName: "\u4E2D\u5200"
   damage: 10
   attackSpeed: 1

@@ -78,12 +78,13 @@ public class BossSquirrel : MonoBehaviour
     public float attackOffset = 1f;        // 攻击时朝玩家右边偏多少米
     [Header("最小距离")]
     public float minDistanceToPlayer = 3f;
+    private SquirrelHp bossDie;   
 
     void Start()
     {
         attackStartY = transform.position.y;           // 记录攻击前 Y，攻击后复位用
         anim = GetComponentInChildren<Animator>();
-
+        bossDie=GetComponent<SquirrelHp>();
         // 初始化每个攻击的 CD 倒计时（0 = 一进场就能打）
         cooldownTimers = new float[attacks.Length];
         for (int i = 0; i < cooldownTimers.Length; i++)
@@ -136,6 +137,11 @@ public class BossSquirrel : MonoBehaviour
     public void StartBossFight()
     {
         isPhaseTwo = true;
+
+        // Boss 战开始：显示 Boss 血条（打牌阶段是藏起来的）
+        SquirrelHp hp = GetComponentInChildren<SquirrelHp>();
+        if (hp != null) hp.ShowHpBar(true);
+
         StartCoroutine(PlayIntro());
     }
 
@@ -143,7 +149,7 @@ public class BossSquirrel : MonoBehaviour
     {
         if (player == null || anim == null) return;
         if (!isPhaseTwo) return;
-
+        if(bossDie.isDie){return;}
         switch (state)
         {
             case BossState.Intro: break;

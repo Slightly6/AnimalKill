@@ -21,6 +21,7 @@ public class AudioManager : Singleton<AudioManager>
 
     private AudioClip bgm;
     private AudioClip sfxDraw, sfxFlip, sfxHit, sfxFace, sfxDeath, sfxBell;
+    private AudioClip sfxSwing, sfxBossSwing, sfxBossHit;   // 挥剑破风（英雄/Boss）、Boss 打中打击
 
     protected override void Awake()
     {
@@ -48,6 +49,9 @@ public class AudioManager : Singleton<AudioManager>
         sfxFace = Load("Audio/sfx_face");
         sfxDeath = Load("Audio/sfx_death");
         sfxBell = Load("Audio/sfx_bell");
+        sfxSwing = Load("Audio/sfx_swing");
+        sfxBossSwing = Load("Audio/sfx_boss_swing");
+        sfxBossHit = Load("Audio/sfx_boss_hit");
 
         // 只有战斗场景才放 BGM，切到别的场景就停
         SceneManager.sceneLoaded += OnSceneLoaded;
@@ -99,6 +103,9 @@ public class AudioManager : Singleton<AudioManager>
     public void PlayFace()  { PlaySfx(sfxFace); }
     public void PlayDeath() { PlaySfx(sfxDeath); }
     public void PlayBell()  { PlaySfx(sfxBell); }
+    public void PlaySwing()     { PlaySfx(sfxSwing); }     // 英雄挥剑破风
+    public void PlayBossSwing() { PlaySfx(sfxBossSwing); } // Boss 挥剑破风
+    public void PlayBossHit()   { PlaySfx(sfxBossHit); }   // Boss 打中打击
 
     // 设置菜单用（改完顺手存下来，下次进游戏还是这个音量）
     public void SetBgmVolume(float v)

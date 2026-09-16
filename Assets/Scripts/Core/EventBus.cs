@@ -92,6 +92,12 @@ public struct CardAttackedEvent
     public int damage;
 }
 
+// 谁死了（英雄 / Boss 倒下，用来放音效、结算、切场景）
+public struct DiedEvent
+{
+    public bool isPlayer;    // true = 玩家（英雄）死了；false = Boss 死了
+}
+
 // 卡死了
 public struct CardDiedEvent
 {

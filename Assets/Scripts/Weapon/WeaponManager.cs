@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.UI;
+using System.Collections;
 
 /// <summary>
 /// 武器管理器：挂在 Hero 上，管「拿刀/收刀/换武器」。
@@ -11,9 +13,13 @@ public class WeaponManager : MonoBehaviour
     [Header("Hero 的动画器（拖 Hero 上的 Animator）")]
     public Animator animator;
 
-    [Header("装备格（所有武器，有几把拖几把）")]
+    [Header("装备（所有武器，有几把拖几把）")]
     public Weapon[] weapons;
 
+    [Header("装备格")]
+    public Image[] Slot;
+    public Color normalColor = Color.white; 
+    public Color Color = Color.white; 
     [Header("当前用第几把（从 0 开始）")]
     public int currentIndex = 0;
 
@@ -23,8 +29,10 @@ public class WeaponManager : MonoBehaviour
     [Header("武器伤害（挂在动画器所在模型物体上，不拖自动找）")]
     public WeaponDamage weaponDamage;
 
+    public float blinkDuration=0.5f;
     private Weapon currentWeapon;   // 当前武器
-
+    
+    
     void Start()
     {
         // 动画器在子物体上，动画事件只会发给动画器所在的子物体，打不到父物体上的本脚本。
@@ -59,6 +67,7 @@ public class WeaponManager : MonoBehaviour
     // 换到第 index 把武器（只换武器，不拿刀）
     public void Equip(int index)
     {
+        Blink(index);
         if (weapons == null || weapons.Length == 0) return;
         if (index < 0 || index >= weapons.Length) return;
 
@@ -104,6 +113,7 @@ public class WeaponManager : MonoBehaviour
             animator.SetTrigger("IsKnife");      // 一次性触发收刀动画（触发器会自动复位）
         }
         isKnifeOut = false;     // 刀收起来了，不能攻击
+         
     }
 
     // 把武器挂到它自己的手上节点（由拿刀动画里的事件，在「抓刀那一帧」调用）
@@ -124,9 +134,9 @@ public class WeaponManager : MonoBehaviour
         if (GameProgress.currentStage != GameStage.FirstPerson) return;
 
         // 按 1/2/3 选武器（1=第一把），选完自动拿刀
-        if (Input.GetKeyDown(KeyCode.Alpha1)) { Equip(0); DrawWeapon(); }
-        if (Input.GetKeyDown(KeyCode.Alpha2)) { Equip(1); DrawWeapon(); }
-        if (Input.GetKeyDown(KeyCode.Alpha3)) { Equip(2); DrawWeapon(); }
+        if (Input.GetKeyDown(KeyCode.Alpha1)) { if(isKnifeOut==true){SheatheWeapon();return;}  Equip(0); DrawWeapon(); }
+        if (Input.GetKeyDown(KeyCode.Alpha2)) { if(isKnifeOut==true){SheatheWeapon();return;}  Equip(1); DrawWeapon(); }
+        if (Input.GetKeyDown(KeyCode.Alpha3)) { if(isKnifeOut==true){SheatheWeapon();return;}  Equip(2); DrawWeapon(); }
 
         // 按 F 收刀 / 再按 F 拿刀（来回切换）
         if (Input.GetKeyDown(KeyCode.F))
@@ -135,4 +145,24 @@ public class WeaponManager : MonoBehaviour
             else DrawWeapon();                 // 收着就拿
         }
     }
+    //装备格子闪烁
+    public void Blink(int current)
+    {
+        StartCoroutine(BlinkRoutine(current));
+    }
+
+    IEnumerator BlinkRoutine(int current)
+{
+    if (Slot == null || current < 0 || current >= Slot.Length) yield break;
+    if (Slot[current] == null) yield break;
+
+    // 闪一下（变透明）
+    Slot[current].color=Color;
+    yield return new WaitForSeconds(blinkDuration);
+
+    // 恢复原色
+    Slot[current].color = normalColor;
+}
+
+
 }

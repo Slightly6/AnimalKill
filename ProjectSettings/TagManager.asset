@@ -7,6 +7,7 @@ TagManager:
   - Slot
   - Card
   - Ground
+  - Wall
   layers:
   - Default
   - TransparentFX
@@ -15,9 +16,9 @@ TagManager:
   - Water
   - UI
   - Ground
-  - 
-  - 
-  - 
+  - Wall
+  - enemy
+  - Hero
   - 
   - 
   - 

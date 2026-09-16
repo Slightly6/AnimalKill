@@ -20,6 +20,10 @@ public class BossRootMotionForwarder : MonoBehaviour
 
     private Animator anim;
 
+    [Header("撞墙检测")]
+    public LayerMask wallLayer;        // 哪些层算墙（在 Inspector 里选）
+    public float wallCheckRadius = 0.5f; // 角色半径
+    public float wallCheckHeight = 2f;   // 角色高度
     void Awake()
     {
         anim = GetComponent<Animator>();
@@ -33,6 +37,29 @@ public class BossRootMotionForwarder : MonoBehaviour
         // 动画自带位移太小，乘一个倍数放大成合适的前冲+跳起；
         // 乘的是整体（XZ 前冲 + Y 跳起），节奏弧线还是动画本来的样子。
         Vector3 delta = anim.deltaPosition * scale;
+
+        if (delta.magnitude > 0.001f)
+        {
+            Vector3 dir = delta.normalized;
+            float dist = delta.magnitude;
+
+            // 用胶囊体检测，考虑角色体积
+            float radius = wallCheckRadius;
+            float height = wallCheckHeight;
+
+            if (Physics.CapsuleCast(
+                root.position + Vector3.up * radius,
+                root.position + Vector3.up * (height - radius),
+                radius,
+                dir,
+                out RaycastHit hit,
+                dist + 0.1f,
+                wallLayer))
+            {
+                // 撞墙了，位移砍到墙前面
+                delta = dir * Mathf.Max(0f, hit.distance - 0.1f);
+            }
+        }
         // 把放大后的位移加到根节点上
         root.position += delta;
 

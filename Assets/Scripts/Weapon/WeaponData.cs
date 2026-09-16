@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.UI;
 
 /// <summary>
 /// 武器数据（ScriptableObject）。
@@ -10,6 +11,8 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "新武器", menuName = "武器/新武器")]
 public class WeaponData : ScriptableObject
 {
+    [Header("图标")]
+    public Sprite Picture;
     [Header("名字")]
     public string weaponName = "新武器";
 
@@ -24,4 +27,6 @@ public class WeaponData : ScriptableObject
 
     [Header("击退力度")]
     public float knockback = 0f;
+    [Header("模型")]
+    public GameObject weaponModel; 
 }

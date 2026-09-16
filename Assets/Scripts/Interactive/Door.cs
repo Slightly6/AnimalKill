@@ -17,6 +17,7 @@ using System.Collections;
 
       void Start()
       {
+          canInteract = false;   // 门是触发器：经过就触发，不显示"按 E"提示、也不响应按 E
           closedRotation = transform.localRotation;
           openRotation = closedRotation * Quaternion.Euler(0f, openAngle, 0f);
       }
@@ -58,12 +59,26 @@ using System.Collections;
 
       public override void Interact()
       {
-          if (isLocked) return;      // 锁死：按 E 没反应
+          if (isLocked) return;      // 锁死：没反应
           if (isRotating) return;    // 正在转：没反应
+          TriggerOpen();             // 按 E 也能触发（保留，当兜底）
+      }
 
+      // 玩家经过门（走进触发器）→ 直接触发，不用按 E
+      void OnTriggerEnter(Collider other)
+      {
+          if (isLocked || isRotating) return;   // 锁死 / 正在转：没反应
+          // 只认玩家（Hero），别的东西（武器、杂项）经过不算
+          if (other.GetComponentInParent<HeroController>() == null) return;
+          TriggerOpen();
+      }
+
+      // 触发过场 + 开门（按 E 和经过门都走这里）
+      void TriggerOpen()
+      {
           if (!isOpen && !hasTriggeredCutscene)
           {
-            hasTriggeredCutscene = true;              // 关键1：过场只触发一次
+            hasTriggeredCutscene = true;              // 关键：过场只触发一次
             CutsceneManager.Instance.StartCutscene();
           }
           isOpen = !isOpen;

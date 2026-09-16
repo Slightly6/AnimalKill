@@ -6,7 +6,9 @@ public class PlayerInteractable : MonoBehaviour
 {
     [Header("交互提示距离")]
     public float interactDistance = 3f; // 玩家与可交互物体的最大交互距离
-    private Camera playerCamera; // 玩家摄像机
+    [Header("射线从多高发出（眼睛高度）")]
+    public float eyeHeight = 1.5f; // 从 Hero 眼睛高度朝前方发射线用
+    private Camera playerCamera; // 玩家摄像机（只用来画提示文字）
     private Interactive currentInteractive; // 当前可交互物体
     private string promptText; // 当前交互提示文字
     private bool styleInitialized = false;// 是否已初始化提示文字样式
@@ -36,8 +38,9 @@ public class PlayerInteractable : MonoBehaviour
     }
     void FindInteractive()
       {
-          // 屏幕中心（0.5, 0.5）发一条射线 = 第一人称"看哪指哪"
-          Ray ray = playerCamera.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
+          // 从 Hero 自身（眼睛高度）朝前方发射线：不依赖相机，过场/切视角时相机被关也不报错
+          Vector3 eyePos = transform.position + Vector3.up * eyeHeight;
+          Ray ray = new Ray(eyePos, transform.forward);
           RaycastHit hit;
 
           if (Physics.Raycast(ray, out hit, interactDistance))
@@ -47,6 +50,12 @@ public class PlayerInteractable : MonoBehaviour
               Interactive inter = hit.collider.GetComponentInParent<Interactive>();
               if (inter != null)
               {
+                  if (!inter.canInteract)   // 这个物体不参与按 E（比如触发器门）
+                  {
+                      currentInteractive = null;
+                      promptText = "";
+                      return;
+                  }
                   currentInteractive = inter;
                   promptText = inter.interactText;
                   return;

@@ -8,7 +8,7 @@ using System.Collections;
 /// 挂在一个空物体上（自动建全屏黑图），跨场景保留。
 /// 用法：任何地方写 FadeManager.Go("场景名")，代替 SceneManager.LoadScene。
 /// </summary>
-public class FadeManager : Singleton<FadeManager>
+public class FadeManager : MonoBehaviour
 {
     public static FadeManager Instance { get; private set; }
 

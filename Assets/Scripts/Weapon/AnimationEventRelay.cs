@@ -19,6 +19,11 @@ public class AnimationEventRelay : MonoBehaviour
     private HeroController hero;           // 父物体上的角色控制器（管移动）
     private Animator anim;                 // 自己身上的动画器（读根运动位移）
     public float scale = 1f;               // 根运动放大倍数：动画自带位移太小，放大到合适的前冲+跳起
+    
+    [Header("撞墙检测")]
+    public LayerMask wallLayer;        // 哪些层算墙（在 Inspector 里选）
+    public float wallCheckRadius = 0.5f; // 角色半径
+    public float wallCheckHeight = 2f;   // 角色高度
     // 往上找父物体里的这些脚本，并拿到自己身上的动画器
     void Start()
     {
@@ -31,17 +36,38 @@ public class AnimationEventRelay : MonoBehaviour
     // 我们把位移转发给 HeroController，让身体真的往前/往上动（攻击的突进）。
      void OnAnimatorMove()
     {
+        
         // 只有 applyRootMotion = true（攻击时）才会进这里
         if (anim == null || hero == null) return;
-
+        if (!hero.isAttacking) return;
         // 动画自带位移太小，乘一个倍数放大成合适的前冲+跳起；
         // 乘的是整体（XZ 前冲 + Y 跳起），节奏弧线还是动画本来的样子。
         Vector3 delta = anim.deltaPosition * scale;
         // 把放大后的位移加到根节点上
-        hero.transform.position += delta;
+    
+        if (delta.magnitude > 0.001f)
+        {
+            Vector3 dir = delta.normalized;
+            float dist = delta.magnitude;
 
-        // 攻击跟着动画转：把动画自带的旋转也转到根节点上，
-        // 这样跳劈时 Boss 的朝向会跟着劈砍动画自然转（不再锁死）。
+            // 用胶囊体检测，考虑角色体积
+            float radius = wallCheckRadius;
+            float height = wallCheckHeight;
+
+            if (Physics.CapsuleCast(
+                hero.transform.position + Vector3.up * radius,
+                hero.transform.position + Vector3.up * (height - radius),
+                radius,
+                dir,
+                out RaycastHit hit,
+                dist + 0.1f,
+                wallLayer))
+            {
+                // 撞墙了，位移砍到墙前面
+                delta = dir * Mathf.Max(0f, hit.distance - 0.1f);
+            }  
+        }
+        hero.transform.position += delta;
         hero.transform.rotation *= anim.deltaRotation;
     }
     // 拿刀动画里「抓刀那一帧」→ 转发给 WeaponManager，把刀挂到手上
