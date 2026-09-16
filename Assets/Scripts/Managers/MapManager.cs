@@ -33,10 +33,11 @@ using System.Collections;
       {
           yield return null;
 
-          // 商店/奖励关：不摆棋盘不抽手牌，直接进面板
+          // 商店/奖励关（宝箱关）：和小关一样「直接进入」——跳过走门，切到桌子视角再生成箱子。
+          // 别在第一人称里直接 StartLevel 生成箱子，否则之后走门过场又调一次会生成两个箱子。
           if (GameProgress.IsNonBattleNode())
           {
-              StartLevel(GameProgress.currentLevel);
+              CutsceneManager.Instance.SkipToTable();
               yield break;
           }
 
@@ -106,8 +107,11 @@ using System.Collections;
       void EnterNonBattleNode()
       {
           Debug.Log("[节点] 进入 " + GameProgress.currentNodeType + "（面板下一步做）");
-          GameObject chestObj = Instantiate(Chest, new Vector3(0,7,-1), Quaternion.identity);
-          
+          // 宝箱放在桌面高度（boardHeight=10），桌面相机俯视才能看到 + 点到。
+          // 之前放 y=7 在桌面下方，桌面相机看不到、射线也打不到，导致点击没反应。
+          float y = (BoardManager.Instance != null) ? BoardManager.Instance.boardHeight : 10f;
+          GameObject chestObj = Instantiate(Chest, new Vector3(0, y, -1), Quaternion.identity);
+
       }
 
       // 过关：K（章节 Boss）→ 解锁下一章 / 胜利；普通关 → 回地图
@@ -127,11 +131,19 @@ using System.Collections;
               else
               {
                   GameProgress.currentSuit++;   // 解锁下一章
+                  // 新章节地图要重新生成，玩家从最底下开始；上一章的进度清掉
+                  GameProgress.mapGenerated = false;
+                  GameProgress.mapRow = 0;
+                  GameProgress.mapCol = 0;
+                  GameProgress.lastCompletedLevel = -1;   // 新章节没打过任何关
                   FadeManager.Go(mapSceneName);
               }
           }
           else
           {
+              // 记住刚打完的关 levelIndex，回 Map 重新生成地图后用来算 mapRow
+              // （MapGenerator.Start 生成完会调 GameProgress.AdvanceMapRowToNextLevel()）
+              GameProgress.lastCompletedLevel = GameProgress.currentLevel;
               FadeManager.Go(mapSceneName);   // 普通关 → 回地图
           }
       }

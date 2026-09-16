@@ -14,6 +14,7 @@ using UnityEngine;
     public static class GameProgress
     {
         public static int currentLevel = 0;      // 当前要打的关卡index（0~51），默认 0 = 第1关
+        public static int lastCompletedLevel = -1;   // 刚打完的关 levelIndex（-1 = 还没打过任何关）。用来在重新生成地图后算 mapRow
         public static int playerChips = 100;     // 玩家筹码（跨关继承），默认 100= 开局筹码
         public static bool cheatMode = false;    // 开挂模式（跨场景，勾 GameManager 上的开关）
         public static bool chipsInitialized = false;   // 筹码是否初始化过（第一关用开局筹码，之后跨关继承）
@@ -33,6 +34,7 @@ using UnityEngine;
         public static void Reset()
         {
             currentLevel = 0;
+            lastCompletedLevel = -1;   // 新局没打过任何关
             playerChips = 100;
             chipsInitialized = false;
             playerDeck = new List<CardDataSO>();
@@ -45,6 +47,24 @@ using UnityEngine;
             hides = 0;
             currentNodeType = NodeType.Battle;
             currentStage = GameStage.FirstPerson;
+        }
+
+        // 重新生成地图后调用：根据 lastCompletedLevel 把 mapRow 前进到刚打完那一关的下一排。
+        // - lastCompletedLevel == -1（还没打过任何关）：不动，mapRow 保持 0（从第一关开始）
+        // - 否则：找到 levelIndex == lastCompletedLevel 的节点，设 mapRow = 该节点 row + 1
+        // 兜底直接运行 SampleScene（没走主菜单 Reset）的场景：第一关打完回 Map 重新生成地图，
+        // 这时 mapRow 默认 0，不重算就会卡在第一关。
+        public static void AdvanceMapRowToNextLevel()
+        {
+            if (lastCompletedLevel < 0) return;
+            for (int i = 0; i < map.Count; i++)
+            {
+                if (map[i].levelIndex == lastCompletedLevel)
+                {
+                    mapRow = map[i].row + 1;
+                    return;
+                }
+            }
         }
 
         // 是不是不用战斗的节点（商店/奖励关：进去不摆棋盘、不抽手牌）

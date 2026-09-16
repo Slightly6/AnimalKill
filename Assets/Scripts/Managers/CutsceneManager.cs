@@ -41,6 +41,13 @@ public class CutsceneManager : Singleton<CutsceneManager>
           // 进场景先处于第一人称阶段
           GameProgress.currentStage = GameStage.FirstPerson;
           SetCamera(false);   // false = 用第一人称相机
+
+          // 第一人称阶段锁鼠标（转视角用）。打牌阶段在 SkipToTable / SwitchToTable
+          // 里设回 None+visible=true；Boss 战在 EnterBossFight 里设 Locked+visible=false。
+          // 之前这部分在 HeroController.Start 里设，会跟 SkipToTable 抢着设鼠标，
+          // 改成由 CutsceneManager 统一管，避免执行顺序问题导致鼠标不显示。
+          Cursor.lockState = CursorLockMode.Locked;
+          Cursor.visible = false;
       }
       // 开始过场（门开完后调用）
       public void StartCutscene()

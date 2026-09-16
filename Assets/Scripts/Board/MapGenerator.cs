@@ -34,12 +34,23 @@ public class MapGenerator : MonoBehaviour
 
     void Start()
     {
+        // Map 场景没有 CutsceneManager（它挂在 SampleScene），从 SampleScene 切回来时
+        // 鼠标可能还停在 Locked/visible=false（第一人称阶段设的），Map 场景没人设回可见，
+        // 玩家就点不动地图节点。这里强制设回：Map 场景选节点需要鼠标可见。
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
+
         // 当前章还没生成过（或换了新章）→ 重新生成
         if (!GameProgress.mapGenerated || GameProgress.mapSuit != GameProgress.currentSuit)
         {
             GenerateMapData();
             GameProgress.mapGenerated = true;
             GameProgress.mapSuit = GameProgress.currentSuit;
+
+            // 重新生成地图后，根据刚打完的关算 mapRow：
+            // 直接运行 SampleScene（没走主菜单 Reset）打完第一关回 Map 时，mapRow 默认 0，
+            // 不重算就只能反复点第一关。从主菜单进时 lastCompletedLevel=-1，不动，保持 0。
+            GameProgress.AdvanceMapRowToNextLevel();
         }
         ComputeConnections();   // 每次进地图都算一遍连线（生成/读档都覆盖，结果只由 row/col 决定）
         BuildNodes();
@@ -50,7 +61,11 @@ public class MapGenerator : MonoBehaviour
     void GenerateMapData()
     {
         GameProgress.map.Clear();
-        GameProgress.mapRow = 0;
+        // 注意：不在这里重置 mapRow。
+        // 换章节时由 MapManager.OnLevelCleared 显式设为 0（新章节从最底下开始）；
+        // 直接运行 SampleScene 时（没走主菜单 Reset），玩家打完第一关回 Map，
+        // mapRow 已被 OnLevelCleared 前进到下一关，这里再重置会覆盖掉，导致只能点第一关。
+        // 整局第一次（从主菜单进）由 GameProgress.Reset() 把 mapRow 设为 0。
 
         int row = 0;   // 横排，0 = 最下面，往上递增
         int suit = GameProgress.currentSuit;   // 当前章（0=♠ 1=♥ 2=♦ 3=♣）

@@ -63,9 +63,11 @@ public class HeroController : MonoBehaviour
 
         if (playerCamera == null) playerCamera = GetComponentInChildren<Camera>();
 
-        Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = false;
-
+        // 鼠标状态由 CutsceneManager 统一管（按 currentStage 切换）：
+        //   第一人称阶段 → Locked + 隐藏（转视角用）
+        //   打牌阶段 → None + 可见（点牌用）
+        //   Boss 战 → Locked + 隐藏
+        // 这里不再设，避免跟 CutsceneManager.Start / SkipToTable 抢着设鼠标。
         ApplyCameraMode();   // 按初始视角（第一人称）开关相机
     }
 

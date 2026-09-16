@@ -181,6 +181,17 @@ public class Chest : MonoBehaviour
         CardDisplay cd = go.GetComponent<CardDisplay>();
         if (cd != null) cd.enabled = false;
 
+        // 卡牌 prefab 上 CardDisplay 自动加的 BoxCollider size = (1.8, 2.6, 0.05)，
+        // 是为「平躺」设计的（z=0.05 是厚度）。但宝箱卡是立起来的（绕 Y 转 180°），
+        // 桌面相机俯视射线 -y 方向，击中 collider 顶面（xz 平面 1.8 × 0.05），
+        // 0.05 太薄几乎击不中，导致点击没反应。
+        // 加个 SphereCollider 给点击用，不受卡牌旋转影响，各方向射线都能击中。
+        // center 用默认 (0,0,0) —— 跟 BoxCollider 一致，说明卡牌 pivot 在几何中心。
+        SphereCollider sphere = go.GetComponent<SphereCollider>();
+        if (sphere == null) sphere = go.AddComponent<SphereCollider>();
+        sphere.radius = 1.5f;        // 比卡牌对角线一半（≈1.58）略小但足够大，桌面俯视射线容易击中
+        sphere.isTrigger = true;
+
         // 挂点击：翻面/放大、再点选中
         ChestCardClick click = go.GetComponent<ChestCardClick>();
         if (click == null) click = go.AddComponent<ChestCardClick>();
@@ -215,16 +226,22 @@ public class Chest : MonoBehaviour
         float t = 0;
         while (t < zoomDuration)
         {
+            // 卡可能已被 PickCard 切场景销毁（用户在 ZoomAndFlip 跑到一半时又点了一下）
+            if (card == null) yield break;
             t += Time.deltaTime;
             card.transform.localScale = Vector3.Lerp(normal, big, t / zoomDuration);
             yield return null;
         }
 
+        if (card == null) yield break;
         yield return StartCoroutine(card.FlipAnim());
 
+        // FlipAnim 跑完 IsFaceDown 变 false，用户再点就会触发 PickCard 切场景销毁卡。
+        // 这时缩回循环还在跑，必须先检查卡是否还在。
         t = 0;
         while (t < zoomDuration)
         {
+            if (card == null) yield break;
             t += Time.deltaTime;
             card.transform.localScale = Vector3.Lerp(big, normal, t / zoomDuration);
             yield return null;
