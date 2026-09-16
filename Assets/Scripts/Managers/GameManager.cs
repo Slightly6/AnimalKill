@@ -99,7 +99,11 @@ public class GameManager : Singleton<GameManager>
     public void LoadLevel(LevelConfig cfg)
     {
         EnemyChips = cfg.enemyStartingChips;
-        bossThreshold = cfg.bossThreshold;   // 从配置读"敌人筹码掉到多少进 Boss 战"
+        // 第一关（currentLevel==0）保留完整 Boss 战教学：打牌→溶解→第一人称打 Boss。
+        // 后续关卡不打 Boss/小怪，下完牌（敌人筹码归零）直接过关回地图：
+        // bossThreshold 设 0 → CheckBossTrigger 第二行直接 return，不溶解/不切第一人称/不生成敌人，
+        // 敌人筹码继续被扣到 0 → CheckWin 发 LevelClearedEvent → MapManager 回地图。
+        bossThreshold = (GameProgress.currentLevel == 0) ? cfg.bossThreshold : 0;
         currentEnemies = cfg.enemies;        // 必过关（A~K）打的敌人（Boss）
         currentMinions = cfg.minions;        // 过渡关（Extra 小关）打的敌人（小怪）
         bossTriggered = false;
