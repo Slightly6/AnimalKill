@@ -186,6 +186,25 @@ public class CutsceneManager : Singleton<CutsceneManager>
           Debug.Log("[过场] 切换完成，调用 StartCurrentLevel 发牌");
           MapManager.Instance.StartCurrentLevel();
       }
+
+        // 非第一关：跳过走门和过场，主角直接坐到桌前开始打牌（MapManager.BeginRun 调用）
+        public void SkipToTable()
+        {
+            // 主角直接放到桌前（第一关是走门 → 过场走过去；之后每关直接传送到位，这就是这关的出生点）
+            if (player != null && tableSeat != null)
+            {
+                player.transform.position = tableSeat.position;
+                player.transform.rotation = tableSeat.rotation;
+            }
+
+            GameProgress.currentStage = GameStage.Playing;   // 直接进打牌阶段
+            SetCamera(true);                                 // 关第一人称，开桌面俯视
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+
+            MapManager.Instance.StartCurrentLevel();         // 发牌
+        }
+
         public void EnterBossFight()
     {
         GameProgress.currentStage = GameStage.FirstPerson;   // 恢复第一人称（HeroCtroller 重新接管）

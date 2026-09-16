@@ -17,7 +17,8 @@ public enum NodeType
 public class LevelConfig
 {
     public string levelName = "第1关";
-    public bool isBoss = false;              // 第 52 关勾上
+    [Header("是不是 Boss 关：true=第一人称打单个 Boss；false=普通关打一群小怪（小怪数量由场景 EnemyGroup 拖了几个决定）")]
+    public bool isBoss = false;              // Boss 关勾上
 
     [Header("敌人")]
     public List<CardDataSO> enemyDeck = new List<CardDataSO>();  // 敌人牌堆
@@ -30,8 +31,14 @@ public class LevelConfig
 
     [Header("筹码")]
     public int enemyStartingChips = 100;     // 敌人开局筹码（玩家筹码跨关继承，不在这）
-    [Header("少于多少筹码,棋盘消失进入boss战")]
-    public int bossThreshold = 0;      // 敌人筹码掉到多少触发 Boss 战（从关卡配置读）
+    [Header("少于多少筹码,棋盘消失进入第一人称战斗（0=纯打牌不进第一人称；>0=进第一人称）")]
+    public int bossThreshold = 0;      // 敌人筹码掉到多少触发第一人称战斗
+
+    [Header("必过关（A~K）打的敌人（敌人筹码掉到阈值后第一人称战斗生成这些；填 Boss）")]
+    public List<EnemyData> enemies = new List<EnemyData>();
+
+    [Header("过渡关（Extra 小关）打的敌人（填小怪，可以多只）")]
+    public List<EnemyData> minions = new List<EnemyData>();
     [Header("手牌")]
     public int initialHandSize = 6;          // 开局手牌数
     public int drawPerTurn = 1;              // 每回合抽牌数

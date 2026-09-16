@@ -10,6 +10,9 @@ public class SquirrelHp : MonoBehaviour, HpInterface
     private int currentHp;  // 当前血量
 
     public bool isDie=false;
+
+    [Header("是不是 Boss（true=Boss 死了直接亮门；false=小怪，死了交给 EnemyGroup 统计）")]
+    public bool isBoss = true;
     [Header("血条")]
     public Image hpFill;   // 血条填充（Image，Type=Filled），拖进来
     private Animator anim;
@@ -22,8 +25,8 @@ public class SquirrelHp : MonoBehaviour, HpInterface
         currentHp = maxHp;
         UpdateHpBar();   // 开局满血
 
-        // 打牌阶段结束（Boss 战）前血条先藏起来，Boss 战开始才显示
-        ShowHpBar(false);
+        // 血条显隐交给 EnemyGroup 管：打牌阶段藏，Boss 战 StartBossFight 再显示。
+        // （动态生成的 Boss，Start 在 StartBossFight 之后才跑，这里再 ShowHpBar(false) 会把刚显示的血条又藏掉）
     }
 
     public void TakeDamage(float damage)
@@ -62,7 +65,15 @@ public class SquirrelHp : MonoBehaviour, HpInterface
         if (isDie) return;
         Debug.Log("Squirrel died.");
         // 广播死亡事件（走全局事件总线，谁想听就 EventBus.Subscribe）
-        EventBus.Publish(new DiedEvent { isPlayer = false });
+        // Boss 死了 → 发 DiedEvent 直接亮门；小怪死了 → 发 MinionDiedEvent，交给 EnemyGroup 数到全灭再亮门
+        if (isBoss)
+        {
+            EventBus.Publish(new DiedEvent { isPlayer = false });
+        }
+        else
+        {
+            EventBus.Publish(new MinionDiedEvent { });
+        }
         isDie=true;
 
         BossSquirrel boss = GetComponent<BossSquirrel>();
@@ -84,11 +95,19 @@ public class SquirrelHp : MonoBehaviour, HpInterface
             anim.Play("Die", 0, 0f);
         }
 
-        StartCoroutine(DieRoutine());
+        // Boss：等死亡动画播完再销毁；小怪：没动画，立即销毁
+        if (isBoss)
+        {
+            StartCoroutine(DieRoutine());
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
     }
     IEnumerator DieRoutine()
     {
-        // 等死亡动画播完（比如 2 秒）
+        // Boss 死亡动画播完（约 4 秒）再销毁
         yield return new WaitForSeconds(4f);
 
         Destroy(gameObject);

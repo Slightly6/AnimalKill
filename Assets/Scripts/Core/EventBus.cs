@@ -98,6 +98,11 @@ public struct DiedEvent
     public bool isPlayer;    // true = 玩家（英雄）死了；false = Boss 死了
 }
 
+// 小怪死了（EnemyGroup 统计用：一群小怪全灭才亮门，单个小怪死不广播 DiedEvent）
+public struct MinionDiedEvent
+{
+}
+
 // 背包变化了（获得武器 / 换武器，UI 要刷新）
 public struct InventoryChangedEvent
 {

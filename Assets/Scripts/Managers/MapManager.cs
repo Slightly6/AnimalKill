@@ -32,10 +32,19 @@ using System.Collections;
       IEnumerator BeginRun()
       {
           yield return null;
-            if (GameProgress.IsNonBattleNode())
-            {
-            StartLevel(GameProgress.currentLevel);
-            }
+
+          // 商店/奖励关：不摆棋盘不抽手牌，直接进面板
+          if (GameProgress.IsNonBattleNode())
+          {
+              StartLevel(GameProgress.currentLevel);
+              yield break;
+          }
+
+          // 战斗/Boss 关：第一关走门播过场；之后每关跳过走门和过场，主角直接坐到桌前开打
+          if (GameProgress.currentLevel > 0)
+          {
+              CutsceneManager.Instance.SkipToTable();
+          }
       }
     public void StartCurrentLevel()
     {
@@ -56,13 +65,16 @@ using System.Collections;
               Debug.LogError("MapManager 没设置 LevelDatabase！");
               return;
           }
-          if (index >= database.levels.Count)
+          if (database.levels.Count == 0)
           {
-              Debug.LogError("关卡索引 " + index + " 超出数据库范围（共 " + database.levels.Count + " 关）");
+              Debug.LogError("LevelDatabase 里没配任何关卡！");
               return;
           }
 
-          LevelConfig cfg = database.levels[index];
+          // 4 章共用同一套 13 条配置（A~K），currentLevel 会走到 51（第 52 关）
+          // 用「取模」拿这一关是 A~K 里的哪个（0=A ... 12=K），这样不会越界
+          int rank = index % database.levels.Count;
+          LevelConfig cfg = database.levels[rank];
 
           GameManager.Instance.LoadLevel(cfg);       // 设敌人筹码、清战利品
           BoardManager.Instance.ResetLevel(cfg);     // 清空敌方、重摆敌人

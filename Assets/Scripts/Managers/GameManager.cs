@@ -25,8 +25,11 @@ public class GameManager : Singleton<GameManager>
     private int bossThreshold = 0;      // 敌人筹码掉到多少触发 Boss 战（从关卡配置读）
     private bool bossTriggered = false; // 敌人筹码掉到阈值后，Boss 战触发（棋盘溶解，进入 Boss 单挑）
 
-    [Header("Boss 战（拖场景里的 Boss 进来）")]
-    public BossSquirrel bossSquirrel;   // Boss AI 脚本，触发 Boss 战时调用它的 StartBossFight()
+    [Header("敌人生成器（打完牌触发第一人称战斗时，按关卡配置的敌人列表动态生成）")]
+    public EnemyGroup enemyGroup;       // 持有生成点，负责生成敌人 + 统计死亡
+
+    private List<EnemyData> currentEnemies;   // 必过关（A~K）要生成的敌人（Boss）
+    private List<EnemyData> currentMinions;   // 过渡关（Extra 小关）要生成的敌人（小怪）
     // 战利品区当前张数
     public int TrophyCount { get { return trophy.Count; } }
 
@@ -97,7 +100,9 @@ public class GameManager : Singleton<GameManager>
     {
         EnemyChips = cfg.enemyStartingChips;
         bossThreshold = cfg.bossThreshold;   // 从配置读"敌人筹码掉到多少进 Boss 战"
-        bossTriggered = false;   
+        currentEnemies = cfg.enemies;        // 必过关（A~K）打的敌人（Boss）
+        currentMinions = cfg.minions;        // 过渡关（Extra 小关）打的敌人（小怪）
+        bossTriggered = false;
 
         trophy.Clear();
 
@@ -251,7 +256,11 @@ public class GameManager : Singleton<GameManager>
             bossTriggered = true;
             DissolveManager.Instance.DissolveAll();   // 棋盘溶解
             CutsceneManager.Instance.EnterBossFight();// 切第一人称，HeroCtroller 重新接管
-            if (bossSquirrel != null) bossSquirrel.StartBossFight();   // Boss 播登场动画，然后开打
+            // 打完牌触发第一人称战斗：必过关打 Boss，过渡关（Extra）打小怪
+            List<EnemyData> toSpawn = currentEnemies;                    // 默认必过关 → Boss
+            if (GameProgress.currentNodeType == NodeType.Extra)          // 过渡关 → 小怪
+                toSpawn = currentMinions;
+            if (enemyGroup != null) enemyGroup.StartCombat(toSpawn);
             Debug.Log("[Boss战] 敌人筹码掉到 " + EnemyChips + "，触发溶解");
             // 后续：切第一人称、进入 Boss 单挑（下一步做）
         }

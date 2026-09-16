@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   levels:
   - levelName: 1
-    isBoss: 0
+    isBoss: 1
     enemyDeck:
     - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
     enemyBonusPower: 0
@@ -25,6 +25,12 @@ MonoBehaviour:
     maxRefillCards: 1
     enemyStartingChips: 10
     bossThreshold: 5
+    enemies:
+    - {fileID: 11400000, guid: 2a9f89283dc698a43a9361ab9586fdbf, type: 2}
+    minions:
+    - {fileID: 11400000, guid: d769a16c74a92ce4fbabaa6cf19c646f, type: 2}
+    - {fileID: 11400000, guid: d769a16c74a92ce4fbabaa6cf19c646f, type: 2}
+    - {fileID: 11400000, guid: d769a16c74a92ce4fbabaa6cf19c646f, type: 2}
     initialHandSize: 4
     drawPerTurn: 1
   - levelName: 2
@@ -40,6 +46,8 @@ MonoBehaviour:
     maxRefillCards: 2
     enemyStartingChips: 15
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 3
@@ -56,6 +64,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 20
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 4
@@ -73,6 +83,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 5
@@ -91,6 +103,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 6
@@ -108,6 +122,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 7
@@ -127,6 +143,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 8
@@ -147,6 +165,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 9
@@ -169,6 +189,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 10
@@ -192,6 +214,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 11
@@ -216,6 +240,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 12
@@ -241,6 +267,8 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
   - levelName: 13
@@ -267,5 +295,7 @@ MonoBehaviour:
     maxRefillCards: 3
     enemyStartingChips: 25
     bossThreshold: 0
+    enemies: []
+    minions: []
     initialHandSize: 6
     drawPerTurn: 1
