@@ -7,6 +7,7 @@ public enum NodeType
     Extra,     // 小关（额外战斗，占位）
     Shop,      // 商店（占位）
     Upgrade,   // 强化（占位）
+    Chest,      //箱子
     Boss       // Boss（K）
 }
 

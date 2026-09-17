@@ -13,6 +13,7 @@ public class BattleManager : Singleton<BattleManager>
     public bool IsInBattle { get; private set; }   // 是否正在战斗
 
     private bool skipPlayPhase = false;  // 玩家点了结束回合
+    private bool skipEnemyAttack = false;  // 道具效果：本回合跳过敌方攻击
     private bool levelEnded = false;     // 本关结束（过关或玩家输）
     private Coroutine battleRoutine;
 
@@ -33,6 +34,12 @@ public class BattleManager : Singleton<BattleManager>
     private void OnEndPlayPhase(EndPlayPhaseEvent e)
     {
         skipPlayPhase = true;
+    }
+
+    // 道具调用：本回合跳过敌方攻击阶段
+    public void SkipEnemyAttack()
+    {
+        skipEnemyAttack = true;
     }
 
     // 过关了（敌人筹码打光）
@@ -67,6 +74,7 @@ public class BattleManager : Singleton<BattleManager>
         if (levelEnded || GameManager.Instance.IsGameOver) yield break;
 
         skipPlayPhase = false;
+        skipEnemyAttack = false;   // 每回合重置
 
         // 1. 抽牌
         SetPhase(TurnPhase.Draw);
@@ -136,27 +144,34 @@ public class BattleManager : Singleton<BattleManager>
         BoardManager.Instance.MovePreviewToCurrent();
         yield return new WaitForSeconds(0.4f);
 
-        // 阶段3：敌方所有卡挨个攻击
-        for (int i = 0; i < 5; i++)
+        // 阶段3：敌方所有卡挨个攻击（道具可跳过）
+        if (skipEnemyAttack)
         {
-            if (levelEnded || GameManager.Instance.IsGameOver) yield break;
-            Card attacker = BoardManager.Instance.GetCardAt(i, false);
-            Card defender = BoardManager.Instance.GetCardAt(i, true);
-
-            if (attacker == null) continue;
-
-            if (defender != null)
+            Debug.Log("[回合] 敌方攻击被道具跳过");
+        }
+        else
+        {
+            for (int i = 0; i < 5; i++)
             {
-                // 对面有卡 → 冲过来打
-                yield return attacker.StrikeAndReturn(defender);
-            }
-            else
-            {
-                // 对面没卡 → 打玩家脸
-                yield return attacker.FaceAnim();
-            }
+                if (levelEnded || GameManager.Instance.IsGameOver) yield break;
+                Card attacker = BoardManager.Instance.GetCardAt(i, false);
+                Card defender = BoardManager.Instance.GetCardAt(i, true);
 
-            yield return new WaitForSeconds(0.25f);
+                if (attacker == null) continue;
+
+                if (defender != null)
+                {
+                    // 对面有卡 → 冲过来打
+                    yield return attacker.StrikeAndReturn(defender);
+                }
+                else
+                {
+                    // 对面没卡 → 打玩家脸
+                    yield return attacker.FaceAnim();
+                }
+
+                yield return new WaitForSeconds(0.25f);
+            }
         }
     }
 }

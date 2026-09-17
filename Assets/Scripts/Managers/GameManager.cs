@@ -18,7 +18,7 @@ public class GameManager : Singleton<GameManager>
 
     // 玩家当前筹码（别的脚本只读，不要直接改）
     public int PlayerChips { get; private set; }
-
+    
     // 敌人当前筹码
     public int EnemyChips { get; private set; }
 
@@ -58,12 +58,14 @@ public class GameManager : Singleton<GameManager>
 
         EventBus.Subscribe<CardDiedEvent>(OnCardDied);
         EventBus.Subscribe<CardPlayedEvent>(OnCardPlayed);
+        EventBus.Subscribe<ItemActivatedEvent>(OnItemActivated);   // 听关卡内点击道具
     }
 
     private void OnDestroy()
     {
         EventBus.Unsubscribe<CardDiedEvent>(OnCardDied);
         EventBus.Unsubscribe<CardPlayedEvent>(OnCardPlayed);
+        EventBus.Unsubscribe<ItemActivatedEvent>(OnItemActivated);
     }
 
     // 卡死了：只有敌方的卡被击杀才上钩（我方的卡死不上钩）
@@ -149,8 +151,8 @@ public class GameManager : Singleton<GameManager>
         else if (type == HandType.StraightFlush)  { AddChips(30); BuffPlayerCards(1); }
     }
 
-    // 本关我方所有在场牌 +delta 战力（三条/四条/同花顺等）
-    void BuffPlayerCards(int delta)
+    // 本关我方所有在场牌 +delta 战力（三条/四条/同花顺等；道具效果也调用）
+    public void BuffPlayerCards(int delta)
     {
         for (int i = 0; i < 5; i++)
         {
@@ -159,14 +161,24 @@ public class GameManager : Singleton<GameManager>
         }
     }
 
-    // 本关敌方所有在场牌 +delta 战力（delta 负数 = 减，顺子用）
-    void BuffEnemyCards(int delta)
+    // 本关敌方所有在场牌 +delta 战力（delta 负数 = 减，顺子用；道具效果也调用）
+    public void BuffEnemyCards(int delta)
     {
         for (int i = 0; i < 5; i++)
         {
             Card card = BoardManager.Instance.GetCardAt(i, false);
             if (card != null) card.AddPower(delta);
         }
+    }
+
+    // ========== 商店道具 ==========
+
+    // 关卡内点击道具触发（TableItem 发的 ItemActivatedEvent）
+    void OnItemActivated(ItemActivatedEvent e)
+    {
+        if (IsGameOver) return;
+        if (e.item == null || e.item.effect == null) return;
+        e.item.effect.Apply();   // 效果逻辑全在 ItemEffectSO 子类里
     }
 
     // ========== 筹码 ==========

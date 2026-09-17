@@ -1,0 +1,58 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5090553264243171952
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5210992262163854474}
+  - component: {fileID: 1541893595871014960}
+  m_Layer: 0
+  m_Name: Map
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5210992262163854474
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5090553264243171952}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.25536987, y: 0.15179332, z: -10.003124}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1541893595871014960
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5090553264243171952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 54e40a89898ddf94eadf11867ac51ab7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  nodePrefab: {fileID: 3571298292194087496, guid: 5baf1b4077fc25c45b1ec29269fca94e, type: 3}
+  battleSprite: {fileID: 21300000, guid: a9f78527ea61b234ab435d5c2c82c93d, type: 3}
+  bossSprite: {fileID: 21300000, guid: 640456d86cec4634993cd71e97ceaaac, type: 3}
+  shopSprite: {fileID: 21300000, guid: 16979812ad756f24ca7bc7152ab38c4d, type: 3}
+  upgradeSprite: {fileID: 21300000, guid: 3191d1432683e8a458fda6a80a13511f, type: 3}
+  extraSprite: {fileID: 21300000, guid: a9f78527ea61b234ab435d5c2c82c93d, type: 3}
+  database: {fileID: 11400000, guid: 96062242ca8e09747a24d38b5519db23, type: 2}
+  rankCount: 13
+  startY: -4
+  rowGap: 2.7
+  nodeGapX: 4
+  lineMaterial: {fileID: -8700451728162995395, guid: e9ed601257e6d7a469ee95f044077168, type: 2}

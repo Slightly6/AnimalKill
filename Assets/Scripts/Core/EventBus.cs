@@ -143,6 +143,12 @@ public struct LevelStartedEvent
     public bool isBoss;
 }
 
+// 关卡内点击已购道具触发效果（由 TableItem 发，GameManager 听 → 应用效果）
+public struct ItemActivatedEvent
+{
+    public ShopItemDataSO item;   // 触发哪个道具
+}
+
 // 过关（打光敌人筹码，非整局胜利）
 public struct LevelClearedEvent
 {

@@ -1,7 +1,7 @@
 using System.Collections;
-  using UnityEngine;
-  using UnityEngine.SceneManagement;
-
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using System.Collections.Generic;
   /// <summary>
   /// 关卡流程总管（战斗场景里）。
   /// 开局/切回：开始 GameProgress.currentLevel 关。
@@ -15,8 +15,8 @@ using System.Collections;
       [Header("场景名（要和 Build Settings 里一致）")]
       public string mapSceneName = "Map";            // 地图场景
       public string battleSceneName = "SampleScene"; // 战斗场景
-      public GameObject Chest;                    
-
+      public GameObject chest;                    
+      public List<GameObject> Goods = new List<GameObject>();
       void Start()
       {
           EventBus.Subscribe<LevelClearedEvent>(OnLevelCleared);
@@ -88,10 +88,29 @@ using System.Collections;
       void EnterNonBattleNode()
       {
           Debug.Log("[节点] 进入 " + GameProgress.currentNodeType + "（面板下一步做）");
-          GameObject chestObj = Instantiate(Chest, new Vector3(0,7,-1), Quaternion.identity);
-          
+        if(GameProgress.currentNodeType==NodeType.Chest||GameProgress.currentNodeType==NodeType.Upgrade)
+        {
+            Debug.Log("打印chest");
+            Chest();
+        }else if(GameProgress.currentNodeType==NodeType.Shop)
+        {
+            Debug.Log("打印Shop");
+            Shopping();
+        } 
       }
-
+        void Shopping()
+        {
+            for (int i = 0; i < 2; i++)
+            {
+                int num = Random.Range(0, Goods.Count);   // 用 Count，别写死
+                GameObject obj = Instantiate(Goods[num], new Vector3(i * 2f, 7, -1), Quaternion.identity);
+                // 第 0 个在 x=0，第 1 个在 x=2
+            }
+        }
+        void Chest()
+        {
+            GameObject chestObj = Instantiate(chest, new Vector3(0,7,-1), Quaternion.identity);
+        }
       // 过关：K（章节 Boss）→ 解锁下一章 / 胜利；普通关 → 回地图
       void OnLevelCleared(LevelClearedEvent e)
       {

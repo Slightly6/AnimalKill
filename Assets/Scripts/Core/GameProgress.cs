@@ -23,6 +23,9 @@ using UnityEngine;
         public static int hides = 0;                    // 兽皮数（跨关继承，奖励关献祭用）
         public static NodeType currentNodeType = NodeType.Battle;   // 当前进的哪种节点（跨场景）
 
+        // 商店买的道具（跨关继承，关卡内点击触发效果）
+        public static List<ShopItemDataSO> ownedItems = new List<ShopItemDataSO>();
+
         // 重新开始一局（玩家输光后重开用）
         public static void Reset()
         {
@@ -38,6 +41,7 @@ using UnityEngine;
             mapSuit = -1;
             hides = 0;
             currentNodeType = NodeType.Battle;
+            ownedItems = new List<ShopItemDataSO>();
         }
 
         // 是不是不用战斗的节点（商店/奖励关：进去不摆棋盘、不抽手牌）
