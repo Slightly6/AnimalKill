@@ -21,6 +21,12 @@ public class GoodsManager : Singleton<GoodsManager>
 
     void Update()
     {
+        if (GameProgress.InputLocked)   // 卷轴地图打开/切关过渡时：商店悬停/购买射线全部停掉
+        {
+            if (currentHover != null) { OnHoverExit(currentHover); currentHover = null; }
+            return;
+        }
+
         // 每帧发射线，检测鼠标下面的商品（悬停用）
         Ray ray = rayCamera.ScreenPointToRay(Input.mousePosition);
 

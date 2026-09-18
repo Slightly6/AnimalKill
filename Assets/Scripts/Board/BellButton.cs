@@ -20,6 +20,8 @@ public class BellButton : MonoBehaviour
 
     void OnMouseDown()
     {
+        if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡时不能结束回合
+
         AudioManager.Instance.PlayBell();   // 铃铛音效
         // 发出"结束出牌阶段"信号，BattleManager 收到就进入战斗
         EventBus.Publish(new EndPlayPhaseEvent());

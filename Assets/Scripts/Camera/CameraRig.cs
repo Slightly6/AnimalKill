@@ -52,6 +52,7 @@ using UnityEngine;
 
       void Update()
       {
+          if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡：滚轮归 ScrollRect，禁止切机位
           if (GameProgress.currentNodeType == NodeType.Upgrade) return;   // 非战斗节点不动相机
           if (positions == null || positions.Length == 0) return;
 
@@ -76,18 +77,31 @@ using UnityEngine;
           if (trauma > 0f)
               trauma = Mathf.Max(0f, trauma - Time.unscaledDeltaTime * shakeDecay);
 
-          if (GameProgress.currentNodeType == NodeType.Upgrade) return;   // 非战斗节点不动相机
           if (positions == null || positions.Length == 0) return;
 
-          // 位置往当前机位靠
-          Vector3 targetPos = positions[currentIndex] + Vector3.up * boardHeight;
+          Vector3 targetPos;
+
+          if (GameProgress.mapOpen)
+          {
+              // 卷轴地图打开：强制降到玩家第一视角机位（positions[0]：低位、靠后、坐在桌前），
+              // currentIndex 不动 → 关图后镜头自然 lerp 回原机位
+              targetPos = positions[0] + Vector3.up * boardHeight;
+          }
+          else
+          {
+              if (GameProgress.currentNodeType == NodeType.Upgrade) return;   // 非战斗节点不动相机
+              targetPos = positions[currentIndex] + Vector3.up * boardHeight;
+          }
+
+          // 位置往目标机位靠
           transform.position = Vector3.Lerp(transform.position, targetPos, lerpSpeed * Time.deltaTime);
 
           // 始终看向桌面中心
           transform.LookAt(focusPoint + Vector3.up * boardHeight, Vector3.up);
 
           // 震屏：trauma² 让小震动克制、大震动猛烈。Perlin 噪声比随机抖动平滑。
-          if (trauma > 0.001f)
+          // 地图打开时不叠震屏，保持看地图时镜头稳定。
+          if (trauma > 0.001f && !GameProgress.mapOpen)
           {
               float t = Time.unscaledTime * 25f;
               float mag = trauma * trauma;

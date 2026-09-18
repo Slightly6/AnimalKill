@@ -26,6 +26,16 @@ using UnityEngine;
         // 商店买的道具（跨关继承，关卡内点击触发效果）
         public static List<ShopItemDataSO> ownedItems = new List<ShopItemDataSO>();
 
+        // 卷轴地图是否打开：打开时锁住战斗场景一切玩家点击（出牌/道具/牌堆/铃/箱子/商店）
+        public static bool mapOpen = false;
+
+        // 关卡切换中（淡入淡出+新关卡布阵期间）：同样锁住战斗交互，由 FadeManager 上锁、
+        // 战斗进入出牌阶段（或非战斗节点淡入完成）解锁
+        public static bool transitioning = false;
+
+        // 战斗交互总锁：看地图 或 切关过渡 时，一切玩家点击禁用
+        public static bool InputLocked => mapOpen || transitioning;
+
         // 重新开始一局（玩家输光后重开用）
         public static void Reset()
         {
@@ -42,6 +52,8 @@ using UnityEngine;
             hides = 0;
             currentNodeType = NodeType.Battle;
             ownedItems = new List<ShopItemDataSO>();
+            mapOpen = false;
+            transitioning = false;
         }
 
         // 是不是不用战斗的节点（商店/奖励关：进去不摆棋盘、不抽手牌）

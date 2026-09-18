@@ -15,6 +15,8 @@ public class ChestCardClick : MonoBehaviour
 
     void OnMouseDown()
     {
+        if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡时不能选宝箱卡
+
         if (chest != null && card != null)
             chest.OnRewardCardClicked(card);
     }

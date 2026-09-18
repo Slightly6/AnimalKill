@@ -26,6 +26,9 @@ public class PauseMenu : Singleton<PauseMenu>
         // 主菜单场景里不响应 ESC（那有自己的按钮）
         if (SceneManager.GetActiveScene().name == menuSceneName) return;
 
+        // 卷轴地图打开时不响应 ESC：暂停会把 timeScale 设 0，卡死卷轴掉落/飞出动画
+        if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡时不响应 ESC
+
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             paused = !paused;

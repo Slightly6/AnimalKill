@@ -28,6 +28,8 @@ public class CardSlot : MonoBehaviour
     // 点槽出牌：有选中的牌时，把那张牌打到这个槽位；没选牌就什么都不做
     void OnMouseDown()
     {
+        if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡时不能往槽位出牌
+
         if (CardDisplay.selectedCard == null) return;   // 没选中牌，没反应
 
         if (!isPlayerSide) return;   // 只响应玩家自己的槽位

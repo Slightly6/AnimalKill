@@ -24,6 +24,8 @@ public class TableItem : MonoBehaviour
 
     void OnMouseDown()
     {
+        if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡时禁用一切战斗点击
+
         if (itemData == null)
         {
             Debug.LogWarning("桌子上的道具没设置 itemData");

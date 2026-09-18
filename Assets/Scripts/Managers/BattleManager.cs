@@ -82,6 +82,8 @@ public class BattleManager : Singleton<BattleManager>
 
         // 2. 出牌（一直等玩家放牌，直到按铃铛）
         SetPhase(TurnPhase.Play);
+        // 进入出牌阶段 = 切关过渡结束，解锁玩家交互（首回合生效；后续回合保持 false 无害）
+        GameProgress.transitioning = false;
         while (!skipPlayPhase)
         {
             if (levelEnded || GameManager.Instance.IsGameOver) yield break;

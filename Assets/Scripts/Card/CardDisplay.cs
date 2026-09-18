@@ -80,6 +80,8 @@ public class CardDisplay : MonoBehaviour
 
     void OnMouseDown()
     {
+        if (GameProgress.InputLocked) return;   // 卷轴地图打开时不能拖牌/出牌
+
         if (!CanPlay()) { down = false; return; }
         down = true;
         pressMousePos = Input.mousePosition;
@@ -94,6 +96,14 @@ public class CardDisplay : MonoBehaviour
     // 长按拖动：无论是否选中都能拖
     void OnMouseDrag()
     {
+        // 拖牌途中打开了卷轴地图：立即把牌弹回原位，不允许在地图上出牌
+        if (GameProgress.InputLocked)
+        {
+            if (draggingCard == this || down) EndDrag();
+            down = false;
+            return;
+        }
+
         if (!down) return;
 
         // 还没进入拖拽：先判断鼠标是不是真的移动了，避免"点击"也被当成拖
@@ -173,8 +183,8 @@ public class CardDisplay : MonoBehaviour
         if (draggingCard != this) return;
         draggingCard = null;
 
-        // 检测鼠标下最近的玩家槽位
-        CardSlot slot = GetSlotUnderMouse();
+        // 地图打开时不允许出牌：不检测槽位，直接走弹回
+        CardSlot slot = GameProgress.InputLocked ? null : GetSlotUnderMouse();
 
         // 打出去；没打成（没放到空槽）就弹回
         bool played = PlayToSlot(slot);
@@ -194,6 +204,7 @@ public class CardDisplay : MonoBehaviour
     // 把这张牌打到槽位上（拖放、点选后点槽都走这里）。打成功返回 true。
     public bool PlayToSlot(CardSlot slot)
     {
+        if (GameProgress.InputLocked) return false;   // 卷轴地图打开时不能出牌
         if (slot == null || !slot.IsEmpty || !slot.isPlayerSide) return false;
         if (!CanPlay()) return false;
 
