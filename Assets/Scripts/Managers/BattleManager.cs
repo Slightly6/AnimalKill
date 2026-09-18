@@ -138,19 +138,19 @@ public class BattleManager : Singleton<BattleManager>
         }
 
         if (levelEnded || GameManager.Instance.IsGameOver) yield break;
-
-        // 阶段2：敌方补牌上前（预出排填到空位）
-        yield return new WaitForSeconds(0.3f);
-        BoardManager.Instance.MovePreviewToCurrent();
-        yield return new WaitForSeconds(0.4f);
-
-        // 阶段3：敌方所有卡挨个攻击（道具可跳过）
         if (skipEnemyAttack)
         {
             Debug.Log("[回合] 敌方攻击被道具跳过");
         }
         else
         {
+            // 阶段2：敌方补牌上前（预出排填到空位）
+        yield return new WaitForSeconds(0.3f);
+        BoardManager.Instance.MovePreviewToCurrent();
+        yield return new WaitForSeconds(0.4f);
+
+        // 阶段3：敌方所有卡挨个攻击（道具可跳过）
+        
             for (int i = 0; i < 5; i++)
             {
                 if (levelEnded || GameManager.Instance.IsGameOver) yield break;
@@ -173,5 +173,7 @@ public class BattleManager : Singleton<BattleManager>
                 yield return new WaitForSeconds(0.25f);
             }
         }
+        
     }
 }
+

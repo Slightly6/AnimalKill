@@ -3,7 +3,7 @@ using UnityEngine;
 /// <summary>
 /// 桌子右侧的已购道具实体。
 /// 挂在商店买的、掉落到你桌子右侧的那个道具物体上。
-/// 点击 → 发布 ItemActivatedEvent → GameManager 应用效果。
+/// 点击 → 发布 ItemActivatedEvent → GameManager 应用效果（解耦）。
 /// consumable=true 的道具用完就删掉。
 ///
 /// 用法：

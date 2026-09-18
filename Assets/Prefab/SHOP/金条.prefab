@@ -213,6 +213,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0dc0ef04845a6b4469e6e5c7730ef17f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  itemData: {fileID: 11400000, guid: 315438809e0c9ce4db9df372b66be9e8, type: 2}
   isFlying: 0
 --- !u!1 &4452604814641598591
 GameObject:

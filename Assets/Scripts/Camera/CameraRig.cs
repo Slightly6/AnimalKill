@@ -24,8 +24,20 @@ using UnityEngine;
       [Header("桌面高度（和 BoardManager 保持一致）")]
       public float boardHeight = 10f;
 
+      [Header("震屏")]
+      public float shakeMaxOffset = 0.12f;   // 满 trauma 时的最大位移
+      public float shakeMaxRoll = 1.5f;      // 满 trauma 时的最大 Z 旋转（度）
+      public float shakeDecay = 1.8f;       // trauma 衰减速度（越大停得越快）
+
       private Camera cam;
       private int currentIndex = 0;     // 当前是第几个机位
+      private float trauma;             // 震屏强度 0~1，命中时叠加，自动衰减
+
+      /// <summary>命中时调用：0.3 小震，0.7 击杀大震</summary>
+      public void AddShake(float amount)
+      {
+          trauma = Mathf.Clamp01(trauma + amount);
+      }
 
       void Start()
       {
@@ -60,14 +72,30 @@ using UnityEngine;
 
       void LateUpdate()
       {
+          // trauma 用真实时间衰减，这样命中停顿（timeScale≈0）期间震动不会卡住
+          if (trauma > 0f)
+              trauma = Mathf.Max(0f, trauma - Time.unscaledDeltaTime * shakeDecay);
+
           if (GameProgress.currentNodeType == NodeType.Upgrade) return;   // 非战斗节点不动相机
           if (positions == null || positions.Length == 0) return;
 
-          // 位置往当前机位靠（帧率相关平滑，平民写法）
+          // 位置往当前机位靠
           Vector3 targetPos = positions[currentIndex] + Vector3.up * boardHeight;
           transform.position = Vector3.Lerp(transform.position, targetPos, lerpSpeed * Time.deltaTime);
 
           // 始终看向桌面中心
           transform.LookAt(focusPoint + Vector3.up * boardHeight, Vector3.up);
+
+          // 震屏：trauma² 让小震动克制、大震动猛烈。Perlin 噪声比随机抖动平滑。
+          if (trauma > 0.001f)
+          {
+              float t = Time.unscaledTime * 25f;
+              float mag = trauma * trauma;
+              float ox = (Mathf.PerlinNoise(t, 0f) - 0.5f) * 2f * mag * shakeMaxOffset;
+              float oy = (Mathf.PerlinNoise(0f, t) - 0.5f) * 2f * mag * shakeMaxOffset;
+              float roll = (Mathf.PerlinNoise(t, 10f) - 0.5f) * 2f * mag * shakeMaxRoll;
+              transform.position += new Vector3(ox, oy, 0f);
+              transform.Rotate(Vector3.forward, roll);
+          }
       }
   }

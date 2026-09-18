@@ -40,12 +40,14 @@ public class Goods : MonoBehaviour
         //     yield return null;
         // }
         // transform.position = targetPos;
-
+        TableItem tableItem = gameObject.AddComponent<TableItem>();
+        tableItem.Setup(itemData);
         // 到位后返回地图
         yield return new WaitForSeconds(2f);
 
         string mapScene = "Map";
         if (MapManager.Instance != null) mapScene = MapManager.Instance.mapSceneName;
         FadeManager.Go(mapScene);
+        
     }
 }

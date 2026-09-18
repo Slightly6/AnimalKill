@@ -48,6 +48,36 @@ public class DarkGrasslandSceneSetup
         Debug.Log("[Setup] 桌子已生成");
     }
 
+    // 一键把卡牌材质改成暗金色调（匹配黑暗草原主题）
+    [MenuItem("Tools/Style Cards to Dark Grassland")]
+    public static void StyleCards()
+    {
+        // 卡正面底：深墨绿（呼应赌桌绒布）
+        SetMaterialColor("Assets/Materials/CardFront.mat", new Color(0.08f, 0.22f, 0.12f, 1f), 0.3f, 0f);
+        // 卡背面：深绿 + 金边感
+        SetMaterialColor("Assets/Materials/CardBack.mat", new Color(0.05f, 0.18f, 0.10f, 1f), 0.4f, 0.1f);
+        // 动物图材质：轻微压暗，不抢主色
+        SetMaterialColor("Assets/Materials/CardArt.mat", new Color(0.9f, 0.9f, 0.85f, 1f), 0.5f, 0f);
+
+        Debug.Log("[Setup] 卡牌材质已改成暗金色调");
+    }
+
+    // 改材质的颜色 + 光滑度 + 金属度
+    static void SetMaterialColor(string assetPath, Color color, float glossiness, float metallic)
+    {
+        var mat = AssetDatabase.LoadAssetAtPath<Material>(assetPath);
+        if (mat == null)
+        {
+            Debug.LogWarning("[Setup] 找不到材质：" + assetPath);
+            return;
+        }
+        Undo.RecordObject(mat, "Style Card Material");
+        mat.color = color;
+        mat.SetFloat("_Glossiness", glossiness);
+        mat.SetFloat("_Metallic", metallic);
+        EditorUtility.SetDirty(mat);
+    }
+
     // 1. 相机背景
     static void SetupCamera()
     {
@@ -82,6 +112,7 @@ public class DarkGrasslandSceneSetup
             Undo.RegisterCreatedObjectUndo(go, "Create Moonlight");
         }
         Undo.RecordObject(dirLight, "Setup Moonlight");
+        dirLight.gameObject.name = "Moonlight";   // 统一改名，Hierarchy 里好找
         dirLight.color = new Color(0.78f, 0.85f, 0.91f, 1f);   // #c8d8e8 冷白偏蓝
         dirLight.intensity = 0.8f;
         dirLight.shadows = LightShadows.Soft;
@@ -122,104 +153,108 @@ public class DarkGrasslandSceneSetup
         RenderSettings.sun = Object.FindObjectOfType<Light>();
     }
 
-    // 5. 生成实体桌面（卡牌正下方）
+    // 5. 桌子：保留你手动改好的 TableTop，只重算金边和桌腿
     static void SetupTable()
     {
-        // 取 BoardManager 的 boardHeight 作为桌面高度（默认 10）
-        float boardY = 10f;
-        var bm = Object.FindObjectOfType<BoardManager>();
-        if (bm != null) boardY = bm.boardHeight;
-
-        // 已有就复用（先清掉旧的子物体，避免重复运行叠两层）
-        var existing = GameObject.Find("Table_DarkGrass");
-        GameObject table = existing;
+        var table = GameObject.Find("Table_DarkGrass");
         if (table == null)
         {
             table = new GameObject("Table_DarkGrass");
             Undo.RegisterCreatedObjectUndo(table, "Create Table");
         }
-        else
+
+        // 找现有的 TableTop（你手动改过大小的那个），没有就新建一个默认的
+        var top = table.transform.Find("TableTop");
+        if (top == null)
         {
-            for (int i = table.transform.childCount - 1; i >= 0; i--)
-            {
-                Object.DestroyImmediate(table.transform.GetChild(i).gameObject);
-            }
+            float boardY = 10f;
+            var bm = Object.FindObjectOfType<BoardManager>();
+            if (bm != null) boardY = bm.boardHeight;
+
+            var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            go.name = "TableTop";
+            go.transform.SetParent(table.transform);
+            go.transform.position = new Vector3(0, boardY - 0.1f, -1.25f);
+            go.transform.localScale = new Vector3(13f, 0.2f, 9f);
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+
+            var feltMat = new Material(Shader.Find("Standard"));
+            feltMat.name = "TableFelt_DarkGreen";
+            feltMat.color = new Color(0.06f, 0.18f, 0.1f, 1f);
+            feltMat.SetFloat("_Glossiness", 0.75f);
+            feltMat.SetFloat("_Metallic", 0f);
+            go.GetComponent<Renderer>().sharedMaterial = feltMat;
+
+            top = go.transform;
         }
 
-        // 桌面：深绿绒布面（薄盒子）
-        // 范围覆盖 5 路（x=-4.4~4.4）+ 纵深（z=-3.5~1.0），四周留边
-        float tableWidth = 13f;    // x 方向
-        float tableDepth = 9f;     // z 方向
-        float tableThick = 0.2f;
+        // 清掉旧的金边和桌腿（只删 Rim_ 和 Leg_ 开头的，保留 TableTop 本身）
+        for (int i = top.childCount - 1; i >= 0; i--)
+        {
+            var child = top.GetChild(i);
+            if (child.name.StartsWith("Rim_") || child.name.StartsWith("Leg_"))
+                Object.DestroyImmediate(child.gameObject);
+        }
 
-        var top = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        top.name = "TableTop";
-        top.transform.SetParent(table.transform);
-        top.transform.position = new Vector3(0, boardY - tableThick * 0.5f, -1.25f);
-        top.transform.localScale = new Vector3(tableWidth, tableThick, tableDepth);
-        Undo.RegisterCreatedObjectUndo(top, "Create Table Top");
-        Object.DestroyImmediate(top.GetComponent<Collider>());
+        // 金边和桌腿作为 TableTop 的子物体，缩放自动联动
+        Vector3 s = top.localScale;   // TableTop 当前实际尺寸
 
-        // 深绿绒布材质
-        var feltMat = new Material(Shader.Find("Standard"));
-        feltMat.name = "TableFelt_DarkGreen";
-        feltMat.color = new Color(0.06f, 0.18f, 0.1f, 1f);   // #0f2e19 墨绿
-        feltMat.SetFloat("_Glossiness", 0.75f);   // 绒布柔光
-        feltMat.SetFloat("_Metallic", 0f);
-        top.GetComponent<Renderer>().sharedMaterial = feltMat;
-
-        // 金边：桌面边缘一圈细条（赌桌感）
         var goldMat = new Material(Shader.Find("Standard"));
         goldMat.name = "TableRim_Gold";
-        goldMat.color = new Color(0.75f, 0.6f, 0.2f, 1f);   // 金色
+        goldMat.color = new Color(0.75f, 0.6f, 0.2f, 1f);
         goldMat.SetFloat("_Glossiness", 0.7f);
         goldMat.SetFloat("_Metallic", 0.9f);
 
-        float rimW = 0.15f;
-        float rimH = 0.08f;
-        // 四条边
-        CreateRim(table.transform, new Vector3(0, boardY + rimH * 0.5f, -1.25f + tableDepth * 0.5f), new Vector3(tableWidth, rimH, rimW), goldMat, "Rim_Far");
-        CreateRim(table.transform, new Vector3(0, boardY + rimH * 0.5f, -1.25f - tableDepth * 0.5f), new Vector3(tableWidth, rimH, rimW), goldMat, "Rim_Near");
-        CreateRim(table.transform, new Vector3(-tableWidth * 0.5f, boardY + rimH * 0.5f, -1.25f), new Vector3(rimW, rimH, tableDepth), goldMat, "Rim_Left");
-        CreateRim(table.transform, new Vector3(tableWidth * 0.5f, boardY + rimH * 0.5f, -1.25f), new Vector3(rimW, rimH, tableDepth), goldMat, "Rim_Right");
+        const float rimW = 0.15f;
+        const float rimH = 0.08f;
+        float rimY = 0.5f + rimH * 0.5f / s.y;   // 顶面之上（局部坐标）
+
+        // 前/后边：X 方向铺满，Z 方向是金边宽度
+        CreateRim(top, new Vector3(0, rimY, 0.5f), new Vector3(1f, rimH / s.y, rimW / s.z), goldMat, "Rim_Front");
+        CreateRim(top, new Vector3(0, rimY, -0.5f), new Vector3(1f, rimH / s.y, rimW / s.z), goldMat, "Rim_Back");
+        // 左/右边：Z 方向铺满，X 方向是金边宽度
+        CreateRim(top, new Vector3(-0.5f, rimY, 0), new Vector3(rimW / s.x, rimH / s.y, 1f), goldMat, "Rim_Left");
+        CreateRim(top, new Vector3(0.5f, rimY, 0), new Vector3(rimW / s.x, rimH / s.y, 1f), goldMat, "Rim_Right");
 
         // 桌腿（4 根）
         var legMat = new Material(Shader.Find("Standard"));
         legMat.name = "TableLeg_Dark";
-        legMat.color = new Color(0.08f, 0.06f, 0.04f, 1f);   // 近黑棕
+        legMat.color = new Color(0.08f, 0.06f, 0.04f, 1f);
         legMat.SetFloat("_Glossiness", 0.3f);
         legMat.SetFloat("_Metallic", 0.1f);
 
-        float legX = tableWidth * 0.45f;
-        float legZ = tableDepth * 0.45f;
-        float legTopY = boardY - tableThick;
-        CreateLeg(table.transform, new Vector3(-legX, (legTopY + 0) * 0.5f, -1.25f + legZ), new Vector3(0.3f, legTopY, 0.3f), legMat, "Leg_BL");
-        CreateLeg(table.transform, new Vector3(legX, (legTopY + 0) * 0.5f, -1.25f + legZ), new Vector3(0.3f, legTopY, 0.3f), legMat, "Leg_BR");
-        CreateLeg(table.transform, new Vector3(-legX, (legTopY + 0) * 0.5f, -1.25f - legZ), new Vector3(0.3f, legTopY, 0.3f), legMat, "Leg_FL");
-        CreateLeg(table.transform, new Vector3(legX, (legTopY + 0) * 0.5f, -1.25f - legZ), new Vector3(0.3f, legTopY, 0.3f), legMat, "Leg_FR");
+        float legWorldH = top.position.y - s.y * 0.5f;   // 桌面底到地面
+        float legLocalH = legWorldH / s.y;
+        float legLocalY = -0.5f - legLocalH * 0.5f;
+        Vector3 legScale = new Vector3(0.3f / s.x, legLocalH, 0.3f / s.z);
+
+        CreateLeg(top, new Vector3(-0.45f, legLocalY, 0.45f), legScale, legMat, "Leg_BL");
+        CreateLeg(top, new Vector3(0.45f, legLocalY, 0.45f), legScale, legMat, "Leg_BR");
+        CreateLeg(top, new Vector3(-0.45f, legLocalY, -0.45f), legScale, legMat, "Leg_FL");
+        CreateLeg(top, new Vector3(0.45f, legLocalY, -0.45f), legScale, legMat, "Leg_FR");
     }
 
-    // 生成一条金边
-    static void CreateRim(Transform parent, Vector3 pos, Vector3 scale, Material mat, string name)
+    // 生成一条金边（局部坐标）
+    static void CreateRim(Transform parent, Vector3 localPos, Vector3 localScale, Material mat, string name)
     {
         var rim = GameObject.CreatePrimitive(PrimitiveType.Cube);
         rim.name = name;
-        rim.transform.SetParent(parent);
-        rim.transform.position = pos;
-        rim.transform.localScale = scale;
+        rim.transform.SetParent(parent, false);
+        rim.transform.localPosition = localPos;
+        rim.transform.localScale = localScale;
         Undo.RegisterCreatedObjectUndo(rim, "Create Rim");
         Object.DestroyImmediate(rim.GetComponent<Collider>());
         rim.GetComponent<Renderer>().sharedMaterial = mat;
     }
 
-    // 生成一根桌腿
-    static void CreateLeg(Transform parent, Vector3 pos, Vector3 scale, Material mat, string name)
+    // 生成一根桌腿（局部坐标）
+    static void CreateLeg(Transform parent, Vector3 localPos, Vector3 localScale, Material mat, string name)
     {
         var leg = GameObject.CreatePrimitive(PrimitiveType.Cube);
         leg.name = name;
-        leg.transform.SetParent(parent);
-        leg.transform.position = pos;
-        leg.transform.localScale = scale;
+        leg.transform.SetParent(parent, false);
+        leg.transform.localPosition = localPos;
+        leg.transform.localScale = localScale;
         Undo.RegisterCreatedObjectUndo(leg, "Create Leg");
         Object.DestroyImmediate(leg.GetComponent<Collider>());
         leg.GetComponent<Renderer>().sharedMaterial = mat;

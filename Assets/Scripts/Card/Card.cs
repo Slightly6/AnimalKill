@@ -25,10 +25,10 @@ public class Card : MonoBehaviour
     public float ScaleX=0.8f;
     public float arcHeight=1.2f;          // 半圆弧猛冲的高度（跳多高）
     public float tiltAngle=30f;           // 猛冲时前倾的角度
-    public float rushDuration=0.15f;      // 猛冲出去的时间（快）
-    public float returnDuration=0.2f;     // 回原位的时间（慢）
+    public float rushDuration=0.12f;      // 猛冲出去的时间（快，爆发感）
+    public float returnDuration=0.22f;     // 回原位的时间（稍慢，带弹性回弹）
     public float thrustPivotOffset=0.9f;  // 后仰支点离中心多远 = 半张牌长（牌高2.6×缩放0.7÷2）
-    public float recoilAngle=14f;         // 被打后仰的角度
+    public float recoilAngle=22f;         // 被打后仰的角度（大一点才有被砸中的感觉）
     [System.NonSerialized] public bool IsFaceDown = true;   // 默认扣着（背面朝上），不在 Inspector 显示
     [System.NonSerialized] public SortingGroup sortingGroup;   // 缓存引用，避免每帧 GetComponent
     [System.NonSerialized] public bool IsSelected;   // 这张牌被点选（准备出牌）
@@ -225,16 +225,19 @@ public class Card : MonoBehaviour
         Vector3 homePos = transform.position;
         Quaternion homeRot = transform.rotation;
 
-        // ① 后仰：朝被打方向相反侧倾一下（朝向攻击者那一侧翘起）
+        // ① 后仰：被猛砸一下，快速甩出去（OutCubic）
         Vector3 pivot = homePos + hitDir * thrustPivotOffset;   // 背对攻击者那一侧当支点
         Vector3 axis = Vector3.Cross(Vector3.up, hitDir);
-        yield return CardAnimator.ThrustOut(transform, pivot, axis, recoilAngle, 0.07f);
+        yield return CardAnimator.ThrustOut(transform, pivot, axis, recoilAngle, 0.06f, CardAnimator.Ease.OutCubic);
 
-        // ② 回正
-        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, 0.14f);
+        // ② 回正：带轻微过冲，像有弹性的牌（OutBack）
+        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, 0.16f, CardAnimator.Ease.OutBack);
+
+        // ③ 落地余震：小幅快速抖两下
+        yield return CardAnimator.Jitter(transform, homePos, 0.05f, 0.09f);
     }
 
-    // 通用攻击动作：前倾 + 半圆弧猛冲过去，再拉回原位。
+    // 通用攻击动作：前倾 + 半圆弧猛冲过去，命中瞬间停顿+震屏，再弹回原位。
     public IEnumerator StrikeAndReturn(Card target)
     {
         Vector3 homePos = transform.position;
@@ -249,21 +252,27 @@ public class Card : MonoBehaviour
         int oldOrder = sortingGroup.sortingOrder;
         sortingGroup.sortingOrder = 50;
 
-        // ① 前倾 + 半圆弧猛冲（快），落在目标身上
+        // ① 前倾 + 半圆弧猛冲（快，OutQuad 爆发），撞上时保持前倾姿势
         yield return CardAnimator.ArcWithTilt(transform, target.transform.position, arcHeight, tiltAngle, dir, rushDuration);
 
-        // ② 命中：扣血
+        // ② 命中：扣血（音效、死亡/后仰都在这里触发）
         int damage = CurrentPower;
         DealDamage(target, damage);
         Debug.Log("[战斗] " + CardName + " 打 " + target.CardName + " " + damage + " 点");
 
-        // ③ 拉回原位
-        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, returnDuration);
+        // ③ 命中停顿 + 震屏：打死卡更久、更猛
+        bool killed = target.IsDead;
+        if (CameraRig.Instance != null)
+            CameraRig.Instance.AddShake(killed ? 0.7f : 0.35f);
+        yield return CardAnimator.HitStop(killed ? 0.08f : 0.055f);
+
+        // ④ 弹回原位（OutBack 带回弹过冲）
+        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, returnDuration, CardAnimator.Ease.OutBack);
 
         sortingGroup.sortingOrder = oldOrder;
     }
 
-    // 打脸动画：对面没卡，前倾 + 半圆弧猛冲打向对方脸，再拉回原位
+    // 打脸动画：对面没卡，猛冲打脸，命中停顿+震屏，再弹回原位
     public IEnumerator FaceAnim()
     {
         Vector3 homePos = transform.position;
@@ -277,7 +286,7 @@ public class Card : MonoBehaviour
         int oldOrder = sortingGroup.sortingOrder;
         sortingGroup.sortingOrder = 50;
 
-        // ① 前倾 + 半圆弧猛冲（快）
+        // ① 前倾 + 半圆弧猛冲（爆发）
         yield return CardAnimator.ArcWithTilt(transform, reachPos, arcHeight, tiltAngle, dir, rushDuration);
 
         // ② 命中：打脸
@@ -293,8 +302,13 @@ public class Card : MonoBehaviour
         }
         Debug.Log("[战斗] " + CardName + " 打脸 " + damage + " 点");
 
-        // ③ 拉回原位
-        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, returnDuration);
+        // ③ 打脸停顿 + 震屏（被打脸更痛，震动稍大）
+        if (CameraRig.Instance != null)
+            CameraRig.Instance.AddShake(IsPlayer ? 0.45f : 0.55f);
+        yield return CardAnimator.HitStop(0.07f);
+
+        // ④ 弹回原位
+        yield return CardAnimator.MoveAndRotate(transform, homePos, homeRot, returnDuration, CardAnimator.Ease.OutBack);
 
         sortingGroup.sortingOrder = oldOrder;
     }
@@ -321,16 +335,30 @@ public class Card : MonoBehaviour
 
     System.Collections.IEnumerator DeathAnim()
     {
-        float t = 0;
-        Vector3 scale = transform.localScale;
-        Quaternion rot = transform.localRotation;
+        // 从躺平的槽位里解出来到世界坐标，才能真正向"上"弹飞（槽位局部 Y 是水平的）
+        Vector3 startScale = transform.lossyScale;
+        transform.SetParent(null, true);
+        transform.localScale = startScale;
 
-        while (t < flipDuration)
+        float duration = 0.32f;
+        float t = 0;
+        Vector3 startPos = transform.position;
+        Quaternion startRot = transform.rotation;
+        float spinDir = Random.value > 0.5f ? 1f : -1f;   // 随机往左/往右翻倒
+
+        while (t < duration)
         {
             t += Time.deltaTime;
-            float p = t / flipDuration;
-            transform.localScale = Vector3.Lerp(scale, Vector3.zero, p);
-            transform.localRotation = Quaternion.Lerp(rot, Quaternion.Euler(0, 0, 90), p);
+            float p = Mathf.Clamp01(t / duration);
+            // 缩小：前慢后快（被打飞后才消失）
+            float scaleK = 1f - Mathf.Pow(p, 2.5f);
+            transform.localScale = startScale * scaleK;
+            // 翻转：沿前进轴翻倒 + 轻微竖直轴乱转
+            transform.rotation = startRot
+                * Quaternion.AngleAxis(p * 100f * spinDir, Vector3.forward)
+                * Quaternion.AngleAxis(p * 60f * spinDir, Vector3.up);
+            // 向上弹一下再落回（被砸飞的抛物线）
+            transform.position = startPos + Vector3.up * Mathf.Sin(p * Mathf.PI) * 0.4f;
             yield return null;
         }
 

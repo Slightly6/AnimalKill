@@ -95,4 +95,5 @@ public class GoodsManager : Singleton<GoodsManager>
         Transform target = dropTargets[Random.Range(0, dropTargets.Length)];
         goods.StartCoroutine(goods.FlyToTarget(target.position));
     }
+    
 }
