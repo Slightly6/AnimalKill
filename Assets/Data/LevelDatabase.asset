@@ -16,7 +16,7 @@ MonoBehaviour:
   - levelName: 1
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
+    - {fileID: 11400000, guid: 4223bbeb7c06af64b86a123387e59898, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -29,8 +29,8 @@ MonoBehaviour:
   - levelName: 2
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -43,9 +43,9 @@ MonoBehaviour:
   - levelName: 3
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -58,10 +58,10 @@ MonoBehaviour:
   - levelName: 4
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -74,11 +74,11 @@ MonoBehaviour:
   - levelName: 5
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
-    - {fileID: 11400000, guid: d326f773eb31d394ea61fa5edf7cd1ef, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -91,10 +91,10 @@ MonoBehaviour:
   - levelName: 6
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -107,12 +107,12 @@ MonoBehaviour:
   - levelName: 7
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
-    - {fileID: 11400000, guid: 25af2734f03a8fd42b1b73577ef1d799, type: 2}
-    - {fileID: 11400000, guid: d326f773eb31d394ea61fa5edf7cd1ef, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -125,13 +125,13 @@ MonoBehaviour:
   - levelName: 8
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
-    - {fileID: 11400000, guid: d326f773eb31d394ea61fa5edf7cd1ef, type: 2}
-    - {fileID: 11400000, guid: 25af2734f03a8fd42b1b73577ef1d799, type: 2}
-    - {fileID: 11400000, guid: 5accf113fef45e545b24d0ae7411a72f, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -144,15 +144,15 @@ MonoBehaviour:
   - levelName: 9
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
-    - {fileID: 11400000, guid: d326f773eb31d394ea61fa5edf7cd1ef, type: 2}
-    - {fileID: 11400000, guid: 25af2734f03a8fd42b1b73577ef1d799, type: 2}
-    - {fileID: 11400000, guid: 5accf113fef45e545b24d0ae7411a72f, type: 2}
-    - {fileID: 11400000, guid: bff5b596ba2c9fb468cf5f1ef6f1a1fe, type: 2}
-    - {fileID: 11400000, guid: 6c35c20a244a79649a7cf41281122ad3, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -165,16 +165,16 @@ MonoBehaviour:
   - levelName: 10
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
-    - {fileID: 11400000, guid: d326f773eb31d394ea61fa5edf7cd1ef, type: 2}
-    - {fileID: 11400000, guid: 25af2734f03a8fd42b1b73577ef1d799, type: 2}
-    - {fileID: 11400000, guid: 5accf113fef45e545b24d0ae7411a72f, type: 2}
-    - {fileID: 11400000, guid: bff5b596ba2c9fb468cf5f1ef6f1a1fe, type: 2}
-    - {fileID: 11400000, guid: 6c35c20a244a79649a7cf41281122ad3, type: 2}
-    - {fileID: 11400000, guid: 27d38705f1bbe2541889db27ac76d82f, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -187,17 +187,17 @@ MonoBehaviour:
   - levelName: 11
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
-    - {fileID: 11400000, guid: d326f773eb31d394ea61fa5edf7cd1ef, type: 2}
-    - {fileID: 11400000, guid: 25af2734f03a8fd42b1b73577ef1d799, type: 2}
-    - {fileID: 11400000, guid: 5accf113fef45e545b24d0ae7411a72f, type: 2}
-    - {fileID: 11400000, guid: bff5b596ba2c9fb468cf5f1ef6f1a1fe, type: 2}
-    - {fileID: 11400000, guid: 6c35c20a244a79649a7cf41281122ad3, type: 2}
-    - {fileID: 11400000, guid: 27d38705f1bbe2541889db27ac76d82f, type: 2}
-    - {fileID: 11400000, guid: b2e5a67fae986af48b8929c2b1d90e80, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -210,18 +210,18 @@ MonoBehaviour:
   - levelName: 12
     isBoss: 0
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
-    - {fileID: 11400000, guid: d326f773eb31d394ea61fa5edf7cd1ef, type: 2}
-    - {fileID: 11400000, guid: 25af2734f03a8fd42b1b73577ef1d799, type: 2}
-    - {fileID: 11400000, guid: 5accf113fef45e545b24d0ae7411a72f, type: 2}
-    - {fileID: 11400000, guid: bff5b596ba2c9fb468cf5f1ef6f1a1fe, type: 2}
-    - {fileID: 11400000, guid: 6c35c20a244a79649a7cf41281122ad3, type: 2}
-    - {fileID: 11400000, guid: 27d38705f1bbe2541889db27ac76d82f, type: 2}
-    - {fileID: 11400000, guid: b2e5a67fae986af48b8929c2b1d90e80, type: 2}
-    - {fileID: 11400000, guid: c0371ac45fdf87b429c76a098de12373, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
@@ -234,19 +234,19 @@ MonoBehaviour:
   - levelName: 13
     isBoss: 1
     enemyDeck:
-    - {fileID: 11400000, guid: 5d4c880b85d960b43bf117aa2cef211a, type: 2}
-    - {fileID: 11400000, guid: 4556ae9795847bf44a41f6a33d8c96c9, type: 2}
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
-    - {fileID: 11400000, guid: d326f773eb31d394ea61fa5edf7cd1ef, type: 2}
-    - {fileID: 11400000, guid: 25af2734f03a8fd42b1b73577ef1d799, type: 2}
-    - {fileID: 11400000, guid: 5accf113fef45e545b24d0ae7411a72f, type: 2}
-    - {fileID: 11400000, guid: bff5b596ba2c9fb468cf5f1ef6f1a1fe, type: 2}
-    - {fileID: 11400000, guid: 6c35c20a244a79649a7cf41281122ad3, type: 2}
-    - {fileID: 11400000, guid: 27d38705f1bbe2541889db27ac76d82f, type: 2}
-    - {fileID: 11400000, guid: b2e5a67fae986af48b8929c2b1d90e80, type: 2}
-    - {fileID: 11400000, guid: c0371ac45fdf87b429c76a098de12373, type: 2}
-    - {fileID: 11400000, guid: 3cb2f8751bfb9dd4885ee8747475df96, type: 2}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
+    - {fileID: 0}
     enemyBonusPower: 0
     enemyAwakened: 0
     minPreviewCards: 1
