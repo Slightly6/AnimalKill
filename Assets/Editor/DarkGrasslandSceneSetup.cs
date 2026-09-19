@@ -32,7 +32,7 @@ public class DarkGrasslandSceneSetup
         SetupAmbientAndFog();
         SetupSkybox();
         SetupTable();
-        DisableWalls();
+        // DisableWalls();
         SetupGround();
         SetupTreeSilhouettes();
         SetupFireflies();
@@ -261,16 +261,16 @@ public class DarkGrasslandSceneSetup
     }
 
     // 6. 禁用墙（草原不要墙）
-    static void DisableWalls()
-    {
-        var walls = Object.FindObjectsOfType<Wall>();
-        foreach (var w in walls)
-        {
-            Undo.RecordObject(w.gameObject, "Disable Wall");
-            w.gameObject.SetActive(false);
-        }
-        Debug.Log("[Setup] 禁用了 " + walls.Length + " 个墙对象");
-    }
+    // static void DisableWalls()
+    // {
+    //     var walls = Object.FindObjectsOfType<Wall>();
+    //     foreach (var w in walls)
+    //     {
+    //         Undo.RecordObject(w.gameObject, "Disable Wall");
+    //         w.gameObject.SetActive(false);
+    //     }
+    //     Debug.Log("[Setup] 禁用了 " + walls.Length + " 个墙对象");
+    // }
 
     // 7. 地面（用素材里的 forest_ground_06 PBR 贴图）
     static void SetupGround()

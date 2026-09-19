@@ -162,3 +162,10 @@ public enum TurnPhase
     Battle,  // 战斗
     End      // 回合结束
 }
+
+public struct SayEvent
+{
+    public string Speaker;
+    public string Text;
+    public SpeakTopic Topic;
+}

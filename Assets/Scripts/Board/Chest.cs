@@ -56,7 +56,11 @@ public class Chest : MonoBehaviour
     // 鼠标点箱子开箱
     private void OnMouseDown()
     {
-        if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡时不能开箱子
+        if (GameProgress.InputLocked)   // 卷轴地图打开/切关过渡时不能开箱子
+        {
+            Narrator.Say(SpeakTopic.ChestLocked);
+            return;
+        }
 
         OpenChest();
     }
@@ -90,6 +94,12 @@ public class Chest : MonoBehaviour
     // 开箱后：随机抽一种奖励类型，再走对应分支
     void GiveReward()
     {
+
+         if (rewardPool == null || rewardPool.Count == 0)
+        {
+            Debug.LogError("[宝箱] 卡池为空，无法给卡");
+            return;
+        }
         ChestRewardType t = RollRewardType();
 
         if (t == ChestRewardType.Card) GiveCardReward();

@@ -18,20 +18,6 @@ public class FadeManager : MonoBehaviour
     private Image fadeImage;
     private bool isFading = false;   // 防止过渡期间重复触发 Go（连点节点）
 
-    void Awake()
-    {
-        // 跨场景只留一个
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        DontDestroyOnLoad(gameObject);
-
-        BuildFadeImage();
-    }
-
     // 静态入口：带淡入淡出切场景（场景里没挂 FadeManager 就直接切，不会报错）
     public static void Go(string sceneName)
     {

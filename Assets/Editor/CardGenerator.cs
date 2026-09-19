@@ -10,6 +10,17 @@ public class CardGenerator
     [MenuItem("Tools/生成52张动物卡")]
     public static void Run()
     {
+        Run(true);
+    }
+
+    // 无交互入口（被觉醒技能一键生成调用）：旧卡直接覆盖，不弹框
+    public static void RunSilent()
+    {
+        Run(false);
+    }
+
+    static void Run(bool interactive)
+    {
         string path = "Assets/Data/Cards";
 
         // 没有文件夹就建一个
@@ -22,7 +33,8 @@ public class CardGenerator
         string[] old = AssetDatabase.FindAssets("t:CardDataSO", new[] { path });
         if (old.Length > 0)
         {
-            if (!EditorUtility.DisplayDialog("提示", "文件夹里已有 " + old.Length + " 张卡，覆盖？", "覆盖", "取消"))
+            if (interactive &&
+                !EditorUtility.DisplayDialog("提示", "文件夹里已有 " + old.Length + " 张卡，覆盖？", "覆盖", "取消"))
                 return;
 
             for (int i = 0; i < old.Length; i++)
@@ -95,7 +107,8 @@ public class CardGenerator
         AssetDatabase.Refresh();
 
         Debug.Log("生成完成！共 " + count + " 张卡");
-        EditorUtility.DisplayDialog("完成", "已生成 " + count + " 张动物卡到\n" + path, "好");
+        if (interactive)
+            EditorUtility.DisplayDialog("完成", "已生成 " + count + " 张动物卡到\n" + path, "好");
     }
 
     // 根据花色返回技能描述

@@ -10,7 +10,11 @@ public class DeckPile : MonoBehaviour
     }
     void OnMouseDown()
     {
-        if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡时不能抽牌
+        if (GameProgress.InputLocked)   // 卷轴地图打开/切关过渡时不能抽牌
+        {
+            Narrator.Say(SpeakTopic.ActionDuringMap);
+            return;
+        }
 
         DeckManager dm = DeckManager.Instance;
         if (dm == null) return;

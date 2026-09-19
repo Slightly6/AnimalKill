@@ -29,10 +29,12 @@ public class CardDataSO : ScriptableObject
     public string animalName = "新动物";
     public string description = "";
     [Header("技能数据以及发生时机")]
-    public AbilitySO ability;
     // 技能
     public string abilityName = "";
     public Sprite abilityIcon;   // 技能图标（显示在卡牌正面，以后图鉴也用）
+
+    [Header("觉醒技能（商店觉醒后生效；未觉醒时卡是白板）")]
+    public AbilitySO awakenedAbility;
 
     // 外观
     public Sprite artwork;

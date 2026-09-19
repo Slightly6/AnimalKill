@@ -21,15 +21,21 @@ public enum HandType
 /// </summary>
 public static class PokerHandEvaluator
 {
-    // 5 张牌 → 牌型
+    // 1~5 张牌 → 牌型（玩家从手牌里选牌挂钩子，张数任意但不超过 5）
+    // 对子/两对/三条/四条按实际张数判定；同花、顺子、葫芦、同花顺按扑克规则必须凑齐 5 张才算。
     public static HandType Evaluate(List<CardDataSO> cards)
     {
-        // ① 判断同花（5 张花色全相同）
-        bool isFlush = true;
-        CardSuit firstSuit = cards[0].suit;
-        for (int i = 1; i < cards.Count; i++)
+        bool five = cards.Count == 5;
+
+        // ① 判断同花（全部花色相同；少于 5 张不算同花）
+        bool isFlush = five;
+        if (five)
         {
-            if (cards[i].suit != firstSuit) { isFlush = false; break; }
+            CardSuit firstSuit = cards[0].suit;
+            for (int i = 1; i < cards.Count; i++)
+            {
+                if (cards[i].suit != firstSuit) { isFlush = false; break; }
+            }
         }
 
         // ② 取点数并排序（判断顺子用）
@@ -46,15 +52,19 @@ public static class PokerHandEvaluator
             }
         }
 
-        // ③ 判断顺子（排序后连续）。A 默认是 1（最小），但 10-J-Q-K-A 里 A 得当 14（最大）
-        bool isStraight = IsConsecutive(ranks);
-        if (!isStraight && ranks[0] == 1 && ranks[ranks.Length - 1] == 13)
+        // ③ 判断顺子（必须 5 张连续）。A 默认是 1（最小），但 10-J-Q-K-A 里 A 得当 14（最大）
+        bool isStraight = false;
+        if (five)
         {
-            // 把 A 从 1 挪到最后当 14，再判一次顺子（10-J-Q-K-A）
-            int[] high = new int[ranks.Length];
-            for (int i = 0; i < ranks.Length - 1; i++) high[i] = ranks[i + 1];
-            high[ranks.Length - 1] = 14;
-            isStraight = IsConsecutive(high);
+            isStraight = IsConsecutive(ranks);
+            if (!isStraight && ranks[0] == 1 && ranks[ranks.Length - 1] == 13)
+            {
+                // 把 A 从 1 挪到最后当 14，再判一次顺子（10-J-Q-K-A）
+                int[] high = new int[ranks.Length];
+                for (int i = 0; i < ranks.Length - 1; i++) high[i] = ranks[i + 1];
+                high[ranks.Length - 1] = 14;
+                isStraight = IsConsecutive(high);
+            }
         }
 
         // ④ 统计每种点数的张数（index 1~13）

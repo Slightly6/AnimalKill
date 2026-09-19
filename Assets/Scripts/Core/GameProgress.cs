@@ -30,6 +30,23 @@ using UnityEngine;
         // BeginRun 按名单恢复成实体后立即清空，之后一切以桌上实体为准。
         public static List<string> ownedItemNames = new List<string>();
 
+        // 本局已觉醒的动物卡（存 CardDataSO 的资产名）。
+        // 同一种动物牌组里有多张也共享觉醒；商店购买后加入，死亡/重开清空。
+        public static HashSet<string> awakenedCardNames = new HashSet<string>();
+
+        // 这张卡的动物觉醒了没有
+        public static bool IsCardAwakened(CardDataSO data)
+        {
+            return data != null && awakenedCardNames.Contains(data.name);
+        }
+
+        // 觉醒一只动物（返回 false=已经觉醒过）
+        public static bool AwakenCard(CardDataSO data)
+        {
+            if (data == null) return false;
+            return awakenedCardNames.Add(data.name);
+        }
+
         // 卷轴地图是否打开：打开时锁住战斗场景一切玩家点击（出牌/道具/牌堆/铃/箱子/商店）
         public static bool mapOpen = false;
 
@@ -56,6 +73,7 @@ using UnityEngine;
             hides = 0;
             currentNodeType = NodeType.Battle;
             ownedItemNames = new List<string>();
+            awakenedCardNames = new HashSet<string>();
             mapOpen = false;
             transitioning = false;
         }

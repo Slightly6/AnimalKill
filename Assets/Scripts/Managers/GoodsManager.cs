@@ -85,6 +85,7 @@ public class GoodsManager : Singleton<GoodsManager>
         if (tableItems.Length >= MAX_ITEMS)
         {
             Debug.Log("[商店] 桌上已有 " + MAX_ITEMS + " 个道具，买不了更多");
+            Narrator.Say(SpeakTopic.ShopFull);
             return;
         }
 

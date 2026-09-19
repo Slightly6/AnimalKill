@@ -2,8 +2,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 总管理。管筹码、战利品、胜负。
-/// 击杀敌方卡 → 收牌上钩凑德州牌型 → 满 5 张按牌型给技能 → 打光敌人筹码过关。
+/// 总管理。管筹码、钩子挂牌、胜负。
+/// 玩家从手牌选 1~5 张挂上钩子 → 按牌型获得本关增益（每关限一次）→ 打光敌人筹码过关。
 /// 敌人筹码归零 = 过关（非整局胜利），玩家筹码归零 = 整局失败。
 /// </summary>
 public class GameManager : Singleton<GameManager>
@@ -32,9 +32,18 @@ public class GameManager : Singleton<GameManager>
         return trophy[index];
     }
 
+    // 钩子上全部牌的拷贝（技能判定牌型用）
+    public List<CardDataSO> GetTrophyCards()
+    {
+        return new List<CardDataSO>(trophy);
+    }
+
     public bool IsGameOver { get; private set; }
 
-    // 战利品区（钩子）：手牌中选牌，凑满 5 张结算
+    // 本关钩子是否已用过：挂牌一次后锁到过关，下一关 LoadLevel 重置
+    public bool HookLocked { get; private set; }
+
+    // 钩子上当前挂的牌：玩家从手牌里选 1~5 张挂上来，挂一次后本关锁定，过关清空
     private List<CardDataSO> trophy = new List<CardDataSO>();
 
     protected override void Awake()
@@ -56,31 +65,26 @@ public class GameManager : Singleton<GameManager>
     {
         IsGameOver = false;
 
-        // EventBus.Subscribe<CardDiedEvent>(OnCardDied);
         EventBus.Subscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Subscribe<ItemActivatedEvent>(OnItemActivated);   // 听关卡内点击道具
     }
 
     private void OnDestroy()
     {
-        // EventBus.Unsubscribe<CardDiedEvent>(OnCardDied);
         EventBus.Unsubscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Unsubscribe<ItemActivatedEvent>(OnItemActivated);
     }
 
-    // 卡死了：只有敌方的卡被击杀才上钩（我方的卡死不上钩）
-    // private void OnCardDied(CardDiedEvent e)
-    // {
-    //     if (IsGameOver) return;
-    //     if (e.isPlayerSide) return;
-    //     // AddTrophy(e.card.Data);
-    // }
-
-    // 玩家出牌：扣筹码（按牌点数，1~13，A=1）
+    // 玩家出牌：扣筹码（按牌点数，1~13，A=1）；白吃（FreePlay）技能打出不耗筹码
     private void OnCardPlayed(CardPlayedEvent e)
     {
         if (IsGameOver) return;
         if (!e.isPlayerSide) return;
+        if (e.card != null && e.card.IsFreePlay())
+        {
+            Debug.Log("[出牌] " + e.card.CardName + " 白吃：免费打出");
+            return;
+        }
 
         int cost = (int)e.card.Data.rank;
         LoseChips(cost);
@@ -89,11 +93,12 @@ public class GameManager : Singleton<GameManager>
 
     // ========== 关卡 ==========
 
-    // 进入一关：设敌人筹码、清空战利品区（MapManager 调用）
+    // 进入一关：设敌人筹码、清空钩子、解锁挂牌（MapManager 调用）
     public void LoadLevel(LevelConfig cfg)
     {
         EnemyChips = cfg.enemyStartingChips;
         trophy.Clear();
+        HookLocked = false;
 
         SendChipsChanged();
         EventBus.Publish(new TrophyChangedEvent { count = 0 });
@@ -106,49 +111,48 @@ public class GameManager : Singleton<GameManager>
         EndGame(true);
     }
 
-    // ========== 战利品 ==========
+    // ========== 钩子挂牌 ==========
 
-    // 击杀收牌：把被击杀牌的花色+点数存进钩子，满 5 张结算
-    // public void AddTrophy(CardDataSO data)
-    // {
-    //     if (IsGameOver) return;
-    //     trophy.Add(data);
+    // 玩家把选中的手牌挂到钩子上：1~5 张，判定牌型 → 应用本关增益 → 锁定。
+    // 返回牌型；未挂成（已锁定/张数非法）返回 null。
+    public HandType? HangCards(List<CardDataSO> cards)
+    {
+        if (IsGameOver) return null;
+        if (HookLocked)
+        {
+            Debug.Log("[钩子] 本关已经挂过牌了");
+            return null;
+        }
+        if (cards == null || cards.Count == 0 || cards.Count > TROPHY_SIZE)
+        {
+            Debug.Log("[钩子] 只能挂 1~" + TROPHY_SIZE + " 张牌");
+            return null;
+        }
 
-    //     EventBus.Publish(new TrophyChangedEvent { count = trophy.Count });
-    //     Debug.Log("[战利品] 收牌 " + data.GetSuitSymbol() + data.GetRankText()
-    //         + "（" + trophy.Count + "/" + TROPHY_SIZE + "）");
+        trophy = new List<CardDataSO>(cards);
+        HookLocked = true;
 
-    //     if (trophy.Count >= TROPHY_SIZE)
-    //     {
-    //         SettleTrophy();
-    //     }
-    // }
+        HandType type = PokerHandEvaluator.Evaluate(trophy);
+        ApplyHandSkill(type);
 
-    // // 凑满 5 张，判定牌型，按牌型给技能，然后清空钩子
-    // private void SettleTrophy()
-    // {
-    //     HandType type = PokerHandEvaluator.Evaluate(trophy);
-    //     ApplyHandSkill(type);
-    //     trophy.Clear();
+        EventBus.Publish(new TrophyChangedEvent { count = trophy.Count });
+        Debug.Log("[钩子] 挂上 " + trophy.Count + " 张，牌型=" + type + "，本关增益已生效");
+        return type;
+    }
 
-    //     EventBus.Publish(new TrophyChangedEvent { count = 0 });   // 让钩子 UI 清空
-    //     Debug.Log("[结算] 牌型=" + type + "，技能已生效");
-    // }
-
-    // 按牌型给技能（想调数值就改这里）
-    // 高牌 +2筹码 / 一对 +5筹码 / 两对 +1兽皮 / 三条 我方全体+1攻 / 顺子 敌方全体-1攻
-    // 同花 +12筹码 / 葫芦 +20筹码+1兽皮 / 四条 我方全体+2攻 / 同花顺 +30筹码+我方全体+1攻
+    // 按牌型给本关增益（效果以后再调，先留入口）
     void ApplyHandSkill(HandType type)
     {
-        if (type == HandType.HighCard)            AddChips(2);
-        else if (type == HandType.OnePair)        AddChips(5);
-        else if (type == HandType.TwoPair)        GameProgress.hides += 1;
-        else if (type == HandType.ThreeOfAKind)   BuffPlayerCards(1);
-        else if (type == HandType.Straight)       BuffEnemyCards(-1);
-        else if (type == HandType.Flush)          AddChips(12);
-        else if (type == HandType.FullHouse)      { AddChips(20); GameProgress.hides += 1; }
-        else if (type == HandType.FourOfAKind)    BuffPlayerCards(2);
-        else if (type == HandType.StraightFlush)  { AddChips(30); BuffPlayerCards(1); }
+        // if (type == HandType.HighCard)            AddChips(2);
+        // else if (type == HandType.OnePair)        AddChips(5);
+        // else if (type == HandType.TwoPair)        GameProgress.hides += 1;
+        // else if (type == HandType.ThreeOfAKind)   BuffPlayerCards(1);
+        // else if (type == HandType.Straight)       BuffEnemyCards(-1);
+        // else if (type == HandType.Flush)          AddChips(12);
+        // else if (type == HandType.FullHouse)      { AddChips(20); GameProgress.hides += 1; }
+        // else if (type == HandType.FourOfAKind)    BuffPlayerCards(2);
+        // else if (type == HandType.StraightFlush)  { AddChips(30); BuffPlayerCards(1); 
+        // TODO: 后期在这里改各牌型的本关持续增益
     }
 
     // 本关我方所有在场牌 +delta 战力（三条/四条/同花顺等；道具效果也调用）

@@ -84,7 +84,11 @@ public class CardDisplay : MonoBehaviour
 
     void OnMouseDown()
     {
-        if (GameProgress.InputLocked) return;   // 卷轴地图打开时不能拖牌/出牌
+        if (GameProgress.InputLocked)   // 卷轴地图打开时不能拖牌/出牌
+        {
+            Narrator.Say(SpeakTopic.ActionDuringMap);
+            return;
+        }
 
         if (!CanPlay()) { down = false; return; }
         down = true;
@@ -103,7 +107,11 @@ public class CardDisplay : MonoBehaviour
         // 拖牌途中打开了卷轴地图：立即把牌弹回原位，不允许在地图上出牌
         if (GameProgress.InputLocked)
         {
-            if (draggingCard == this || down) EndDrag();
+            if (draggingCard == this || down)
+            {
+                Narrator.Say(SpeakTopic.ActionDuringMap);
+                EndDrag();
+            }
             down = false;
             return;
         }
@@ -247,6 +255,7 @@ public class CardDisplay : MonoBehaviour
         card.IsPlayed = true;      // 打出后就不能再选了
         card.IsSelected = false;   // 出牌后取消选中
         if (selectedCard == this) selectedCard = null;
+        selectedCards.Remove(this);   // 多选列表同步清掉，避免点钩子时残留已打出的牌
 
         EventBus.Publish(new CardPlayedEvent
         {

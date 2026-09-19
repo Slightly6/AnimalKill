@@ -8,14 +8,14 @@ using UnityEngine.SceneManagement;
 public class MainMenu : MonoBehaviour
 {
     [Header("场景名（要和 Build Settings 里一致）")]
-    public string mapSceneName = "Map";        // 地图场景
+    public string SceneName = "SampleScene";        // 地图场景
 
     // 新游戏：清掉旧存档和进度，从第 1 关开始
     public void OnPlay()
     {
         SaveManager.Instance.Clear();
         GameProgress.Reset();
-        SceneManager.LoadScene(mapSceneName);
+        SceneManager.LoadScene(SceneName);
     }
 
     // 继续：读档接着打；没存档就当新游戏
@@ -27,7 +27,7 @@ public class MainMenu : MonoBehaviour
             OnPlay();
             return;
         }
-        SceneManager.LoadScene(mapSceneName);
+        SceneManager.LoadScene(SceneName);
     }
 
     // 设置：打开/关闭设置面板。面板显隐自己搭，音量用 SettingsMenu 管。

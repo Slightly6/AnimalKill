@@ -12,7 +12,7 @@ public class DeckManager : Singleton<DeckManager>
     public List<CardDataSO> deckCards = new List<CardDataSO>();  // 初始牌组
 
     [Header("手牌设置")]
-    public int maxHandSize = 20;     // 手牌上限
+    public int maxHandSize = 100;     // 手牌上限
     public int drawPerTurn = 1;      // 每回合抽几张（每关 SetupLevel 更新）
 
     [Header("卡牌预制体")]
@@ -29,6 +29,17 @@ public class DeckManager : Singleton<DeckManager>
     public List<Card> HandCards { get; private set; } = new List<Card>();// 手牌
     private int drawsThisTurn = 0;   // 本回合已经抽了几张
 
+    void Awake()
+    {
+        if (deckCards.Count == 0)
+        {
+            // ★ 加载 Resources/Cards/ 下所有 CardDataSO
+            CardDataSO[] all = Resources.LoadAll<CardDataSO>("Data/Cards");
+            deckCards.AddRange(all);
+
+            Debug.Log("加载了 " + all.Length + " 张牌");
+        }
+    }
     private void Start()
     {
         InitDeck();
@@ -106,11 +117,13 @@ public class DeckManager : Singleton<DeckManager>
         if (drawsThisTurn >= drawPerTurn)
         {
             Debug.Log("本回合已经抽过牌了");
+            Narrator.Say(SpeakTopic.DrawAlreadyUsed);
             return;
         }
         if (HandCards.Count >= maxHandSize)
         {
             Debug.Log("手牌满了");
+            Narrator.Say(SpeakTopic.HandFull);
             return;
         }
         drawsThisTurn++;
@@ -124,6 +137,28 @@ public class DeckManager : Singleton<DeckManager>
         {
             yield return DrawOneCard();
         }
+    }
+
+    // 编辑器测试用：把指定卡直接生成进手牌（不走抽牌堆），觉醒状态自动生效
+    public void DebugAddToHand(CardDataSO data)
+    {
+        if (data == null) return;
+        StartCoroutine(CreateCardInHand(data));
+    }
+
+    // 编辑器测试用：整副牌替换成传入的卡（清手牌 → 换牌组数据 → 重洗抽牌堆），
+    // 不切场景，立刻生效。下一步抽牌抽到的就是新牌堆。
+    public void DebugReplaceDeck(List<CardDataSO> cards)
+    {
+        if (cards == null || cards.Count == 0)
+        {
+            Debug.LogWarning("[测试] 传入的牌组是空的，不替换");
+            return;
+        }
+        GameProgress.playerDeck = new List<CardDataSO>(cards);
+        ResetForNewLevel();
+        EventBus.Publish(new HandChangedEvent());
+        Debug.Log("[测试] 抽牌堆已替换为 " + cards.Count + " 张卡");
     }
 
     // 抽 1 张（翻面后进手牌）
@@ -177,6 +212,9 @@ public class DeckManager : Singleton<DeckManager>
         card.transform.SetParent(handPanel);
         HandCards.Add(card);
         EventBus.Publish(new HandChangedEvent());
+
+        // 抽到时触发的技能（OnDraw，后期自己配）
+        card.TriggerAbility(AbilityTrigger.OnDraw, null);
     }
 
     // 从手牌移除
@@ -184,6 +222,52 @@ public class DeckManager : Singleton<DeckManager>
     {
         HandCards.Remove(card);
         EventBus.Publish(new HandChangedEvent());
+    }
+
+    // 涅槃生还：把场上的牌收回手牌（以 1 力量留下，技能标记保持已用）。
+    // 由卡牌受致命伤且带 FeignDeath 时调用。
+    public void ReturnToHand(Card card)
+    {
+        if (card == null) return;
+
+        BoardManager.Instance.RemoveCardFromBoard(card);
+        card.IsPlayed = false;
+        card.transform.SetParent(handPanel, false);
+        card.transform.localPosition = Vector3.zero;
+        card.transform.localRotation = Quaternion.identity;
+        card.transform.localScale = Vector3.one;
+
+        if (!HandCards.Contains(card)) HandCards.Add(card);
+        EventBus.Publish(new HandChangedEvent());
+        Debug.Log("[技能] " + card.CardName + " 回到手牌");
+    }
+
+    // 繁殖/前赴后继：死亡时从抽牌堆免费拉一张放到指定道，继承 inheritPower 点力量
+    public void SpawnNextOntoSlot(int lane, int inheritPower)
+    {
+        if (drawPile.Count == 0)
+        {
+            Debug.Log("[技能] 牌堆空了，无法繁殖补位");
+            return;
+        }
+
+        CardDataSO data = drawPile[0];
+        drawPile.RemoveAt(0);
+
+        CardSlot slot = BoardManager.Instance.GetSlot(lane, true);
+        if (slot == null || !slot.IsEmpty) return;   // 道没了/被占就不补
+        if (cardPrefab == null) return;
+
+        GameObject go = Instantiate(cardPrefab, slot.transform);
+        Card card = go.GetComponent<Card>();
+        if (card == null) { Destroy(go); return; }
+
+        card.Init(data, true);
+        card.SetFaceDown(false);
+        slot.PlaceCard(card);
+        if (inheritPower > 0) card.AddPower(inheritPower - 1);   // 基础点数已含 1，补差量
+        card.TriggerAbility(AbilityTrigger.OnPlay, null);
+        Debug.Log("[技能] 繁殖补位：" + card.CardName + " 顶上第 " + (lane + 1) + " 路");
     }
 
     // 洗牌

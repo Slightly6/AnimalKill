@@ -248,6 +248,11 @@ public class MapManager : Singleton<MapManager>
             GameObject obj = Instantiate(pool[i], new Vector3(i * 2f-2, 7, -1), Quaternion.identity);
             spawnedObjects.Add(obj);
         }
+
+        // 觉醒祭坛面板（商店独有）：离开时随 spawnedObjects 一起销毁
+        var shopGo = new GameObject("AwakeningShop");
+        shopGo.AddComponent<AwakeningShop>().Open();
+        spawnedObjects.Add(shopGo);
     }
 
     void Chest()

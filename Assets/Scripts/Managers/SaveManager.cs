@@ -28,6 +28,7 @@ public class SaveManager : Singleton<SaveManager>
         public int currentNodeType;                              // NodeType 转成 int 存
         public List<MapNodeData> map = new List<MapNodeData>();
         public List<string> ownedItemNames = new List<string>(); // 桌上道具资产名（跨会话恢复用）
+        public List<string> awakenedCardNames = new List<string>(); // 本局已觉醒动物（资产名）
     }
 
     // 存：把当前进度写进 PlayerPrefs
@@ -54,6 +55,9 @@ public class SaveManager : Singleton<SaveManager>
             if (tableItems[i] != null && tableItems[i].itemData != null)
                 data.ownedItemNames.Add(tableItems[i].itemData.name);
         }
+
+        // 觉醒动物名单
+        data.awakenedCardNames = new List<string>(GameProgress.awakenedCardNames);
 
         PlayerPrefs.SetString(SAVE_KEY, JsonUtility.ToJson(data));
         PlayerPrefs.Save();
@@ -82,6 +86,10 @@ public class SaveManager : Singleton<SaveManager>
         if (data.map != null) GameProgress.map = data.map;
         // 道具名单：BeginRun 进 SampleScene 后按名恢复成实体（新游戏/旧存档缺字段时为空）
         GameProgress.ownedItemNames = data.ownedItemNames ?? new List<string>();
+        // 觉醒名单恢复
+        GameProgress.awakenedCardNames = data.awakenedCardNames != null
+            ? new HashSet<string>(data.awakenedCardNames)
+            : new HashSet<string>();
         // 牌组不动（每局固定），DeckManager.InitDeck 会按初始牌组重建
         return true;
     }

@@ -26,7 +26,11 @@ public class TableItem : MonoBehaviour
 
     void OnMouseDown()
     {
-        if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡时禁用一切点击
+        if (GameProgress.InputLocked)   // 卷轴地图打开/切关过渡时禁用一切点击
+        {
+            Narrator.Say(SpeakTopic.ActionDuringMap);
+            return;
+        }
 
         // 非战斗节点（商店/升级/宝箱）没有回合阶段机，随时可点；
         // 战斗关（Battle/Boss/小关）只能在摸牌 Draw、出牌 Play 阶段点，战斗结算 Battle / 结束 End 不能点。
@@ -36,7 +40,11 @@ public class TableItem : MonoBehaviour
         {
             if (BattleManager.Instance == null) return;
             TurnPhase p = BattleManager.Instance.CurrentPhase;
-            if (p != TurnPhase.Draw && p != TurnPhase.Play) return;
+            if (p != TurnPhase.Draw && p != TurnPhase.Play)
+            {
+                Narrator.Say(SpeakTopic.WrongPhase_Item);
+                return;
+            }
         }
 
         if (itemData == null)

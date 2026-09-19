@@ -152,6 +152,35 @@ public class BoardManager : Singleton<BoardManager>
         return slot != null ? slot.CurrentCard : null;
     }
 
+    // 预出排只有敌方有；玩家侧查询返回 null
+    public CardSlot GetPreviewSlotForSide(int lane, bool isPlayerSide)
+    {
+        return isPlayerSide ? null : GetPreviewSlot(lane);
+    }
+
+    // 越道猎杀用：敌方当前排最强（力量最高）的活着的牌；没有返回 null
+    public Card FindStrongestEnemy()
+    {
+        Card best = null;
+        for (int i = 0; i < 5; i++)
+        {
+            Card c = GetCardAt(i, false);
+            if (c == null || c.IsDead) continue;
+            if (best == null || c.CurrentPower > best.CurrentPower) best = c;
+        }
+        return best;
+    }
+
+    // 遍历某一排所有活着的牌
+    public void ForEachCard(bool isPlayerSide, System.Action<Card> act)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            Card c = GetCardAt(i, isPlayerSide);
+            if (c != null && !c.IsDead) act(c);
+        }
+    }
+
     public CardSlot GetSlot(int lane, bool isPlayerSide)
     {
         return isPlayerSide ? GetPlayerSlot(lane) : GetEnemySlot(lane);
@@ -166,6 +195,13 @@ public class BoardManager : Singleton<BoardManager>
             for (int i = 0; i < all[r].Count; i++)
                 if (all[r][i].CurrentCard == card) return all[r][i];
         return null;
+    }
+
+    // 把牌从它当前所在的槽位移除（不销毁实体，涅槃回手用）
+    public void RemoveCardFromBoard(Card card)
+    {
+        CardSlot slot = FindSlotOfCard(card);
+        if (slot != null) slot.RemoveCard();
     }
 
     // 在玩家排找离 worldPos（桌面 XZ 平面）最近的槽位；离太远（超过半格多）返回 null
@@ -199,13 +235,14 @@ public class BoardManager : Singleton<BoardManager>
 
         CardDataSO data = currentConfig.enemyDeck[Random.Range(0, currentConfig.enemyDeck.Count)];
         int bonus = currentConfig.enemyBonusPower;
-        if (currentConfig.enemyAwakened) bonus += 3;   // 觉醒 = 战力 +3
+        bool enemyAwakened = currentConfig.enemyAwakened;
+        if (enemyAwakened) bonus += 3;   // 觉醒 = 战力 +3
 
         GameObject go = Instantiate(enemyCardPrefab, slot.transform);
         Card card = go.GetComponent<Card>();
         if (card == null) { Destroy(go); return; }
 
-        card.Init(data, false, bonus);
+        card.Init(data, false, bonus, enemyAwakened);   // 觉醒关：敌人也带技能
         card.SetFaceDown(false);   // 敌方卡翻开显示正面
         slot.PlaceCard(card);
     }
@@ -270,6 +307,9 @@ public class BoardManager : Singleton<BoardManager>
             current.PlaceCard(card);
             movedAny = true;
 
+            // 敌人正式上场 = 打出：触发 OnPlay 技能（蛛网/拟态/登场增益等）
+            card.TriggerAbility(AbilityTrigger.OnPlay, null);
+
             Debug.Log("[棋盘] 敌方预出 " + card.CardName + " 移到第" + (i + 1) + "路");
         }
 
@@ -301,6 +341,9 @@ public class BoardManager : Singleton<BoardManager>
         {
             slot.PlaceCard(e.card);
             Debug.Log("[棋盘] " + e.card.CardName + " 放到第" + (e.laneIndex + 1) + "路");
+
+            // 玩家打出 = 登场：触发 OnPlay 技能
+            e.card.TriggerAbility(AbilityTrigger.OnPlay, null);
         }
     }
 
@@ -308,5 +351,20 @@ public class BoardManager : Singleton<BoardManager>
     {
         CardSlot slot = FindSlotOfCard(e.card);
         if (slot != null) slot.RemoveCard();
+
+        // 食腐/鼠瘟：场上每死一个单位，带此标记的其他牌 +1 力量
+        if (e.card == null) return;
+        GrowOnDeath(true, e.card);
+        GrowOnDeath(false, e.card);
+    }
+
+    void GrowOnDeath(bool side, Card dead)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            Card c = GetCardAt(i, side);
+            if (c != null && !c.IsDead && c != dead && c.flagGrowAnyDeath)
+                c.AddPower(1);
+        }
     }
 }
