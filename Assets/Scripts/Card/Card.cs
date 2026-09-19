@@ -33,11 +33,59 @@ public class Card : MonoBehaviour
     [System.NonSerialized] public SortingGroup sortingGroup;   // 缓存引用，避免每帧 GetComponent
     [System.NonSerialized] public bool IsSelected;   // 这张牌被点选（准备出牌）
 
+    // ---- 卡牌 Shader（Custom/PlayingCard）反馈参数，用 PropertyBlock 每卡独立、不实例化材质 ----
+    private Renderer[] cardRenderers;
+    private MaterialPropertyBlock propBlock;
+    private float hitFlash;        // 受击红闪 1→0
+    private float selectGlow;      // 选中扫光 平滑到 0/1
+    private const string SHADER_NAME = "Custom/PlayingCard";
+
     public string CardName { get { return Data.animalName; } }
 
     void Awake()
     {
         sortingGroup = GetComponent<SortingGroup>();
+
+        // 只收集挂着 PlayingCard shader 的 MeshRenderer（自动排除 TextMeshPro 文字渲染器）
+        var all = GetComponentsInChildren<Renderer>(true);
+        var list = new System.Collections.Generic.List<Renderer>(all.Length);
+        for (int i = 0; i < all.Length; i++)
+        {
+            if (all[i].sharedMaterial != null && all[i].sharedMaterial.shader != null
+                && all[i].sharedMaterial.shader.name == SHADER_NAME)
+            {
+                list.Add(all[i]);
+            }
+        }
+        cardRenderers = list.ToArray();
+        propBlock = new MaterialPropertyBlock();
+    }
+
+    void Update()
+    {
+        if (cardRenderers == null || cardRenderers.Length == 0) return;
+
+        // 受击红闪 0.32 秒衰减
+        hitFlash = Mathf.MoveTowards(hitFlash, 0f, Time.deltaTime / 0.32f);
+        // 选中扫光平滑过渡（避免硬切）
+        float target = IsSelected ? 1f : 0f;
+        selectGlow = Mathf.MoveTowards(selectGlow, target, Time.deltaTime / 0.12f);
+
+        if (hitFlash <= 0f && selectGlow <= 0f && target <= 0f) return;
+
+        for (int i = 0; i < cardRenderers.Length; i++)
+        {
+            cardRenderers[i].GetPropertyBlock(propBlock);
+            propBlock.SetFloat("_HitFlash", hitFlash);
+            propBlock.SetFloat("_SelectGlow", selectGlow);
+            cardRenderers[i].SetPropertyBlock(propBlock);
+        }
+    }
+
+    // 被打中时整牌红闪一下（受击动画/死亡时调用）
+    public void FlashHit()
+    {
+        hitFlash = 1f;
     }
 
     public void Init(CardDataSO data, bool isPlayer, int bonusPower = 0)
@@ -202,8 +250,9 @@ public class Card : MonoBehaviour
 
         if (target.CurrentPower <= 0)
         {
-            // 打死：死亡动画接管
+            // 打死：红闪一下，死亡动画接管
             target.CurrentPower = 0;
+            target.FlashHit();
             target.Die();
         }
         else
@@ -214,9 +263,10 @@ public class Card : MonoBehaviour
         }
     }
 
-    // 被打的反馈：后仰一下再回正（攻击方调用，没打死时）
+    // 被打的反馈：红闪 + 后仰一下再回正（攻击方调用，没打死时）
     public void PlayHitReaction(Vector3 hitDir)
     {
+        FlashHit();
         StartCoroutine(HitReactionRoutine(hitDir));
     }
 

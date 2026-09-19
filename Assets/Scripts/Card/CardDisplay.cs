@@ -1,5 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using System.Collections;
+using System.Collections.Generic;
 
 /// <summary>
 /// 卡牌交互（2.5D 俯视桌面版）。
@@ -35,6 +37,8 @@ public class CardDisplay : MonoBehaviour
     public static CardDisplay draggingCard;
     // 当前点选（突出）的牌（全局唯一）
     public static CardDisplay selectedCard;
+    // 删掉或保留 selectedCard，新增一个列表
+    public static List<CardDisplay> selectedCards = new List<CardDisplay>();
 
     private bool down;   // 这次按下是否有效（通过检查，可交互）
 
@@ -152,29 +156,58 @@ public class CardDisplay : MonoBehaviour
         }
         down = false;
     }
-
-    void ToggleSelect()
+    //单牌逻辑
+    // void ToggleSelect()
+    // {
+    //     if (selectedCard == this)
+    //     {
+    //         Deselect();
+    //     }
+    //     else
+    //     {
+    //         // if (selectedCard != null) selectedCard.Deselect();
+    //         Select();
+    //     }
+    // }
+    //多牌逻辑
+        void ToggleSelect()
     {
-        if (selectedCard == this)
+        if (selectedCards.Contains(this))
         {
-            Deselect();
+            selectedCards.Remove(this);
+            card.IsSelected = false;
         }
         else
         {
-            if (selectedCard != null) selectedCard.Deselect();
-            Select();
+            selectedCards.Add(this);
+            card.IsSelected = true;
         }
     }
 
+
+    // void Select()
+    // {
+    //     selectedCard = this;
+    //     card.IsSelected = true;
+    // }
+
+    // void Deselect()
+    // {
+    //     if (selectedCard == this) selectedCard = null;
+    //     card.IsSelected = false;
+    // }
     void Select()
     {
-        selectedCard = this;
-        card.IsSelected = true;
+        if (!selectedCards.Contains(this))
+        {
+            selectedCards.Add(this);
+            card.IsSelected = true;
+        }
     }
 
     void Deselect()
     {
-        if (selectedCard == this) selectedCard = null;
+        selectedCards.Remove(this);
         card.IsSelected = false;
     }
 

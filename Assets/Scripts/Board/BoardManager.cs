@@ -97,6 +97,18 @@ public class BoardManager : Singleton<BoardManager>
         }
     }
 
+    // 同场景换关时调用：清掉玩家槽里上一关的牌（原来切场景会一起销毁）
+    public void ClearPlayerBoard()
+    {
+        for (int i = 0; i < playerSlots.Count; i++)
+        {
+            CardSlot slot = playerSlots[i];
+            if (slot == null) continue;
+            if (slot.CurrentCard != null) Destroy(slot.CurrentCard.gameObject);
+            slot.RemoveCard();
+        }
+    }
+
     // 清空敌方当前排 + 预出排
     void ClearEnemyBoard()
     {

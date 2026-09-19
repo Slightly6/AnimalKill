@@ -82,7 +82,7 @@ public class CardGenerator
                 card.animalName = animal;
                 card.description = "战力 " + card.GetPower();
                 card.abilityName = ability;
-                card.abilityDesc = GetDesc(suit, ability);
+                // card.abilityDesc = GetDesc(suit, ability);
                 card.artwork = null;
 
                 string fileName = suit + "_" + card.GetRankText() + "_" + animal + ".asset";
@@ -99,16 +99,16 @@ public class CardGenerator
     }
 
     // 根据花色返回技能描述
-    private static string GetDesc(CardSuit suit, string ability)
-    {
-        if (suit == CardSuit.Spade)
-            return "【" + ability + "】击杀敌方后 +3 筹码。觉醒攻+3。";
-        if (suit == CardSuit.Heart)
-            return "【" + ability + "】相邻友方 +2 攻。觉醒血+3。";
-        if (suit == CardSuit.Diamond)
-            return "【" + ability + "】可改一张公共牌花色。觉醒可改两张。";
-        if (suit == CardSuit.Club)
-            return "【" + ability + "】登场获得 3 点护盾。觉醒每回合刷新。";
-        return "";
-    }
+    // private static string GetDesc(CardSuit suit, string ability)
+    // {
+    //     if (suit == CardSuit.Spade)
+    //         return "【" + ability + "】击杀敌方后 +3 筹码。觉醒攻+3。";
+    //     if (suit == CardSuit.Heart)
+    //         return "【" + ability + "】相邻友方 +2 攻。觉醒血+3。";
+    //     if (suit == CardSuit.Diamond)
+    //         return "【" + ability + "】可改一张公共牌花色。觉醒可改两张。";
+    //     if (suit == CardSuit.Club)
+    //         return "【" + ability + "】登场获得 3 点护盾。觉醒每回合刷新。";
+    //     return "";
+    // }
 }

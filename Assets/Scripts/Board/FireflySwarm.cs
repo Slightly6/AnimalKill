@@ -17,6 +17,9 @@ public class FireflySwarm : MonoBehaviour
     public float sizeMin = 0.08f;
     public float sizeMax = 0.18f;
 
+    [Tooltip("可选：自己指定粒子材质。留空则自动用内置有效材质（修复粉色=材质 shader 丢失）")]
+    public Material particleMaterialOverride;
+
     [Header("运动")]
     public float speedMin = 0.3f;
     public float speedMax = 0.8f;
@@ -29,14 +32,19 @@ public class FireflySwarm : MonoBehaviour
         if (ps == null) ps = gameObject.AddComponent<ParticleSystem>();
 
         ConfigureParticleSystem();
-        ps.Emit(count);
+        ps.Play(true);          // 配置完成后再启动（配置时系统必须处于停止状态）
+        ps.Emit(count);         // 立刻补满一群，不用等 rateOverTime 慢慢发
     }
 
     void ConfigureParticleSystem()
     {
+        // 粒子系统在播放时不允许改 duration 等主参数：
+        // 先彻底停止+清空（playOnAwake 的 PS 在 Start 前可能已经在播），配置完由 Start 里 Play
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
         var main = ps.main;
+        main.playOnAwake = false;
         main.loop = true;
-        main.playOnAwake = true;
         main.duration = 5f;
         main.startLifetime = 6f;
         main.startSpeed = new ParticleSystem.MinMaxCurve(speedMin, speedMax);
@@ -87,12 +95,40 @@ public class FireflySwarm : MonoBehaviour
         noise.frequency = 0.2f;
         noise.scrollSpeed = 0.3f;
 
-        // 渲染：用默认粒子材质，发光感靠颜色亮度
+        // 渲染：必须显式给有效材质，否则场景里 PS 自带的坏材质会渲染成洋红色块
         var renderer = ps.GetComponent<ParticleSystemRenderer>();
         if (renderer != null)
         {
             renderer.renderMode = ParticleSystemRenderMode.Billboard;
             renderer.sortingFudge = -10f;   // 让萤火虫显示在卡牌前面
+            renderer.sharedMaterial = ResolveMaterial();
         }
+    }
+
+    // 所有萤火虫群共用一个材质，避免运行时反复 new 造成泄漏
+    private static Material sharedAdditive;
+
+    Material ResolveMaterial()
+    {
+        // 1. Inspector 手动指定的优先
+        if (particleMaterialOverride != null) return particleMaterialOverride;
+
+        // 2. 优先用 Unity 内置默认粒子材质（柔和圆点贴图 + 受支持的 shader）
+        var builtin = Resources.GetBuiltinResource<Material>("Default-Particle.mat");
+        if (builtin != null && builtin.shader != null && builtin.shader.isSupported)
+            return builtin;
+
+        // 3. 兜底：Mobile/Particles/Additive（发光叠加，内置管线必有），贴内置柔和圆点
+        if (sharedAdditive == null)
+        {
+            Shader sh = Shader.Find("Mobile/Particles/Additive");
+            if (sh == null) sh = Shader.Find("Sprites/Default");
+            sharedAdditive = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
+
+            Texture dot = builtin != null ? builtin.mainTexture : null;
+            if (dot == null) dot = Resources.GetBuiltinResource<Texture2D>("Default-Particle.psd");
+            if (dot != null) sharedAdditive.mainTexture = dot;
+        }
+        return sharedAdditive;
     }
 }

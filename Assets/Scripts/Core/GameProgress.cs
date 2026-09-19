@@ -23,8 +23,12 @@ using UnityEngine;
         public static int hides = 0;                    // 兽皮数（跨关继承，奖励关献祭用）
         public static NodeType currentNodeType = NodeType.Battle;   // 当前进的哪种节点（跨场景）
 
-        // 商店买的道具（跨关继承，关卡内点击触发效果）
-        public static List<ShopItemDataSO> ownedItems = new List<ShopItemDataSO>();
+        // 道具不再做跨场景/跨关记录：买下的道具就是留在 SampleScene 里的 TableItem 实体，
+        // 数据挂在实体上，换关不重建，消耗品用完销毁实体即可。
+        //
+        // 跨"游戏会话"存档例外：读档后到 SampleScene.BeginRun 之间，用资产名名单临时桥接，
+        // BeginRun 按名单恢复成实体后立即清空，之后一切以桌上实体为准。
+        public static List<string> ownedItemNames = new List<string>();
 
         // 卷轴地图是否打开：打开时锁住战斗场景一切玩家点击（出牌/道具/牌堆/铃/箱子/商店）
         public static bool mapOpen = false;
@@ -51,7 +55,7 @@ using UnityEngine;
             mapSuit = -1;
             hides = 0;
             currentNodeType = NodeType.Battle;
-            ownedItems = new List<ShopItemDataSO>();
+            ownedItemNames = new List<string>();
             mapOpen = false;
             transitioning = false;
         }

@@ -78,12 +78,13 @@ public class BattleManager : Singleton<BattleManager>
 
         // 1. 抽牌
         SetPhase(TurnPhase.Draw);
+        // 进入摸牌阶段 = 切关过渡结束，解锁玩家交互（首回合生效；后续回合保持 false 无害）。
+        // 卷轴飞走期间 root 全屏 Image 仍挡射线，提前解锁不会误点 3D 物体。
+        GameProgress.transitioning = false;
         yield return new WaitForSeconds(0.5f);
 
         // 2. 出牌（一直等玩家放牌，直到按铃铛）
         SetPhase(TurnPhase.Play);
-        // 进入出牌阶段 = 切关过渡结束，解锁玩家交互（首回合生效；后续回合保持 false 无害）
-        GameProgress.transitioning = false;
         while (!skipPlayPhase)
         {
             if (levelEnded || GameManager.Instance.IsGameOver) yield break;

@@ -28,10 +28,10 @@ public class CardDataSO : ScriptableObject
     // 动物
     public string animalName = "新动物";
     public string description = "";
-
+    [Header("技能数据以及发生时机")]
+    public AbilitySO ability;
     // 技能
     public string abilityName = "";
-    public string abilityDesc = "";
     public Sprite abilityIcon;   // 技能图标（显示在卡牌正面，以后图鉴也用）
 
     // 外观

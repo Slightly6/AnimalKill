@@ -19,5 +19,5 @@ public class ShopItemDataSO : ScriptableObject
     public ItemEffectSO effect;   // 这个道具触发时执行的效果
 
     [Header("消耗")]
-    public bool consumable = true; // true=一次性，触发后从 ownedItems 删除；false=每关都能点
+    public bool consumable = true; // true=一次性，触发后销毁桌上实体；false=可重复点击
 }

@@ -14,7 +14,7 @@ public class HandManager : MonoBehaviour
     public float selectLift = 0.2f;     // 被点选的牌沿自己 Y 轴突出多少（小一点，别全露出来）
     public float maxAngle = 8f;         // 最边上的牌倾斜多少度
     public float yOffset = 0.2f;        // 越靠边越往下沉
-    public float handDist = 9f;         // 手牌离相机的距离
+    public float handDist = 8f;         // 手牌离相机的距离
     public float zStep = 0.03f;         // 牌离相机的 Z 级差：越靠上的牌离相机越近，点击命中和视觉顺序一致
 
     [Header("拖牌时向玩家倾斜（0 = 不翻转）")]

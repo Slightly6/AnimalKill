@@ -233,7 +233,7 @@ public class Chest : MonoBehaviour
         }
     }
 
-    // 选中：写进永久牌堆，销毁另外两张，回地图
+    // 选中：写进永久牌堆，另外两张销毁；选中的牌播"飞入牌堆"动画后再销毁、回地图
     void PickCard(Card card)
     {
         if (_picking) return;
@@ -245,22 +245,61 @@ public class Chest : MonoBehaviour
             Debug.Log("[宝箱] 拿到 " + card.CardName + "，加入牌堆");
         }
 
+        // 没选中的卡立即销毁
         for (int i = 0; i < rewardCards.Count; i++)
         {
             if (rewardCards[i] != null && rewardCards[i] != card)
                 Destroy(rewardCards[i].gameObject);
         }
 
-        StartCoroutine(ReturnToMap());
+        StartCoroutine(FlyIntoDeckThenReturn(card));
+    }
+
+    // 选中卡飞向牌堆：位移 + 缩小 + 略微翻转，到点销毁实体，然后卷轴重新掉下来
+    IEnumerator FlyIntoDeckThenReturn(Card card)
+    {
+        // 找牌堆落点：DeckManager.deckPile（卡平时出生的位置）
+        Transform deckPile = DeckManager.Instance != null ? DeckManager.Instance.deckPile : null;
+        Vector3 endPos = deckPile != null
+            ? deckPile.position + Vector3.up * 0.1f
+            : card.transform.position + Vector3.back * 3f;   // 兜底：往后飞离桌面
+
+        Vector3 startPos = card.transform.position;
+        Quaternion startRot = card.transform.rotation;
+        Vector3 startScale = card.transform.localScale;
+
+        // 禁用点击，飞行途中不能再点
+        var click = card.GetComponent<ChestCardClick>();
+        if (click != null) click.enabled = false;
+
+        float duration = 0.45f;
+        float t = 0f;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            float p = Mathf.Clamp01(t / duration);
+            float ease = p * p;   // EaseIn：起手慢、扎进牌堆时快
+
+            if (card == null) yield break;   // 兜底：实体被别处销毁就结束
+            card.transform.position = Vector3.Lerp(startPos, endPos, ease);
+            card.transform.localScale = Vector3.Lerp(startScale, startScale * 0.12f, ease);
+            // 飞行中绕 Z 轻翻一下，像被抽进牌堆
+            card.transform.rotation = startRot * Quaternion.Euler(0f, 0f, ease * 200f);
+            yield return null;
+        }
+
+        if (card != null) Destroy(card.gameObject);
+
+        yield return StartCoroutine(ReturnToMap());
     }
 
     IEnumerator ReturnToMap()
     {
         yield return new WaitForSeconds(0.5f);   // 停一下让玩家看清选了啥
 
-        string mapScene = "Map";
-        if (MapManager.Instance != null) mapScene = MapManager.Instance.mapSceneName;
-        FadeManager.Go(mapScene);
+        // 不切场景：清掉宝箱实体，卷轴重新掉下来选下一关
+        if (MapManager.Instance != null)
+            MapManager.Instance.FinishNonBattleNode();
     }
 
     // 权重 = 1/点数 抽 count 张（去重）

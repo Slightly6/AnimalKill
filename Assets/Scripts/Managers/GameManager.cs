@@ -34,7 +34,7 @@ public class GameManager : Singleton<GameManager>
 
     public bool IsGameOver { get; private set; }
 
-    // 战利品区（钩子）：击杀敌方收的牌，凑满 5 张结算
+    // 战利品区（钩子）：手牌中选牌，凑满 5 张结算
     private List<CardDataSO> trophy = new List<CardDataSO>();
 
     protected override void Awake()
@@ -56,25 +56,25 @@ public class GameManager : Singleton<GameManager>
     {
         IsGameOver = false;
 
-        EventBus.Subscribe<CardDiedEvent>(OnCardDied);
+        // EventBus.Subscribe<CardDiedEvent>(OnCardDied);
         EventBus.Subscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Subscribe<ItemActivatedEvent>(OnItemActivated);   // 听关卡内点击道具
     }
 
     private void OnDestroy()
     {
-        EventBus.Unsubscribe<CardDiedEvent>(OnCardDied);
+        // EventBus.Unsubscribe<CardDiedEvent>(OnCardDied);
         EventBus.Unsubscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Unsubscribe<ItemActivatedEvent>(OnItemActivated);
     }
 
     // 卡死了：只有敌方的卡被击杀才上钩（我方的卡死不上钩）
-    private void OnCardDied(CardDiedEvent e)
-    {
-        if (IsGameOver) return;
-        if (e.isPlayerSide) return;
-        AddTrophy(e.card.Data);
-    }
+    // private void OnCardDied(CardDiedEvent e)
+    // {
+    //     if (IsGameOver) return;
+    //     if (e.isPlayerSide) return;
+    //     // AddTrophy(e.card.Data);
+    // }
 
     // 玩家出牌：扣筹码（按牌点数，1~13，A=1）
     private void OnCardPlayed(CardPlayedEvent e)
@@ -109,31 +109,31 @@ public class GameManager : Singleton<GameManager>
     // ========== 战利品 ==========
 
     // 击杀收牌：把被击杀牌的花色+点数存进钩子，满 5 张结算
-    public void AddTrophy(CardDataSO data)
-    {
-        if (IsGameOver) return;
-        trophy.Add(data);
+    // public void AddTrophy(CardDataSO data)
+    // {
+    //     if (IsGameOver) return;
+    //     trophy.Add(data);
 
-        EventBus.Publish(new TrophyChangedEvent { count = trophy.Count });
-        Debug.Log("[战利品] 收牌 " + data.GetSuitSymbol() + data.GetRankText()
-            + "（" + trophy.Count + "/" + TROPHY_SIZE + "）");
+    //     EventBus.Publish(new TrophyChangedEvent { count = trophy.Count });
+    //     Debug.Log("[战利品] 收牌 " + data.GetSuitSymbol() + data.GetRankText()
+    //         + "（" + trophy.Count + "/" + TROPHY_SIZE + "）");
 
-        if (trophy.Count >= TROPHY_SIZE)
-        {
-            SettleTrophy();
-        }
-    }
+    //     if (trophy.Count >= TROPHY_SIZE)
+    //     {
+    //         SettleTrophy();
+    //     }
+    // }
 
-    // 凑满 5 张，判定牌型，按牌型给技能，然后清空钩子
-    private void SettleTrophy()
-    {
-        HandType type = PokerHandEvaluator.Evaluate(trophy);
-        ApplyHandSkill(type);
-        trophy.Clear();
+    // // 凑满 5 张，判定牌型，按牌型给技能，然后清空钩子
+    // private void SettleTrophy()
+    // {
+    //     HandType type = PokerHandEvaluator.Evaluate(trophy);
+    //     ApplyHandSkill(type);
+    //     trophy.Clear();
 
-        EventBus.Publish(new TrophyChangedEvent { count = 0 });   // 让钩子 UI 清空
-        Debug.Log("[结算] 牌型=" + type + "，技能已生效");
-    }
+    //     EventBus.Publish(new TrophyChangedEvent { count = 0 });   // 让钩子 UI 清空
+    //     Debug.Log("[结算] 牌型=" + type + "，技能已生效");
+    // }
 
     // 按牌型给技能（想调数值就改这里）
     // 高牌 +2筹码 / 一对 +5筹码 / 两对 +1兽皮 / 三条 我方全体+1攻 / 顺子 敌方全体-1攻

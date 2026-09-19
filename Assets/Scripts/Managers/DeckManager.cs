@@ -70,6 +70,19 @@ public class DeckManager : Singleton<DeckManager>
         drawsThisTurn = drawPerTurn;   // 本关开局补了牌，第一回合不能再抽
     }
 
+    // 同场景换关时调用：原来切场景会把 DeckManager 整个销毁重建（Start→InitDeck 重洗牌），
+    // 现在不切场景，手动模拟——销毁所有手牌实体，从 GameProgress.playerDeck 重新洗一副。
+    public void ResetForNewLevel()
+    {
+        for (int i = HandCards.Count - 1; i >= 0; i--)
+        {
+            if (HandCards[i] != null) Destroy(HandCards[i].gameObject);
+        }
+        HandCards.Clear();
+        drawsThisTurn = 0;
+        InitDeck();
+    }
+
     // 回合阶段变了：回合结束（End 阶段）重置抽牌次数，下一回合又能抽
     private void OnPhaseChanged(PhaseChangedEvent e)
     {

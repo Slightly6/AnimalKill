@@ -275,7 +275,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 2100000, guid: 139f0a4e97f114e458cf3d14caad2eed, type: 2}
   m_Color: {r: 0.85, g: 0.7, b: 0.4, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -1194,7 +1194,7 @@ MonoBehaviour:
   selectLift: 0.4
   maxAngle: 8
   yOffset: 0.2
-  handDist: 5
+  handDist: 4.5
   zStep: 0.03
   dragTiltAngle: -15
   handCenter: {fileID: 155038908}
@@ -1317,7 +1317,7 @@ MonoBehaviour:
   m_UiScaleMode: 0
   m_ReferencePixelsPerUnit: 100
   m_ScaleFactor: 1
-  m_ReferenceResolution: {x: 800, y: 600}
+  m_ReferenceResolution: {x: 1920, y: 1080}
   m_ScreenMatchMode: 0
   m_MatchWidthOrHeight: 0
   m_PhysicalUnit: 3
@@ -1636,7 +1636,7 @@ Transform:
   m_GameObject: {fileID: 418607838}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -1.2371006, y: 2, z: 0.03276892}
+  m_LocalPosition: {x: -1.2371006, y: 2, z: 0.73}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1900,7 +1900,7 @@ Camera:
     height: 1
   near clip plane: 0.3
   far clip plane: 1000
-  field of view: 73
+  field of view: 66
   orthographic: 0
   orthographic size: 5
   m_Depth: -1
@@ -2100,7 +2100,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 2100000, guid: 139f0a4e97f114e458cf3d14caad2eed, type: 2}
   m_Color: {r: 0.85, g: 0.7, b: 0.4, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
@@ -2793,7 +2793,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   startingPlayerChips: 20
-  cheatMode: 0
+  cheatMode: 1
 --- !u!4 &673086852
 Transform:
   m_ObjectHideFlags: 0
@@ -3897,12 +3897,12 @@ MonoBehaviour:
   paper: {fileID: 1910158316}
   nodePrefab: {fileID: 0}
   nodeSprite: {fileID: 0}
-  battleSprite: {fileID: 0}
-  bossSprite: {fileID: 0}
-  shopSprite: {fileID: 0}
-  upgradeSprite: {fileID: 0}
-  extraSprite: {fileID: 0}
-  chestSprite: {fileID: 0}
+  battleSprite: {fileID: 21300000, guid: a9f78527ea61b234ab435d5c2c82c93d, type: 3}
+  bossSprite: {fileID: 21300000, guid: 640456d86cec4634993cd71e97ceaaac, type: 3}
+  shopSprite: {fileID: 21300000, guid: 16979812ad756f24ca7bc7152ab38c4d, type: 3}
+  upgradeSprite: {fileID: 21300000, guid: 3191d1432683e8a458fda6a80a13511f, type: 3}
+  extraSprite: {fileID: 21300000, guid: 3191d1432683e8a458fda6a80a13511f, type: 3}
+  chestSprite: {fileID: 21300000, guid: 3191d1432683e8a458fda6a80a13511f, type: 3}
   lineColor: {r: 0.95, g: 0.82, b: 0.35, a: 1}
   lineThickness: 5
   panelWidth: 600
@@ -6584,6 +6584,7 @@ MonoBehaviour:
   color: {r: 0.65, g: 1, b: 0.27, a: 1}
   sizeMin: 0.08
   sizeMax: 0.18
+  particleMaterialOverride: {fileID: 10301, guid: 0000000000000000f000000000000000, type: 0}
   speedMin: 0.3
   speedMax: 0.8
 --- !u!4 &1693028635
@@ -6595,7 +6596,7 @@ Transform:
   m_GameObject: {fileID: 1693028633}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 11, z: 0}
+  m_LocalPosition: {x: 0, y: 5.37, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -7037,7 +7038,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  m_Material: {fileID: 0}
+  m_Material: {fileID: 2100000, guid: d4122582edcd8e3408c1c7f361efa400, type: 2}
   m_Color: {r: 0.72, g: 0.58, b: 0.38, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
