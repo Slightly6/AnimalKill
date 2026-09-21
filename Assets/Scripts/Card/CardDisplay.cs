@@ -74,10 +74,6 @@ public class CardDisplay : MonoBehaviour
         if (card.IsPlayer == false) return false;
         if (card.IsPlayed) return false;
 
-        if (BattleManager.Instance != null)
-        {
-            if (!BattleManager.Instance.IsPlayerTurn) return false;
-            if (BattleManager.Instance.CurrentPhase != TurnPhase.Play) return false;
         }
         return true;
     }
@@ -271,10 +267,6 @@ public class CardDisplay : MonoBehaviour
     }
 
     // ========== 射线 ==========
-
-    // 鼠标射线打到桌面（boardHeight 高度的平面）上的点
-    Vector3 RayToTable()
-    {
         Ray ray = mainCam.ScreenPointToRay(Input.mousePosition);
         float dist = 0;
         if (tablePlane.Raycast(ray, out dist))

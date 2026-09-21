@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83c20312b18e8c249a78cd7b2b086ade, type: 3}
+  m_Name: AB_Spade_7
+  m_EditorClassIdentifier: 
+  abilityName: "\u6DF1\u6D77\u730E\u624B"
+  description: "\u6DF1\u6D77\u730E\u624B\uFF1A\u654C\u4EBA\u82E5\u975E\u81EA\u5DF1\u6240\u4F24\u800C\u6B7B\u4EA1\uFF0C\u83B7\u5F971\u9897\u7259\uFF1B\u96C6\u6EE120\u9897\u8FDB\u5165\u6F5C\u6C34\u2014\u2014\u9996\u6B21\u88AB\u653B\u51FB\u65E0\u654C\uFF0C\u4F24\u5BB3\xD7\u7259\u9F7F\u6570\uFF0C\u6BCF\u56DE\u5408-2\u9897\uFF0C\u5F52\u96F6\u9000\u51FA\u3002"
+  icon: {fileID: 0}
+  trigger: 6
+  effect: {fileID: 11400000, guid: 723c6692a20d7cc43901512e0694e853, type: 2}

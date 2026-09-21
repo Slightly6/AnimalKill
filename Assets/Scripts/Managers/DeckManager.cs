@@ -222,21 +222,3 @@ public class DeckManager : Singleton<DeckManager>
     }
 
     // 从手牌移除
-    public void RemoveFromHand(Card card)
-    {
-        HandCards.Remove(card);
-        EventBus.Publish(new HandChangedEvent());
-    }
-
-    // 洗牌
-    private void Shuffle<T>(List<T> list)
-    {
-        for (int i = list.Count - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            T temp = list[i];
-            list[i] = list[j];
-            list[j] = temp;
-        }
-    }
-}

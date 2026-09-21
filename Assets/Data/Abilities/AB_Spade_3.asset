@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 83c20312b18e8c249a78cd7b2b086ade, type: 3}
+  m_Name: AB_Spade_3
+  m_EditorClassIdentifier: 
+  abilityName: "\u9E2E\u4F51"
+  description: "\u9E2E\u4F51\uFF1A\u4E0D\u53D7\u654C\u65B9\u6280\u80FD\u5F71\u54CD\u3002"
+  icon: {fileID: 0}
+  trigger: 6
+  effect: {fileID: 11400000, guid: 0722d3eefb070db41a529e7d258ab0da, type: 2}

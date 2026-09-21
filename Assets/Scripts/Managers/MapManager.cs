@@ -122,9 +122,6 @@ public class MapManager : Singleton<MapManager>
                        && data.type != NodeType.Upgrade
                        && data.type != NodeType.Chest;
 
-        // 非战斗实体（未买商品、旧宝箱）先清掉
-        ClearSpawnedNonBattleObjects();
-
         if (battleNode)
         {
             StartLevel(GameProgress.currentLevel);
@@ -165,10 +162,15 @@ public class MapManager : Singleton<MapManager>
         // 同场景换关：手动模拟原来切场景的销毁重建
         BoardManager.Instance.ClearPlayerBoard();   // 清玩家槽里上一关的牌
         DeckManager.Instance.ResetForNewLevel();    // 销毁手牌实体、重新洗牌
+        // 同场景换关：手动模拟原来切场景的销毁重建
+        BoardManager.Instance.ClearPlayerBoard();   // 清玩家槽里上一关的牌
+        DeckManager.Instance.ResetForNewLevel();    // 销毁手牌实体、重新洗牌
 
         GameManager.Instance.LoadLevel(cfg);       // 设敌人筹码、清战利品
         BoardManager.Instance.ResetLevel(cfg);     // 清空敌方、重摆敌人
         DeckManager.Instance.SetupLevel(cfg);      // 补手牌
+        BoardManager.Instance.ResetLevel(cfg);     // 清空敌方、重摆敌人
+        BattleManager.Instance.StartLevel(cfg);    // 开打
         EventBus.Publish(new LevelStartedEvent { levelIndex = index, isBoss = cfg.isBoss });
         BattleManager.Instance.StartLevel(cfg);    // 开打
     }
@@ -218,12 +220,6 @@ public class MapManager : Singleton<MapManager>
             Chest();
         }
         else if (GameProgress.currentNodeType == NodeType.Shop)
-        {
-            Shopping();
-        }
-    }
-
-    // 商店刷 2 个互不相同的道具（本次两个不能重复；桌上已有同款不影响，照样会刷）
     void Shopping()
     {
         // 候选池：所有配了 itemData 的商品 prefab
