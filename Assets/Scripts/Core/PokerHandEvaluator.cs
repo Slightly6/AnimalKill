@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+
 // ========== 牌型（从高到低） ==========
 public enum HandType
 {
@@ -15,19 +16,53 @@ public enum HandType
 
 /// <summary>
 /// 德州牌型判定：5 张牌 → 牌型，牌型 → 筹码。
-/// 德州牌型判定：5 张牌 → 牌型，牌型 → 筹码。
 /// 纯函数，不碰 Unity 对象，跟 CardAnimator 一样是静态工具类。
 /// 点数 1~13，A = 1（最小），K = 13（最大）。最小顺子是 A-2-3-4-5，最大是 10-J-Q-K-A（A 当 14）。
+/// </summary>
+public static class PokerHandEvaluator
+{
+    // 1~5 张牌 → 牌型（玩家从手牌里选牌挂钩子，张数任意但不超过 5）
+    // 对子/两对/三条/四条按实际张数判定；同花、顺子、葫芦、同花顺按扑克规则必须凑齐 5 张才算。
+    public static HandType Evaluate(List<CardDataSO> cards)
+    {
+        bool five = cards.Count == 5;
+
+        // ① 判断同花（全部花色相同；少于 5 张不算同花）
+        bool isFlush = five;
+        if (five)
+        {
+            CardSuit firstSuit = cards[0].suit;
+            for (int i = 1; i < cards.Count; i++)
+            {
+                if (cards[i].suit != firstSuit) { isFlush = false; break; }
+            }
+        }
+
+        // ② 取点数并排序（判断顺子用）
+        int[] ranks = new int[cards.Count];
+        for (int i = 0; i < cards.Count; i++) ranks[i] = (int)cards[i].rank;
+        for (int i = 0; i < ranks.Length; i++)
+        {
+            for (int j = i + 1; j < ranks.Length; j++)
+            {
+                if (ranks[j] < ranks[i])
+                {
+                    int tmp = ranks[i]; ranks[i] = ranks[j]; ranks[j] = tmp;
                 }
             }
         }
-    // 1~5 张牌 → 牌型（玩家从手牌里选牌挂钩子，张数任意但不超过 5）
-    // 对子/两对/三条/四条按实际张数判定；同花、顺子、葫芦、同花顺按扑克规则必须凑齐 5 张才算。
+
+        // ③ 判断顺子（必须 5 张连续）。A 默认是 1（最小），但 10-J-Q-K-A 里 A 得当 14（最大）
+        bool isStraight = false;
+        if (five)
+        {
+            isStraight = IsConsecutive(ranks);
+            if (!isStraight && ranks[0] == 1 && ranks[ranks.Length - 1] == 13)
+            {
                 // 把 A 从 1 挪到最后当 14，再判一次顺子（10-J-Q-K-A）
                 int[] high = new int[ranks.Length];
                 for (int i = 0; i < ranks.Length - 1; i++) high[i] = ranks[i + 1];
                 high[ranks.Length - 1] = 14;
-        // ① 判断同花（全部花色相同；少于 5 张不算同花）
                 isStraight = IsConsecutive(high);
             }
         }
@@ -38,7 +73,6 @@ public enum HandType
 
         // 最大重复张数 + 对子数量
         int maxSame = 0;
-        // ② 取点数并排序（判断顺子用）
         int pairCount = 0;
         for (int i = 1; i <= 13; i++)
         {
@@ -52,14 +86,12 @@ public enum HandType
         if (maxSame == 3 && pairCount == 1) return HandType.FullHouse;
         if (isFlush) return HandType.Flush;
         if (isStraight) return HandType.Straight;
-        // ③ 判断顺子（必须 5 张连续）。A 默认是 1（最小），但 10-J-Q-K-A 里 A 得当 14（最大）
         if (maxSame == 3) return HandType.ThreeOfAKind;
         if (pairCount == 2) return HandType.TwoPair;
         if (pairCount == 1) return HandType.OnePair;
         return HandType.HighCard;
     }
 
-                // 把 A 从 1 挪到最后当 14，再判一次顺子（10-J-Q-K-A）
     // 判断数组是否连续（2,3,4,5,6）
     static bool IsConsecutive(int[] arr)
     {
@@ -67,11 +99,9 @@ public enum HandType
         {
             if (arr[i + 1] != arr[i] + 1) return false;
         }
-        // ④ 统计每种点数的张数（index 1~13）
         return true;
     }
 
-        // 最大重复张数 + 对子数量
     // 牌型 → 筹码（想调数值就改这里）
     public static int GetChips(HandType type)
     {
@@ -80,13 +110,9 @@ public enum HandType
         if (type == HandType.FullHouse) return 25;
         if (type == HandType.Flush) return 18;
         if (type == HandType.Straight) return 15;
-        // ⑤ 从高到低判定
         if (type == HandType.ThreeOfAKind) return 10;
         if (type == HandType.TwoPair) return 6;
         if (type == HandType.OnePair) return 3;
         return 1; // HighCard
     }
 }
-    // 判断数组是否连续（2,3,4,5,6）
-        {
-        }

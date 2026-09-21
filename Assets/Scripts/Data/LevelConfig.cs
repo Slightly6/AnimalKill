@@ -9,6 +9,10 @@ public enum NodeType
     Upgrade,   // 强化（占位）
     Chest,      //箱子
     Boss       // Boss（K）
+}
+
+/// <summary>
+/// 一个战斗关卡的所有可变配置。放进 LevelDatabase 的大数组里，逐关填。
 /// </summary>
 [System.Serializable]
 public class LevelConfig

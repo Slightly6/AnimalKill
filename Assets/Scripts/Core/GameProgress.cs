@@ -82,6 +82,10 @@ using UnityEngine;
         public static bool IsNonBattleNode()
         {
             return currentNodeType == NodeType.Shop || currentNodeType == NodeType.Upgrade;
+        }
+
+        // 找某排某列的节点（找不到返回 null）
+        public static MapNodeData FindNode(int row, int col)
         {
             for (int i = 0; i < map.Count; i++)
             {
