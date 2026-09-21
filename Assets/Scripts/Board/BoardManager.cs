@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 /// <summary>
@@ -90,7 +91,8 @@ public class BoardManager : Singleton<BoardManager>
         if (cfg == null || cfg.enemyDeck.Count == 0) return;
 
         int n = Random.Range(cfg.minPreviewCards, cfg.maxPreviewCards + 1);
-        List<int> lanes = ShuffledLanes();   // 打乱 0~4，预出牌随机落位
+        List<int> lanes = new List<int> { 0, 1, 2, 3, 4 };
+        ShuffleList(lanes);   // 打乱 0~4，预出牌随机落位
         for (int i = 0; i < 5 && i < n; i++)
         {
             CreateEnemyPreview(lanes[i]);
@@ -152,25 +154,6 @@ public class BoardManager : Singleton<BoardManager>
         return slot != null ? slot.CurrentCard : null;
     }
 
-    // 预出排只有敌方有；玩家侧查询返回 null
-    public CardSlot GetPreviewSlotForSide(int lane, bool isPlayerSide)
-    {
-        return isPlayerSide ? null : GetPreviewSlot(lane);
-    }
-
-    // 越道猎杀用：敌方当前排最强（力量最高）的活着的牌；没有返回 null
-    public Card FindStrongestEnemy()
-    {
-        Card best = null;
-        for (int i = 0; i < 5; i++)
-        {
-            Card c = GetCardAt(i, false);
-            if (c == null || c.IsDead) continue;
-            if (best == null || c.CurrentPower > best.CurrentPower) best = c;
-        }
-        return best;
-    }
-
     // 遍历某一排所有活着的牌
     public void ForEachCard(bool isPlayerSide, System.Action<Card> act)
     {
@@ -197,13 +180,6 @@ public class BoardManager : Singleton<BoardManager>
         return null;
     }
 
-    // 把牌从它当前所在的槽位移除（不销毁实体，涅槃回手用）
-    public void RemoveCardFromBoard(Card card)
-    {
-        CardSlot slot = FindSlotOfCard(card);
-        if (slot != null) slot.RemoveCard();
-    }
-
     // 在玩家排找离 worldPos（桌面 XZ 平面）最近的槽位；离太远（超过半格多）返回 null
     public CardSlot FindNearestPlayerSlot(Vector3 worldPos)
     {
@@ -226,7 +202,7 @@ public class BoardManager : Singleton<BoardManager>
 
     // ========== AI ==========
 
-    // 在预出排创建一张卡（扣着）
+    // 在预出排创建一张卡
     void CreateEnemyPreview(int lane)
     {
         CardSlot slot = GetPreviewSlot(lane);
@@ -235,8 +211,7 @@ public class BoardManager : Singleton<BoardManager>
 
         CardDataSO data = currentConfig.enemyDeck[Random.Range(0, currentConfig.enemyDeck.Count)];
         int bonus = currentConfig.enemyBonusPower;
-        bool enemyAwakened = currentConfig.enemyAwakened;
-        if (enemyAwakened) bonus += 3;   // 觉醒 = 战力 +3
+        bool enemyAwakened = true;   // 敌人默认全觉醒（带技能），不额外加战力
 
         GameObject go = Instantiate(enemyCardPrefab, slot.transform);
         Card card = go.GetComponent<Card>();
@@ -248,49 +223,56 @@ public class BoardManager : Singleton<BoardManager>
     }
 
     // 打乱 0~4，返回随机顺序的通道列表（让预出牌随机落位，不按顺序）
-    private List<int> ShuffledLanes()
+    private void ShuffleList<T>(List<T> list)
     {
-        List<int> lanes = new List<int> { 0, 1, 2, 3, 4 };
-        for (int i = lanes.Count - 1; i > 0; i--)
+        for (int i = list.Count - 1; i > 0; i--)
         {
             int j = Random.Range(0, i + 1);
-            int temp = lanes[i];
-            lanes[i] = lanes[j];
-            lanes[j] = temp;
+            (list[i], list[j]) = (list[j], list[i]);
         }
-        return lanes;
     }
 
     // ========== 回合推进 ==========
 
     // 预出排是否有牌（任意位置有牌返回 true）
-    private bool HasPreviewCard()
+    private List<int> HasPreviewCard()
     {
+        List<int> c=new List<int>();
         for (int i = 0; i < 5; i++)
         {
-            if (!GetPreviewSlot(i).IsEmpty) return true;
+            if (!GetPreviewSlot(i).IsEmpty) c.Add(i);
         }
-        return false;
+        return c;
     }
 
     // 补预出排：没牌就补 n 张（随机落位），前移完立刻补
+    // int a = 0;
     private void RefillPreview()
     {
         if (currentConfig == null) return;
-        if (HasPreviewCard()) return;   // 还有牌就不补
-
+        // if(HasPreviewCard().Count>0&&a<2)
+        // {
+        //     a++;
+        //     return;
+        // }
+        // a=0;
+        List<int> occupiedLanes = HasPreviewCard();
+        
+        List<int> allLanes = new List<int> { 0, 1, 2, 3, 4 };
+        List<int> availableLanes = allLanes.Except(occupiedLanes).ToList();
+        ShuffleList(availableLanes);
         int n = Random.Range(currentConfig.minRefillCards, currentConfig.maxRefillCards + 1);
-        List<int> lanes = ShuffledLanes();   // 打乱 0~4，随机落位
-        for (int i = 0; i < 5 && i < n; i++)
+         int spawnCount = System.Math.Min(n, availableLanes.Count);
+        for (int i = 0; i < spawnCount; i++)
         {
-            CreateEnemyPreview(lanes[i]);
+            CreateEnemyPreview(availableLanes[i]);
         }
     }
 
     // 预出排下移到当前排（敌方出牌阶段调用）
     public void MovePreviewToCurrent()
     {
-        bool movedAny = false;   // 这次有没有预出牌成功前移
+        // bool movedAny = false;   // 这次有没有预出牌成功前移
 
         for (int i = 0; i < 5; i++)
         {
@@ -305,7 +287,7 @@ public class BoardManager : Singleton<BoardManager>
             card.transform.SetParent(current.transform);
             card.transform.localPosition = Vector3.zero;
             current.PlaceCard(card);
-            movedAny = true;
+            // movedAny = true;
 
             // 敌人正式上场 = 打出：触发 OnPlay 技能（蛛网/拟态/登场增益等）
             card.TriggerAbility(AbilityTrigger.OnPlay, null);
@@ -314,20 +296,21 @@ public class BoardManager : Singleton<BoardManager>
         }
 
         // 卡住检测：预出排有牌却一张都没前移，说明被正式排顶住了
-        if (movedAny)
-        {
-            previewStuckTurns = 0;   // 有前移，正常，重置
-        }
-        else if (HasPreviewCard())
-        {
-            previewStuckTurns++;
-            // 顶住两回合 → 清空预出排，下面 RefillPreview 会从空位置重新随机补，防止卡 bug
-            if (previewStuckTurns >= 2)
-            {
-                ClearPreview();
-                previewStuckTurns = 0;
-            }
-        }
+        // if (movedAny)
+        // {
+        //     previewStuckTurns = 0;   // 有前移，正常，重置
+        // }
+        // else if (HasPreviewCard().Count>0)
+        // {
+        //     previewStuckTurns++;
+        //     // 顶住两回合 → 清空预出排，下面 RefillPreview 会从空位置重新随机补，防止卡 bug
+        //     if (previewStuckTurns >= 2)
+        //     {
+        //         //ClearPreview();
+              
+        //         previewStuckTurns = 0;
+        //     }
+        // }
 
         RefillPreview();   // 前移完（或卡住被清空后），从空位置随机补
     }
@@ -352,10 +335,15 @@ public class BoardManager : Singleton<BoardManager>
         CardSlot slot = FindSlotOfCard(e.card);
         if (slot != null) slot.RemoveCard();
 
-        // 食腐/鼠瘟：场上每死一个单位，带此标记的其他牌 +1 力量
         if (e.card == null) return;
+
+        // ♠2 食腐：场上每死一个单位，带此标记的其他牌 +1 力量
         GrowOnDeath(true, e.card);
         GrowOnDeath(false, e.card);
+
+        // ♠7 深海猎手捡牙：对方死亡且不是这只鲨鱼自己打伤的，+1 牙
+        DeepHunterLoot(true, e.card);
+        DeepHunterLoot(false, e.card);
     }
 
     void GrowOnDeath(bool side, Card dead)
@@ -364,7 +352,23 @@ public class BoardManager : Singleton<BoardManager>
         {
             Card c = GetCardAt(i, side);
             if (c != null && !c.IsDead && c != dead && c.flagGrowAnyDeath)
+            {
                 c.AddPower(1);
+                c.FlashSkill();   // ♠2 食腐触发→青绿闪
+            }
+        }
+    }
+
+    // sharkSide = 鲨鱼所在阵营；死的必须是对方阵营的人才会捡牙
+    void DeepHunterLoot(bool sharkSide, Card dead)
+    {
+        if (dead.IsPlayer == sharkSide) return;   // 自己人死亡不算
+        for (int i = 0; i < 5; i++)
+        {
+            Card shark = GetCardAt(i, sharkSide);
+            if (shark == null || shark.IsDead || !shark.flagDeepHunter) continue;
+            bool selfDealt = dead.damagedBy != null && dead.damagedBy.Contains(shark);
+            if (!selfDealt) { shark.AddTeeth(1); shark.FlashSkill(); }   // ♠7 捡牙→青绿闪
         }
     }
 }

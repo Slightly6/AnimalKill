@@ -16,7 +16,7 @@ MonoBehaviour:
   rank: 7
   animalName: "\u6C34\u725B"
   description: "\u6218\u529B 7"
-  abilityName: "\u51B2\u950B"
+  abilityName: 
   abilityIcon: {fileID: 0}
-  awakenedAbility: {fileID: 11400000, guid: 7d0d65f47a5c9a743b293feb41803b43, type: 2}
+  awakenedAbility: {fileID: 0}
   artwork: {fileID: 0}

@@ -104,12 +104,12 @@ public class BattleManager : Singleton<BattleManager>
         yield return new WaitForSeconds(0.5f);
     }
 
-    // 回合开始：先毒发（可能死人），再触发双方在场牌的 OnTurnStart 技能
+    // 回合开始：鲨鱼掉牙 → 触发双方在场牌的 OnTurnStart 技能
     IEnumerator ProcessTurnStart()
     {
         var board = BoardManager.Instance;
 
-        // 快照，避免死亡/繁殖改变槽位导致遍历错乱
+        // 快照，避免死亡改变槽位导致遍历错乱
         var all = new System.Collections.Generic.List<Card>();
         board.ForEachCard(true, c => all.Add(c));
         board.ForEachCard(false, c => all.Add(c));
@@ -118,8 +118,7 @@ public class BattleManager : Singleton<BattleManager>
         {
             Card c = all[i];
             if (c == null || c.IsDead) continue;
-            c.TickPoison();   // 毒发（无视护甲，可能直接毒死）
-            yield return new WaitForSeconds(0.12f);
+            c.TickTeeth();   // ♠7 潜水态每回合 -2 牙
         }
 
         for (int i = 0; i < all.Count; i++)
@@ -164,39 +163,28 @@ public class BattleManager : Singleton<BattleManager>
             Card attacker = board.GetCardAt(i, true);
             if (attacker == null) continue;
 
-            // 被蛛网/冰冻封住：这一轮不能攻击（攻击后解除，下一轮恢复）
-            if (attacker.flagWeb)
-            {
-                attacker.flagWeb = false;
-                Debug.Log("[战斗] " + attacker.CardName + " 被封住，无法攻击");
-                yield return new WaitForSeconds(0.2f);
-                continue;
-            }
-
-            // 连击：每轮攻击次数（豹/犀牛=2）
-            int strikes = attacker.flagDoubleStrike ? 2 : 1;
+            // ♠6 死亡翻滚：随机扑 1~5 次；普通牌 1 次
+            int strikes = attacker.GetStrikeCount();
             for (int s = 0; s < strikes; s++)
             {
                 if (levelEnded || GameManager.Instance.IsGameOver) yield break;
                 if (attacker.IsDead) break;
 
+                // 翻滚每次扑击都让技能特效闪一下（让玩家看到技能在持续发动）
+                if (strikes > 1) attacker.FlashSkill();
+
                 Card defender = board.GetCardAt(i, false);
-
-                // 越道猎杀：无视对位，扑杀全场最强敌
-                if (attacker.flagCrossLane)
-                {
-                    Card strongest = board.FindStrongestEnemy();
-                    if (strongest != null) defender = strongest;
-                }
-
                 if (defender != null)
                 {
-                    // 对面有卡 → 冲过去打
-                    yield return attacker.StrikeAndReturn(defender);
+                    // ♠7 潜水首击无敌 → ♠4 闪避 → 正常命中（判定敌我对称）
+                    bool miss = defender.ConsumeDiveInvincible() || defender.RollEvade();
+                    yield return attacker.StrikeAndReturn(defender, !miss);
+                    // 翻滚目标中途死亡：剩余次数作废，不转打脸
+                    if (defender.IsDead) break;
                 }
                 else
                 {
-                    // 对面没卡 → 打脸
+                    // 对面没卡 → 打脸（只有第一段可以打脸，避免翻滚一轮连脸带牌全打）
                     yield return attacker.FaceAnim();
                 }
 
@@ -212,49 +200,45 @@ public class BattleManager : Singleton<BattleManager>
         else
         {
             // 阶段2：敌方补牌上前（预出排填到空位）
-        yield return new WaitForSeconds(0.3f);
-        BoardManager.Instance.MovePreviewToCurrent();
-        yield return new WaitForSeconds(0.4f);
+            yield return new WaitForSeconds(0.3f);
+            BoardManager.Instance.MovePreviewToCurrent();
+            yield return new WaitForSeconds(0.4f);
 
-        // 阶段3：敌方所有卡挨个攻击（道具可跳过）
-
+            // 阶段3：敌方所有卡挨个攻击（道具可跳过）
             for (int i = 0; i < 5; i++)
             {
                 if (levelEnded || GameManager.Instance.IsGameOver) yield break;
                 Card attacker = board.GetCardAt(i, false);
                 if (attacker == null) continue;
 
-                // 蛛网：敌方被封一回合，攻击后解封
-                if (attacker.flagWeb)
+                // ♠6 死亡翻滚：敌方鳄鱼也随机扑 1~5 次（敌我对称）
+                int strikes = attacker.GetStrikeCount();
+                for (int s = 0; s < strikes; s++)
                 {
-                    attacker.flagWeb = false;
-                    Debug.Log("[战斗] " + attacker.CardName + " 被蛛网封住，无法攻击");
-                    yield return new WaitForSeconds(0.2f);
-                    continue;
-                }
+                    if (levelEnded || GameManager.Instance.IsGameOver) yield break;
+                    if (attacker.IsDead) break;
 
-                Card defender = board.GetCardAt(i, true);
+                    // 翻滚每次扑击都让技能特效闪一下（敌我一致）
+                    if (strikes > 1) attacker.FlashSkill();
 
-                if (defender != null && !defender.flagUntargetable)
-                {
-                    // 对面有卡且可命中 → 冲过来打
-                    yield return attacker.StrikeAndReturn(defender);
-                }
-                else if (defender != null && defender.flagUntargetable)
-                {
-                    // 对面遁地：照冲，但扑空不结算伤害，也不能转打脸
-                    yield return attacker.StrikeAndReturn(defender, false);
-                }
-                else
-                {
-                    // 对面没卡 → 打玩家脸
-                    yield return attacker.FaceAnim();
-                }
+                    Card defender = board.GetCardAt(i, true);
+                    if (defender != null)
+                    {
+                        // 玩家方潜水无敌 / 闪避：敌方扑空，不能转打脸
+                        bool miss = defender.ConsumeDiveInvincible() || defender.RollEvade();
+                        yield return attacker.StrikeAndReturn(defender, !miss);
+                        if (defender.IsDead) break;
+                    }
+                    else
+                    {
+                        // 对面没卡 → 打玩家脸
+                        yield return attacker.FaceAnim();
+                    }
 
-                yield return new WaitForSeconds(0.25f);
+                    yield return new WaitForSeconds(0.25f);
+                }
             }
         }
-
     }
 }
 

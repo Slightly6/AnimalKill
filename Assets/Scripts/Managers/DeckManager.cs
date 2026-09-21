@@ -55,15 +55,19 @@ public class DeckManager : Singleton<DeckManager>
       private void InitDeck()
     {
       // 跨关继承：进度里已经有牌组就用它；没有（第一次）用 Inspector 的初始牌组
-      if (GameProgress.playerDeck != null && GameProgress.playerDeck.Count > 0)
+      List<CardDataSO> source = (GameProgress.playerDeck != null && GameProgress.playerDeck.Count > 0)
+          ? GameProgress.playerDeck : deckCards;
+
+      // 过滤失效引用：重新生成卡牌资产后，旧引用会变成 null（Missing）
+      drawPile = new List<CardDataSO>();
+      foreach (CardDataSO c in source)
       {
-          drawPile = new List<CardDataSO>(GameProgress.playerDeck);
+          if (c != null) drawPile.Add(c);
+          else Debug.LogWarning("[牌组] 跳过一个失效的卡牌引用——请在编辑器重新点 DeckManager 上的「自动填入52张卡」");
       }
-      else
-      {
-          drawPile = new List<CardDataSO>(deckCards);
-          GameProgress.playerDeck = new List<CardDataSO>(deckCards);   // 存进进度，以后跨关继承
-      }
+
+      if (GameProgress.playerDeck == null || GameProgress.playerDeck.Count == 0)
+          GameProgress.playerDeck = new List<CardDataSO>(drawPile);   // 存进进度，以后跨关继承
       Shuffle(drawPile);
       Debug.Log("牌组初始化完成，共 " + drawPile.Count + " 张");
     }
@@ -222,52 +226,6 @@ public class DeckManager : Singleton<DeckManager>
     {
         HandCards.Remove(card);
         EventBus.Publish(new HandChangedEvent());
-    }
-
-    // 涅槃生还：把场上的牌收回手牌（以 1 力量留下，技能标记保持已用）。
-    // 由卡牌受致命伤且带 FeignDeath 时调用。
-    public void ReturnToHand(Card card)
-    {
-        if (card == null) return;
-
-        BoardManager.Instance.RemoveCardFromBoard(card);
-        card.IsPlayed = false;
-        card.transform.SetParent(handPanel, false);
-        card.transform.localPosition = Vector3.zero;
-        card.transform.localRotation = Quaternion.identity;
-        card.transform.localScale = Vector3.one;
-
-        if (!HandCards.Contains(card)) HandCards.Add(card);
-        EventBus.Publish(new HandChangedEvent());
-        Debug.Log("[技能] " + card.CardName + " 回到手牌");
-    }
-
-    // 繁殖/前赴后继：死亡时从抽牌堆免费拉一张放到指定道，继承 inheritPower 点力量
-    public void SpawnNextOntoSlot(int lane, int inheritPower)
-    {
-        if (drawPile.Count == 0)
-        {
-            Debug.Log("[技能] 牌堆空了，无法繁殖补位");
-            return;
-        }
-
-        CardDataSO data = drawPile[0];
-        drawPile.RemoveAt(0);
-
-        CardSlot slot = BoardManager.Instance.GetSlot(lane, true);
-        if (slot == null || !slot.IsEmpty) return;   // 道没了/被占就不补
-        if (cardPrefab == null) return;
-
-        GameObject go = Instantiate(cardPrefab, slot.transform);
-        Card card = go.GetComponent<Card>();
-        if (card == null) { Destroy(go); return; }
-
-        card.Init(data, true);
-        card.SetFaceDown(false);
-        slot.PlaceCard(card);
-        if (inheritPower > 0) card.AddPower(inheritPower - 1);   // 基础点数已含 1，补差量
-        card.TriggerAbility(AbilityTrigger.OnPlay, null);
-        Debug.Log("[技能] 繁殖补位：" + card.CardName + " 顶上第 " + (lane + 1) + " 路");
     }
 
     // 洗牌

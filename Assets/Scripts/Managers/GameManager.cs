@@ -75,16 +75,11 @@ public class GameManager : Singleton<GameManager>
         EventBus.Unsubscribe<ItemActivatedEvent>(OnItemActivated);
     }
 
-    // 玩家出牌：扣筹码（按牌点数，1~13，A=1）；白吃（FreePlay）技能打出不耗筹码
+    // 玩家出牌：扣筹码（按牌点数，1~13，A=1）
     private void OnCardPlayed(CardPlayedEvent e)
     {
         if (IsGameOver) return;
-        if (!e.isPlayerSide) return;
-        if (e.card != null && e.card.IsFreePlay())
-        {
-            Debug.Log("[出牌] " + e.card.CardName + " 白吃：免费打出");
-            return;
-        }
+        if (!e.isPlayerSide || e.card == null) return;
 
         int cost = (int)e.card.Data.rank;
         LoseChips(cost);

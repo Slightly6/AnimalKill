@@ -36,7 +36,8 @@ public class CardDataSO : ScriptableObject
     [Header("觉醒技能（商店觉醒后生效；未觉醒时卡是白板）")]
     public AbilitySO awakenedAbility;
 
-    // 外观
+    [Header("外观")]
+
     public Sprite artwork;
 
     // ---- 数值 ----
