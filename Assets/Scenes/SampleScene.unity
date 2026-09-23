@@ -1943,7 +1943,8 @@ MonoBehaviour:
   smokeDestroyDelay: 2
   Score: {fileID: 402073229}
   EnemyPos: {fileID: 1492632768}
-  PlayerPos: {fileID: 1141081282}
+  PlayerFoldPos: {fileID: 1141081282}
+  PlayerPos: {fileID: 519420032}
   enemyHandRoot: {fileID: 1286490073}
   enemyHandSpacing: 1.2
   enemyCardsFaceDown: 1

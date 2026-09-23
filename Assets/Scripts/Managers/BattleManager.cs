@@ -136,8 +136,7 @@ public class BattleManager : Singleton<BattleManager>
         int damage = PokerResolver.CalcDamage(baseChips, cardBonus, mult);
 
         // 3. 纯演出（BattleView）：飞牌+计分+飞撞+销毁牌
-        yield return BattleView.Instance.PlayResolveSequence(
-            cards, type, baseChips, mult, damage, coreIndices, isPlay);
+        yield return BattleView.Instance.PlayResolveSequence(cards, type, baseChips, mult, damage, coreIndices, isPlay);
 
         // 4. 游戏逻辑（出牌打人扣敌人筹码；弃牌加盾后期填 currentCheck）
         if (!isPlay)
@@ -181,6 +180,9 @@ public class BattleManager : Singleton<BattleManager>
             yield break;
         }
 
+        resolving = true;
+        GameProgress.transitioning = true;   // 锁输入（InputLocked = mapOpen || transitioning）
+
         // Call/Raise：算伤害（纯牌型伤害 × 意图倍率）
         List<CardDataSO> datas = playData.cards;
         HandType type = PokerResolver.Evaluate(datas);
@@ -192,8 +194,8 @@ public class BattleManager : Singleton<BattleManager>
         int damage = Mathf.RoundToInt(rawDamage * playData.damageMultiplier);
 
         // 演出
-        yield return BattleView.Instance.PlayEnemyResolveSequence(playData, damage);
-
+        // yield return BattleView.Instance.PlayEnemyResolveSequence(playData, damage);
+        yield return BattleView.Instance.PlayEnemyResolveSequence(playData, type, baseChips, mult, damage, coreIndices);
         // 游戏逻辑：先扣护盾，剩余扣玩家筹码
         int blocked = Mathf.Min(currentCheck, damage);
         currentCheck -= blocked;
