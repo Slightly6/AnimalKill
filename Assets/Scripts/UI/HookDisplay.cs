@@ -61,7 +61,7 @@ public class HookDisplay : MonoBehaviour
             CardDisplay cd = CardDisplay.selectedCards[i];
             if (cd == null || cd.Card == null) continue;
             Card c = cd.Card;
-            if (!c.IsPlayer || c.IsPlayed || c.Data == null) continue;
+            if (!c.IsPlayer || c.IsStaged || c.Data == null) continue;
             if (!picked.Contains(c)) picked.Add(c);
         }
 

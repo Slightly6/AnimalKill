@@ -126,10 +126,15 @@ public struct TrophyChangedEvent
     public int count;
 }
 
-// 结束出牌阶段（玩家点按钮跳过等待）
+// 结束出牌阶段（玩家点铃铛：把选中的牌打出结算）
 public struct EndPlayPhaseEvent
 {
-    // 空的结构体，只是一个信号
+    public bool isPlay;
+}
+
+// 弃牌（玩家点弃牌按钮：把选中的牌弃进弃牌堆并补牌）
+public struct DiscardHandEvent
+{
 }
 public struct HandChangedEvent
 {
@@ -168,4 +173,43 @@ public struct SayEvent
     public string Speaker;
     public string Text;
     public SpeakTopic Topic;
+}
+
+
+public enum BattleActor
+{
+    Player,
+    Enemy
+}
+
+public enum EnemyIntentType
+{
+    Check,
+    Call,
+    Raise
+}
+
+public class EnemyPlayData
+{
+    public EnemyIntentType intent;
+    public List<int> handIndices = new List<int>();
+    public List<CardDataSO> cards = new List<CardDataSO>();
+    public float damageMultiplier = 1f;
+}
+//敌人事件
+public struct EnemyHandChangedEvent
+{
+    public EnemyController enemy;
+}
+public struct EnemyIntentChangedEvent
+{
+    public EnemyController enemy;
+    public EnemyIntentType intent;
+}
+
+public struct EnemyHealthChangedEvent
+{
+    public EnemyController enemy;
+    public int current;
+    public int max;
 }

@@ -65,25 +65,12 @@ public class GameManager : Singleton<GameManager>
     {
         IsGameOver = false;
 
-        EventBus.Subscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Subscribe<ItemActivatedEvent>(OnItemActivated);   // 听关卡内点击道具
     }
 
     private void OnDestroy()
     {
-        EventBus.Unsubscribe<CardPlayedEvent>(OnCardPlayed);
         EventBus.Unsubscribe<ItemActivatedEvent>(OnItemActivated);
-    }
-
-    // 玩家出牌：扣筹码（按牌点数，1~13，A=1）
-    private void OnCardPlayed(CardPlayedEvent e)
-    {
-        if (IsGameOver) return;
-        if (!e.isPlayerSide || e.card == null) return;
-
-        int cost = (int)e.card.Data.rank;
-        LoseChips(cost);
-        Debug.Log("[出牌] " + e.card.CardName + " 消耗 " + cost + " 筹码");
     }
 
     // ========== 关卡 ==========
@@ -150,24 +137,17 @@ public class GameManager : Singleton<GameManager>
         // TODO: 后期在这里改各牌型的本关持续增益
     }
 
-    // 本关我方所有在场牌 +delta 战力（三条/四条/同花顺等；道具效果也调用）
+    // 本关我方所有牌 +delta 战力（槽位机制删除后场上无持续牌，暂不生效；
+    // 道具/牌型增益后续挂到新玩法的伤害结算上）
     public void BuffPlayerCards(int delta)
     {
-        for (int i = 0; i < 5; i++)
-        {
-            Card card = BoardManager.Instance.GetCardAt(i, true);
-            if (card != null) card.AddPower(delta);
-        }
+        Debug.Log("[增益] 我方 +" + delta + " 战力（槽位已删除，暂不生效）");
     }
 
-    // 本关敌方所有在场牌 +delta 战力（delta 负数 = 减，顺子用；道具效果也调用）
+    // 本关敌方所有牌 +delta 战力（同上，暂不生效）
     public void BuffEnemyCards(int delta)
     {
-        for (int i = 0; i < 5; i++)
-        {
-            Card card = BoardManager.Instance.GetCardAt(i, false);
-            if (card != null) card.AddPower(delta);
-        }
+        Debug.Log("[增益] 敌方 +" + delta + " 战力（槽位已删除，暂不生效）");
     }
 
     // ========== 商店道具 ==========

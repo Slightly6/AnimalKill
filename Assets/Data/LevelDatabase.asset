@@ -15,18 +15,8 @@ MonoBehaviour:
   levels:
   - levelName: 1
     isBoss: 0
-    enemyDeck:
-    - {fileID: 11400000, guid: db1cf387e1f8f5e438be0f3c3ccb1330, type: 2}
-    - {fileID: 11400000, guid: 7cee01415b1777c4c837dd3004f5093e, type: 2}
-    - {fileID: 11400000, guid: d326f773eb31d394ea61fa5edf7cd1ef, type: 2}
-    - {fileID: 11400000, guid: 25af2734f03a8fd42b1b73577ef1d799, type: 2}
-    - {fileID: 11400000, guid: 5accf113fef45e545b24d0ae7411a72f, type: 2}
+    enemyConfig: {fileID: 11400000, guid: 1b86f7bb9c700784c8aa398401c72654, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
-    minPreviewCards: 1
-    maxPreviewCards: 2
-    minRefillCards: 0
-    maxRefillCards: 1
-    enemyStartingChips: 100
-    initialHandSize: 4
-    drawPerTurn: 1
+    enemyStartingChips: 300
+    initialHandSize: 7

@@ -102,17 +102,76 @@ public static class PokerHandEvaluator
         return true;
     }
 
-    // 牌型 → 筹码（想调数值就改这里）
-    public static int GetChips(HandType type)
+        // 牌型 → 底分（Balatro 式：基础分，还没乘倍率）
+    public static int GetBaseChips(HandType type)
     {
         if (type == HandType.StraightFlush) return 50;
-        if (type == HandType.FourOfAKind) return 35;
-        if (type == HandType.FullHouse) return 25;
-        if (type == HandType.Flush) return 18;
-        if (type == HandType.Straight) return 15;
-        if (type == HandType.ThreeOfAKind) return 10;
-        if (type == HandType.TwoPair) return 6;
-        if (type == HandType.OnePair) return 3;
-        return 1; // HighCard
+        if (type == HandType.FourOfAKind)   return 35;
+        if (type == HandType.FullHouse)      return 28;
+        if (type == HandType.Flush)          return 24;
+        if (type == HandType.Straight)       return 20;
+        if (type == HandType.ThreeOfAKind)   return 16;
+        if (type == HandType.TwoPair)        return 12;
+        if (type == HandType.OnePair)        return 8;
+        return 4; // 高牌
+    }
+
+    // 牌型 → 倍率
+    public static int GetMultiplier(HandType type)
+    {
+        if (type == HandType.StraightFlush) return 5;
+        if (type == HandType.FourOfAKind)   return 4;
+        if (type == HandType.FullHouse)      return 3;
+        if (type == HandType.Flush)          return 3;
+        if (type == HandType.Straight)       return 3;
+        if (type == HandType.ThreeOfAKind)   return 2;
+        if (type == HandType.TwoPair)        return 2;
+        if (type == HandType.OnePair)        return 1;
+        return 1; // 高牌
+    }
+
+    // 最终伤害 = 底分 × 倍率（未加成时的纯牌型伤害）
+    public static int GetDamage(HandType type, int extraChips, float extraMult)
+    {
+        int chips = GetBaseChips(type) + extraChips;
+        float mult = GetMultiplier(type) + extraMult;
+        return (int)(chips * mult);
+    }
+    //判断计分的牌
+    public static HashSet<int> GetCoreCardIndices(List<CardDataSO> cards, HandType type)
+    {
+        HashSet<int> core = new HashSet<int>();
+        int n = cards.Count;
+        if (n == 0) return core;
+
+        // 顺子/同花/葫芦/同花顺：全部是主牌
+        if (type == HandType.Straight || type == HandType.Flush ||
+            type == HandType.FullHouse || type == HandType.StraightFlush)
+        {
+            for (int i = 0; i < n; i++) core.Add(i);
+            return core;
+        }
+
+        // 四条/三条/两对/一对：成对的才是主牌（点数出现 ≥2 次）
+        if (type == HandType.FourOfAKind || type == HandType.ThreeOfAKind ||
+            type == HandType.TwoPair || type == HandType.OnePair)
+        {
+            int[] count = new int[14];
+            for (int i = 0; i < n; i++) count[(int)cards[i].rank]++;
+            for (int i = 0; i < n; i++)
+                if (count[(int)cards[i].rank] >= 2) core.Add(i);
+            return core;
+        }
+
+        // 高牌：只有最大的那张算（A 当 14 最大）
+        int bestIdx = 0;
+        int bestVal = (int)cards[0].rank; if (bestVal == 1) bestVal = 14;
+        for (int i = 1; i < n; i++)
+        {
+            int v = (int)cards[i].rank; if (v == 1) v = 14;
+            if (v > bestVal) { bestVal = v; bestIdx = i; }
+        }
+        core.Add(bestIdx);
+        return core;
     }
 }

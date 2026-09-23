@@ -149,7 +149,6 @@ MonoBehaviour:
   CurrentPower: 0
   IsDead: 0
   IsPlayer: 0
-  IsPlayed: 0
   flipDuration: 0.3
   ScaleX: 0.7
   arcHeight: 1.2
@@ -172,6 +171,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dragScale: 0.8
   dragPixels: 15
+  Table: {fileID: 9204990413418171625, guid: 4a3a59ecf6881bc449c6c0e758170635, type: 3}
 --- !u!65 &5339620174248007879
 BoxCollider:
   m_ObjectHideFlags: 0

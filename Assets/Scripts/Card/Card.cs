@@ -21,7 +21,7 @@ public class Card : MonoBehaviour
     [System.NonSerialized] public int PowerBonus;   // 技能累计加的战力（显示在 bonusText 上，+1/-1）
     public bool IsDead;
     public bool IsPlayer;
-    public bool IsPlayed;   // 已经打出去的牌（不能再拖）
+    //public bool IsPlayed;   // 已经打出去的牌（不能再拖）
     public float flipDuration=0.3f;   // 翻面动画时长
     public float ScaleX=0.8f;
     public float arcHeight=1.2f;          // 半圆弧猛冲的高度（跳多高）
@@ -33,7 +33,7 @@ public class Card : MonoBehaviour
     [System.NonSerialized] public bool IsFaceDown = true;   // 默认扣着（背面朝上），不在 Inspector 显示
     [System.NonSerialized] public SortingGroup sortingGroup;   // 缓存引用，避免每帧 GetComponent
     [System.NonSerialized] public bool IsSelected;   // 这张牌被点选（准备出牌）
-
+    [System.NonSerialized] public bool IsStaged;   // 已拖上桌集结（还没结算）
     // ---- 觉醒技能运行时 ----
     // runtimeAbility：这张牌本局生效的技能（玩家=已觉醒 / 敌方=关卡配置觉醒），未觉醒为 null
     [System.NonSerialized] public AbilitySO runtimeAbility;
@@ -70,7 +70,7 @@ public class Card : MonoBehaviour
 
         // 只收集挂着 PlayingCard shader 的 MeshRenderer（自动排除 TextMeshPro 文字渲染器）
         var all = GetComponentsInChildren<Renderer>(true);
-        var list = new System.Collections.Generic.List<Renderer>(all.Length);
+        var list = new List<Renderer>(all.Length);
         for (int i = 0; i < all.Length; i++)
         {
             if (all[i].sharedMaterial != null && all[i].sharedMaterial.shader != null
@@ -121,8 +121,22 @@ public class Card : MonoBehaviour
         if (skillJitterRoutine != null) StopCoroutine(skillJitterRoutine);
         skillJitterRoutine = StartCoroutine(SkillJitterRoutine());
     }
-
+        public IEnumerator StandUp(float duration = 0.15f)
+    {
+        Quaternion from = transform.rotation;
+        // 直立朝向：面向玩家（和手牌直立时同角度，抄你手牌的rotation）
+        Quaternion to = Quaternion.Euler(0, 180, 0);
+        float t = 0;
+        while (t < duration)
+        {
+            t += Time.deltaTime;
+            transform.rotation = Quaternion.Slerp(from, to, t / duration);
+            yield return null;
+        }
+        transform.rotation = to;
+    }
     private Coroutine skillJitterRoutine;
+    internal Vector3 position;
 
     // 技能发动抖动：用 localScale 做"鼓一下+高频小抖"，不动 position/rotation，
     // 避免和攻击/受击/翻面等动画的 transform 写入冲突（之前改 position 会瞬移走卡牌导致特效跟着消失）。
@@ -202,16 +216,16 @@ public class Card : MonoBehaviour
     {
         IsFaceDown = faceDown;
         transform.localRotation = Quaternion.Euler(0, faceDown ? 0f : 180f, 0);
-        SetTextsVisible(!faceDown);
+        // SetTextsVisible(!faceDown);
     }
 
     // 点数文字只在正面显示（背面时被背图盖住，这里只控文字的显隐）
-    void SetTextsVisible(bool showFront)
-    {
-        for (int i = 0; i < rankTexts.Length; i++)
-            if (rankTexts[i] != null) rankTexts[i].gameObject.SetActive(showFront);
-        RefreshBonusText();   // 加/减的文字只在正面显示，且只有非 0 才显示
-    }
+    // void SetTextsVisible(bool showFront)
+    // {
+    //     for (int i = 0; i < rankTexts.Length; i++)
+    //         if (rankTexts[i] != null) rankTexts[i].gameObject.SetActive(showFront);
+    //     RefreshBonusText();   // 加/减的文字只在正面显示，且只有非 0 才显示
+    // }
 
     // 翻面动画：绕 Y 轴从当前面转到另一面（像翻真卡）
     public IEnumerator FlipAnim()
@@ -231,7 +245,7 @@ public class Card : MonoBehaviour
 
         IsFaceDown = !IsFaceDown;
         transform.localRotation = Quaternion.Euler(0, toY, 0);
-        SetTextsVisible(!IsFaceDown);
+        // SetTextsVisible(!IsFaceDown);
     }
 
     // 平着翻面（抽牌用）：牌躺在牌堆上，绕世界 Z 轴（长边）翻过去露出正面。
@@ -255,7 +269,7 @@ public class Card : MonoBehaviour
 
         IsFaceDown = !IsFaceDown;
         transform.localRotation = Quaternion.AngleAxis(to, Vector3.forward) * flatDown;
-        SetTextsVisible(!IsFaceDown);
+        // SetTextsVisible(!IsFaceDown);
     }
 
     public void RefreshDisplay()
@@ -345,12 +359,7 @@ public class Card : MonoBehaviour
     public int GetStrikeDamage()
     {
         int dmg = CurrentPower;
-        if (flagColony)
-        {
-            int count = 0;
-            BoardManager.Instance.ForEachCard(IsPlayer, c => { if (!c.IsDead) count++; });//lambda表达式传入ccount计算人数
-            dmg = CurrentPower * Mathf.Max(1, count);
-        }
+        // 团居计数依赖槽位机制，槽位已删除，暂按自身 1 张算（技能系统待新玩法重做）
         if (flagDive && teeth > 0) dmg *= teeth;
         return dmg;
     }
@@ -567,11 +576,10 @@ public class Card : MonoBehaviour
         IsDead = true;
         AudioManager.Instance.PlayDeath();   // 死亡音效
 
-        CardSlot slot = BoardManager.Instance.FindSlotOfCard(this);
         EventBus.Publish(new CardDiedEvent
         {
             card = this,
-            laneIndex = slot != null ? slot.laneIndex : -1,
+            laneIndex = -1,   // 槽位已删除
             isPlayerSide = IsPlayer
         });
 

@@ -1,25 +1,36 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 战斗总管——单关回合状态机。
-/// 由 MapManager 调 StartLevel 开一关，跑到过关或玩家输。
-/// 流程：玩家出牌 → 战斗（玩家攻击 → 敌方补牌 → 敌方攻击）→ 循环
+/// 战斗总管——牌型攻击版（手牌制，槽位/拖牌上桌已删除）。
+/// 只负责战斗流程编排和游戏逻辑（扣筹码/护盾/次数）。
+/// 演出在 BattleView（同物体挂载），牌型计算在 PokerResolver，敌人在 EnemyController。
+/// 交互：点手牌选中（BattleView 出虚影）→ 铃铛把牌飞到虚影位结算；弃牌按钮同理（isPlay 区分）。
 /// </summary>
 public class BattleManager : Singleton<BattleManager>
 {
-    public TurnPhase CurrentPhase { get; private set; }// 当前阶段
+    public TurnPhase CurrentPhase { get; private set; }   // 当前阶段
     public bool IsPlayerTurn { get; private set; } = true;// 只剩玩家回合，恒为 true
-    public bool IsInBattle { get; private set; }   // 是否正在战斗
+    public bool IsInBattle { get; private set; }          // 是否正在战斗
 
-    private bool skipPlayPhase = false;  // 玩家点了结束回合
-    private bool skipEnemyAttack = false;  // 道具效果：本回合跳过敌方攻击
-    private bool levelEnded = false;     // 本关结束（过关或玩家输）
+    [Header("每关次数")]
+    public int playsPerLevel = 8;      // 出牌次数+弃牌次数
+    [Header("不勾选为call")]
+    public bool isPlay = false;        // false 打人，true 加盾
+    public int actionsLeft { get; private set; }
+
+    [Header("护盾")]
+    private int currentCheck = 0;      // 当前未使用，后期填（弃牌获得 80% 伤害的护盾，每回合衰减 1）
+
+    private bool playRequested = false;   // 玩家按了铃铛
+    private bool levelEnded = false;      // 本关结束（过关或玩家输）
+    private bool resolving = false;       // 结算/弃牌演出中，锁操作
     private Coroutine battleRoutine;
 
     private void Start()
     {
-        // 监听结束出牌按钮
+        BattleView.Instance.Init();   // 初始化演出层（相机+阴影保底）
         EventBus.Subscribe<EndPlayPhaseEvent>(OnEndPlayPhase);
         EventBus.Subscribe<LevelClearedEvent>(OnLevelCleared);
     }
@@ -30,22 +41,18 @@ public class BattleManager : Singleton<BattleManager>
         EventBus.Unsubscribe<LevelClearedEvent>(OnLevelCleared);
     }
 
-    // 玩家点了"结束回合"
     private void OnEndPlayPhase(EndPlayPhaseEvent e)
     {
-        skipPlayPhase = true;
+        playRequested = true;
+        isPlay = e.isPlay;
     }
 
-    // 道具调用：本回合跳过敌方攻击阶段
+    private void OnLevelCleared(LevelClearedEvent e) { levelEnded = true; }
+
+    // 道具占位：转发给 EnemyController（敌方回合后期接入）
     public void SkipEnemyAttack()
     {
-        skipEnemyAttack = true;
-    }
-
-    // 过关了（敌人筹码打光）
-    private void OnLevelCleared(LevelClearedEvent e)
-    {
-        levelEnded = true;
+        if (EnemyController.Instance != null) EnemyController.Instance.SkipEnemyAttack();
     }
 
     // 开始一关（MapManager 调用）
@@ -53,192 +60,160 @@ public class BattleManager : Singleton<BattleManager>
     {
         IsInBattle = true;
         levelEnded = false;
-        skipPlayPhase = false;
+        resolving = false;
+        playRequested = false;
+        actionsLeft = playsPerLevel;
+        BattleView.Instance.ClearGhosts();
+        BattleView.Instance.ClearSelection();
+        if (cfg.enemyConfig != null)
+        {
+            EnemyController.Instance.Initialize(cfg.enemyConfig);  
+            EnemyController.Instance.PrepareIntent();            
+        }
         if (battleRoutine != null) StopCoroutine(battleRoutine);
         battleRoutine = StartCoroutine(GameLoop());
     }
 
-    // 主循环：跑到本关结束
+    // 主循环
     private IEnumerator GameLoop()
     {
         while (!levelEnded && !GameManager.Instance.IsGameOver)
         {
-            yield return StartCoroutine(RunTurn());
+            // 出牌阶段：等玩家选牌 + 按铃铛（弃牌由事件单独处理，不走这个循环）
+            SetPhase(TurnPhase.Draw);
+            GameProgress.transitioning = false;
+            SetPhase(TurnPhase.Play);
+            playRequested = false;
+            while (!playRequested)
+            {
+                if (levelEnded || GameManager.Instance.IsGameOver) yield break;
+                yield return null;
+            }
+
+            SetPhase(TurnPhase.Battle);
+            yield return StartCoroutine(ResolvePlayerHand());
+            // 玩家出牌后接敌人回合
+            if (levelEnded || GameManager.Instance.IsGameOver) yield break;
+            yield return StartCoroutine(ResolveEnemyTurn());
         }
         IsInBattle = false;
     }
 
-    // 跑一个玩家回合
-    private IEnumerator RunTurn()
+    // 铃铛结算：编排选牌→计算→演出→游戏逻辑→补牌
+    private IEnumerator ResolvePlayerHand()
     {
-        if (levelEnded || GameManager.Instance.IsGameOver) yield break;
+        List<Card> cards = BattleView.Instance.GetSortedSelectedCards();
 
-        skipPlayPhase = false;
-        skipEnemyAttack = false;   // 每回合重置
+        if (cards.Count == 0)
+        {
+            Debug.Log("[铃铛] 没选牌，先点选手牌");
+            yield break;
+        }
+        if (actionsLeft <= 0)
+        {
+            Debug.Log("[铃铛] 本关出牌次数用完了");
+            yield break;
+        }
 
-        // 1. 抽牌
-        SetPhase(TurnPhase.Draw);
-        // 回合开始结算：双方毒发 → 回合开始技能（再生/嗜血/蛰伏/食利）
-        yield return StartCoroutine(ProcessTurnStart());
-        // 进入摸牌阶段 = 切关过渡结束，解锁玩家交互（首回合生效；后续回合保持 false 无害）。
-        // 卷轴飞走期间 root 全屏 Image 仍挡射线，提前解锁不会误点 3D 物体。
+        resolving = true;
+        GameProgress.transitioning = true;   // 锁输入（InputLocked = mapOpen || transitioning）
+
+        // 1. 清选择 + 移手牌列表
+        BattleView.Instance.ClearSelection();
+        foreach (Card c in cards)
+        {
+            if (c != null) DeckManager.Instance.RemoveFromHand(c);
+        }
+            
+
+        // 2. 纯计算（PokerResolver）
+        List<CardDataSO> datas = cards.ConvertAll(c => c.Data);
+        HandType type = PokerResolver.Evaluate(datas);
+        int baseChips = PokerResolver.GetBaseChips(type);
+        int mult = PokerResolver.GetMultiplier(type);
+        HashSet<int> coreIndices = PokerResolver.GetCoreCardIndices(datas, type);
+        int cardBonus = PokerResolver.CalcCardBonus(cards, coreIndices);
+        int damage = PokerResolver.CalcDamage(baseChips, cardBonus, mult);
+
+        // 3. 纯演出（BattleView）：飞牌+计分+飞撞+销毁牌
+        yield return BattleView.Instance.PlayResolveSequence(
+            cards, type, baseChips, mult, damage, coreIndices, isPlay);
+
+        // 4. 游戏逻辑（出牌打人扣敌人筹码；弃牌加盾后期填 currentCheck）
+        if (!isPlay)
+        {
+            GameManager.Instance.EnemyLoseChips(damage);
+        }
+         else 
+        { 
+            currentCheck += Mathf.RoundToInt(damage * 0.8f); 
+        }  // 后期填
+
+        actionsLeft--;
+
+        // 5. 补手牌
+        if (DeckManager.Instance != null) yield return DeckManager.Instance.RefillHand();
+
+        resolving = false;
         GameProgress.transitioning = false;
-        yield return new WaitForSeconds(0.5f);
-
-        // 2. 出牌（一直等玩家放牌，直到按铃铛）
-        SetPhase(TurnPhase.Play);
-        while (!skipPlayPhase)
-        {
-            if (levelEnded || GameManager.Instance.IsGameOver) yield break;
-            yield return null;
-        }
-
-        // 3. 战斗：玩家攻击 → 敌方补牌 → 敌方攻击
-        SetPhase(TurnPhase.Battle);
-        yield return StartCoroutine(ResolveBattle());
-        if (levelEnded || GameManager.Instance.IsGameOver) yield break;
-
-        // 4. 结束
-        SetPhase(TurnPhase.End);
-        ProcessTurnEnd();
-        yield return new WaitForSeconds(0.5f);
     }
 
-    // 回合开始：鲨鱼掉牙 → 触发双方在场牌的 OnTurnStart 技能
-    IEnumerator ProcessTurnStart()
+        // 敌人回合：意图出牌→演出→扣玩家筹码→补牌
+    private IEnumerator ResolveEnemyTurn()
     {
-        var board = BoardManager.Instance;
+        if (EnemyController.Instance == null) yield break;
 
-        // 快照，避免死亡改变槽位导致遍历错乱
-        var all = new System.Collections.Generic.List<Card>();
-        board.ForEachCard(true, c => all.Add(c));
-        board.ForEachCard(false, c => all.Add(c));
+        resolving = true;
+        GameProgress.transitioning = true;
 
-        for (int i = 0; i < all.Count; i++)
+        yield return new WaitForSeconds(0.4f);
+
+        EnemyPlayData playData = EnemyController.Instance.BuildPlayData();
+
+        // Check：不出牌
+        if (playData.intent == EnemyIntentType.Check)
         {
-            Card c = all[i];
-            if (c == null || c.IsDead) continue;
-            c.TickTeeth();   // ♠7 潜水态每回合 -2 牙
+            Debug.Log("[敌人] CHECK，跳过攻击");
+            yield return new WaitForSeconds(0.4f);
+            EnemyController.Instance.PrepareIntent();
+            resolving = false;
+            GameProgress.transitioning = false;
+            yield break;
         }
 
-        for (int i = 0; i < all.Count; i++)
-        {
-            Card c = all[i];
-            if (c == null || c.IsDead) continue;
-            c.TriggerAbility(AbilityTrigger.OnTurnStart, null);
-            yield return new WaitForSeconds(0.08f);
-        }
-    }
+        // Call/Raise：算伤害（纯牌型伤害 × 意图倍率）
+        List<CardDataSO> datas = playData.cards;
+        HandType type = PokerResolver.Evaluate(datas);
+        int baseChips = PokerResolver.GetBaseChips(type);
+        int mult = PokerResolver.GetMultiplier(type);
+        HashSet<int> coreIndices = PokerResolver.GetCoreCardIndices(datas, type);
+        int cardBonus = PokerResolver.CalcCardBonus(datas, coreIndices);
+        int rawDamage = PokerResolver.CalcDamage(baseChips, cardBonus, mult);
+        int damage = Mathf.RoundToInt(rawDamage * playData.damageMultiplier);
 
-    // 回合结束：触发双方 OnTurnEnd 技能（目前留口，后期自己配）
-    void ProcessTurnEnd()
-    {
-        var board = BoardManager.Instance;
-        board.ForEachCard(true, c => c.TriggerAbility(AbilityTrigger.OnTurnEnd, null));
-        board.ForEachCard(false, c => c.TriggerAbility(AbilityTrigger.OnTurnEnd, null));
-    }
+        // 演出
+        yield return BattleView.Instance.PlayEnemyResolveSequence(playData, damage);
 
+        // 游戏逻辑：先扣护盾，剩余扣玩家筹码
+        int blocked = Mathf.Min(currentCheck, damage);
+        currentCheck -= blocked;
+        int actualDamage = damage - blocked;
+        Debug.Log("[敌人攻击] 总:" + damage + " 护盾挡:" + blocked + " 实际:" + actualDamage);
+        if (actualDamage > 0) GameManager.Instance.LoseChips(actualDamage);
+
+        // 敌人手牌更新 + 补牌 + 下回合意图
+        EnemyController.Instance.CommitPlayedCards(playData);
+        EnemyController.Instance.RefillHand();
+        BattleView.Instance.RefreshEnemyHand();
+        EnemyController.Instance.PrepareIntent();
+
+        resolving = false;
+        GameProgress.transitioning = false;
+    }
     // 换阶段 + 发事件
     private void SetPhase(TurnPhase phase)
     {
         CurrentPhase = phase;
-        EventBus.Publish(new PhaseChangedEvent
-        {
-            phase = phase,
-            isPlayerTurn = true
-        });
-    }
-
-    // ============================================================
-    // 战斗结算：玩家攻击 → 敌方补牌 → 敌方攻击
-    // ============================================================
-    private IEnumerator ResolveBattle()
-    {
-        var board = BoardManager.Instance;
-
-        // 阶段1：玩家所有卡挨个攻击
-        for (int i = 0; i < 5; i++)
-        {
-            if (levelEnded || GameManager.Instance.IsGameOver) yield break;
-            Card attacker = board.GetCardAt(i, true);
-            if (attacker == null) continue;
-
-            // ♠6 死亡翻滚：随机扑 1~5 次；普通牌 1 次
-            int strikes = attacker.GetStrikeCount();
-            for (int s = 0; s < strikes; s++)
-            {
-                if (levelEnded || GameManager.Instance.IsGameOver) yield break;
-                if (attacker.IsDead) break;
-
-                // 翻滚每次扑击都让技能特效闪一下（让玩家看到技能在持续发动）
-                if (strikes > 1) attacker.FlashSkill();
-
-                Card defender = board.GetCardAt(i, false);
-                if (defender != null)
-                {
-                    // ♠7 潜水首击无敌 → ♠4 闪避 → 正常命中（判定敌我对称）
-                    bool miss = defender.ConsumeDiveInvincible() || defender.RollEvade();
-                    yield return attacker.StrikeAndReturn(defender, !miss);
-                    // 翻滚目标中途死亡：剩余次数作废，不转打脸
-                    if (defender.IsDead) break;
-                }
-                else
-                {
-                    // 对面没卡 → 打脸（只有第一段可以打脸，避免翻滚一轮连脸带牌全打）
-                    yield return attacker.FaceAnim();
-                }
-
-                yield return new WaitForSeconds(0.25f);
-            }
-        }
-
-        if (levelEnded || GameManager.Instance.IsGameOver) yield break;
-        if (skipEnemyAttack)
-        {
-            Debug.Log("[回合] 敌方攻击被道具跳过");
-        }
-        else
-        {
-            // 阶段2：敌方补牌上前（预出排填到空位）
-            yield return new WaitForSeconds(0.3f);
-            BoardManager.Instance.MovePreviewToCurrent();
-            yield return new WaitForSeconds(0.4f);
-
-            // 阶段3：敌方所有卡挨个攻击（道具可跳过）
-            for (int i = 0; i < 5; i++)
-            {
-                if (levelEnded || GameManager.Instance.IsGameOver) yield break;
-                Card attacker = board.GetCardAt(i, false);
-                if (attacker == null) continue;
-
-                // ♠6 死亡翻滚：敌方鳄鱼也随机扑 1~5 次（敌我对称）
-                int strikes = attacker.GetStrikeCount();
-                for (int s = 0; s < strikes; s++)
-                {
-                    if (levelEnded || GameManager.Instance.IsGameOver) yield break;
-                    if (attacker.IsDead) break;
-
-                    // 翻滚每次扑击都让技能特效闪一下（敌我一致）
-                    if (strikes > 1) attacker.FlashSkill();
-
-                    Card defender = board.GetCardAt(i, true);
-                    if (defender != null)
-                    {
-                        // 玩家方潜水无敌 / 闪避：敌方扑空，不能转打脸
-                        bool miss = defender.ConsumeDiveInvincible() || defender.RollEvade();
-                        yield return attacker.StrikeAndReturn(defender, !miss);
-                        if (defender.IsDead) break;
-                    }
-                    else
-                    {
-                        // 对面没卡 → 打玩家脸
-                        yield return attacker.FaceAnim();
-                    }
-
-                    yield return new WaitForSeconds(0.25f);
-                }
-            }
-        }
+        EventBus.Publish(new PhaseChangedEvent { phase = phase, isPlayerTurn = true });
     }
 }
-

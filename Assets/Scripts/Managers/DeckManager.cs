@@ -26,29 +26,16 @@ public class DeckManager : Singleton<DeckManager>
 
     // 抽牌堆和手牌
     private List<CardDataSO> drawPile = new List<CardDataSO>();// 抽牌堆
-    public List<Card> HandCards { get; private set; } = new List<Card>();// 手牌
-    private int drawsThisTurn = 0;   // 本回合已经抽了几张
-
-    // void Awake()
-    // {
-    //     if (deckCards.Count == 0)
-    //     {
-    //         // ★ 加载 Resources/Cards/ 下所有 CardDataSO
-    //         CardDataSO[] all = Resources.LoadAll<CardDataSO>("Data/Cards");
-    //         deckCards.AddRange(all);
-
-    //         Debug.Log("加载了 " + all.Length + " 张牌");
-    //     }
-    // }
+    private List<CardDataSO> discardPile = new List<CardDataSO>();// 弃牌堆（抽干后洗回去）
+    // 手牌
+    public List<Card> HandCards{get;private set;}=new List<Card>();
     private void Start()
     {
         InitDeck();
-        EventBus.Subscribe<PhaseChangedEvent>(OnPhaseChanged);
     }
 
     private void OnDestroy()
     {
-        EventBus.Unsubscribe<PhaseChangedEvent>(OnPhaseChanged);
     }
 
     // 初始化牌组（整局只洗一次，跨关继承）
@@ -71,14 +58,11 @@ public class DeckManager : Singleton<DeckManager>
     // 每关配置：更新每回合抽牌数，手牌补到开局数（MapManager 调用）
     public void SetupLevel(LevelConfig cfg)
     {
-        drawPerTurn = cfg.drawPerTurn;
 
         if (HandCards.Count < cfg.initialHandSize)
         {
             StartCoroutine(DrawCards(cfg.initialHandSize - HandCards.Count));
         }
-
-        drawsThisTurn = drawPerTurn;   // 本关开局补了牌，第一回合不能再抽
     }
 
     // 同场景换关时调用：原来切场景会把 DeckManager 整个销毁重建（Start→InitDeck 重洗牌），
@@ -90,46 +74,8 @@ public class DeckManager : Singleton<DeckManager>
             if (HandCards[i] != null) Destroy(HandCards[i].gameObject);
         }
         HandCards.Clear();
-        drawsThisTurn = 0;
         InitDeck();
     }
-
-    // 回合阶段变了：回合结束（End 阶段）重置抽牌次数，下一回合又能抽
-    private void OnPhaseChanged(PhaseChangedEvent e)
-    {
-        if (e.phase == TurnPhase.End && e.isPlayerTurn)
-        {
-            drawsThisTurn = 0;
-        }
-    }
-
-    // 尝试抽一张（受每回合 drawPerTurn 限制）
-    public void TryDrawOne()
-    {
-        // 敲钟后（战斗/结束阶段）不能抽牌，直到这回合打完
-        TurnPhase phase = BattleManager.Instance.CurrentPhase;
-        if (phase == TurnPhase.Battle || phase == TurnPhase.End)
-        {
-            Debug.Log("现在不能抽牌");
-            return;
-        }
-
-        if (drawsThisTurn >= drawPerTurn)
-        {
-            Debug.Log("本回合已经抽过牌了");
-            Narrator.Say(SpeakTopic.DrawAlreadyUsed);
-            return;
-        }
-        if (HandCards.Count >= maxHandSize)
-        {
-            Debug.Log("手牌满了");
-            Narrator.Say(SpeakTopic.HandFull);
-            return;
-        }
-        drawsThisTurn++;
-        StartCoroutine(DrawCards(1));
-    }
-
     // 抽 N 张（协程，一张张翻面）
     public System.Collections.IEnumerator DrawCards(int count)
     {
@@ -224,51 +170,44 @@ public class DeckManager : Singleton<DeckManager>
         EventBus.Publish(new HandChangedEvent());
     }
 
-    // 涅槃生还：把场上的牌收回手牌（以 1 力量留下，技能标记保持已用）。
-    // 由卡牌受致命伤且带 FeignDeath 时调用。
-    // public void ReturnToHand(Card card)
-    // {
-    //     if (card == null) return;
+    // 手牌内换位（拖拽换序）：把牌移到新索引
+    public void MoveHandCard(Card card, int newIndex)
+    {
+        int oldIndex = HandCards.IndexOf(card);
+        if (oldIndex < 0) return;
+        newIndex = Mathf.Clamp(newIndex, 0, HandCards.Count - 1);
+        if (oldIndex == newIndex) return;
+        HandCards.RemoveAt(oldIndex);
+        HandCards.Insert(newIndex, card);
+        EventBus.Publish(new HandChangedEvent());
+    }
 
-    //     BoardManager.Instance.RemoveCardFromBoard(card);
-    //     card.IsPlayed = false;
-    //     card.transform.SetParent(handPanel, false);
-    //     card.transform.localPosition = Vector3.zero;
-    //     card.transform.localRotation = Quaternion.identity;
-    //     card.transform.localScale = Vector3.one;
+    // 弃牌：数据进弃牌堆（抽干后洗回），销毁手牌实体
+    public void DiscardToPile(Card card)
+    {
+        if (card == null) return;
+        discardPile.Add(card.Data);
+        HandCards.Remove(card);
+        Destroy(card.gameObject);
+        EventBus.Publish(new HandChangedEvent());
+    }
 
-    //     if (!HandCards.Contains(card)) HandCards.Add(card);
-    //     EventBus.Publish(new HandChangedEvent());
-    //     Debug.Log("[技能] " + card.CardName + " 回到手牌");
-    // }
-
-    // // 繁殖/前赴后继：死亡时从抽牌堆免费拉一张放到指定道，继承 inheritPower 点力量
-    // public void SpawnNextOntoSlot(int lane, int inheritPower)
-    // {
-    //     if (drawPile.Count == 0)
-    //     {
-    //         Debug.Log("[技能] 牌堆空了，无法繁殖补位");
-    //         return;
-    //     }
-
-    //     CardDataSO data = drawPile[0];
-    //     drawPile.RemoveAt(0);
-
-    //     CardSlot slot = BoardManager.Instance.GetSlot(lane, true);
-    //     if (slot == null || !slot.IsEmpty) return;   // 道没了/被占就不补
-    //     if (cardPrefab == null) return;
-
-    //     GameObject go = Instantiate(cardPrefab, slot.transform);
-    //     Card card = go.GetComponent<Card>();
-    //     if (card == null) { Destroy(go); return; }
-
-    //     card.Init(data, true);
-    //     card.SetFaceDown(false);
-    //     slot.PlaceCard(card);
-    //     if (inheritPower > 0) card.AddPower(inheritPower - 1);   // 基础点数已含 1，补差量
-    //     card.TriggerAbility(AbilityTrigger.OnPlay, null);
-    //     Debug.Log("[技能] 繁殖补位：" + card.CardName + " 顶上第 " + (lane + 1) + " 路");
-    // }
+    // 补手牌到 7 张（每轮结算完调用）；抽牌堆空了把弃牌堆洗回去，两堆都空则有几张补几张
+    public System.Collections.IEnumerator RefillHand()
+    {
+        while (HandCards.Count < 7)
+        {
+            if (drawPile.Count == 0)
+            {
+                if (discardPile.Count == 0) yield break;   // 两堆全空，补不了了
+                drawPile = new List<CardDataSO>(discardPile);
+                discardPile.Clear();
+                Shuffle(drawPile);
+                Debug.Log("[牌堆] 抽牌堆已空，弃牌堆洗回（" + drawPile.Count + " 张）");
+            }
+            yield return DrawOneCard();
+        }
+    }
 
     // 洗牌
     private void Shuffle<T>(List<T> list)

@@ -163,11 +163,9 @@ public class MapManager : Singleton<MapManager>
         LevelConfig cfg = database.levels[index];
 
         // 同场景换关：手动模拟原来切场景的销毁重建
-        BoardManager.Instance.ClearPlayerBoard();   // 清玩家槽里上一关的牌
         DeckManager.Instance.ResetForNewLevel();    // 销毁手牌实体、重新洗牌
 
         GameManager.Instance.LoadLevel(cfg);       // 设敌人筹码、清战利品
-        BoardManager.Instance.ResetLevel(cfg);     // 清空敌方、重摆敌人
         DeckManager.Instance.SetupLevel(cfg);      // 补手牌
         EventBus.Publish(new LevelStartedEvent { levelIndex = index, isBoss = cfg.isBoss });
         BattleManager.Instance.StartLevel(cfg);    // 开打

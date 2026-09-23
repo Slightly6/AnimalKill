@@ -19,6 +19,5 @@ public class DeckPile : MonoBehaviour
         DeckManager dm = DeckManager.Instance;
         if (dm == null) return;
 
-        dm.TryDrawOne();
     }
 }

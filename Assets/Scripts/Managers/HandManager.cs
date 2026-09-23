@@ -20,16 +20,11 @@ public class HandManager : MonoBehaviour
     [Header("拖牌时向玩家倾斜（0 = 不翻转）")]
     public float dragTiltAngle = 0f;    // 手牌区整体向玩家倾斜多少度（0 表示不翻转）
 
-    [Header("起点")]
-    public Transform handCenter;        // 手牌区中心点（新版用相机相对，可留空）
-
     private DeckManager deck;
     private Camera mainCam;   // 缓存主相机，避免每帧 Camera.main 查找
 
     void Start()
-    {
-        if (handCenter == null)
-            handCenter = transform;
+    {;
         deck = DeckManager.Instance;
         mainCam = Camera.main;
     }
@@ -105,5 +100,42 @@ public class HandManager : MonoBehaviour
                 sg.sortingOrder = order;
             }
         }
+    }
+
+    // 手牌中心（和 Arrange 里同一个点）
+    public Vector3 GetHandCenter()
+    {
+        if (mainCam == null) mainCam = Camera.main;
+        return mainCam.ViewportToWorldPoint(new Vector3(0.5f, 0.10f, handDist));
+    }
+
+    // 当前实际间距（牌多压缩后的值，和 Arrange 算法一致）
+    public float GetSpacing()
+    {
+        int count = deck.HandCards.Count;
+        float spacing = cardSpacing;
+        if (count > 1 && (count - 1) * cardSpacing > maxHandWidth)
+            spacing = maxHandWidth / (count - 1);
+        return spacing;
+    }
+
+    // 鼠标屏幕点 → 手牌扇面上的世界点（拖拽跟手用）
+    public Vector3 ScreenToHandPoint(Vector3 screenPos)
+    {
+        if (mainCam == null) mainCam = Camera.main;
+        return mainCam.ScreenToWorldPoint(new Vector3(screenPos.x, screenPos.y, handDist));
+    }
+
+    // 鼠标屏幕点 → 松手后该插入的手牌索引
+    public int GetIndexAtScreenPoint(Vector3 screenPos)
+    {
+        int count = deck.HandCards.Count;
+        if (count == 0) return 0;
+
+        Vector3 p = ScreenToHandPoint(screenPos);
+        Vector3 center = GetHandCenter();
+        float localX = Vector3.Dot(p - center, mainCam.transform.right);   // 相对手牌中心的横向偏移
+        float idxF = (count - 1) / 2f + localX / GetSpacing();
+        return Mathf.Clamp(Mathf.RoundToInt(idxF), 0, count - 1);
     }
 }
