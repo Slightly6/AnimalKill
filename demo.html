@@ -1,0 +1,2161 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>动物对垒 · 德州+兽皮 战术Demo</title>
+<style>
+  /* ===== 全局深色主题 ===== */
+  * { box-sizing: border-box; }
+  body {
+    background: #1a1a2e;
+    color: #eee;
+    font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+    margin: 0;
+    padding: 12px;
+    font-size: 14px;
+  }
+  .container { max-width: 1180px; margin: 0 auto; }
+  h1 { text-align: center; color: #ffd700; margin: 8px 0; font-size: 22px; }
+  h2 { color: #ffd700; margin: 12px 0 6px; font-size: 15px; }
+
+  /* 阶段提示 */
+  #phaseInfo {
+    text-align: center;
+    background: #16213e;
+    padding: 8px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-weight: bold;
+    color: #ffd700;
+  }
+
+  /* ===== 兽皮显示 ===== */
+  .pelt-bar {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 8px;
+    background: #16213e;
+    padding: 8px;
+    border-radius: 4px;
+    margin: 8px 0;
+    align-items: center;
+  }
+  .pelt-side { display: flex; flex-direction: column; gap: 4px; padding: 4px 8px; border-radius: 4px; }
+  .pelt-side.enemy { background: rgba(204,51,51,0.12); }
+  .pelt-side.player { background: rgba(60,204,60,0.12); text-align: right; }
+  .pelt-side .label { font-size: 11px; color: #aaa; }
+  .pelt-icons { font-size: 18px; letter-spacing: 2px; }
+  .pelt-icons .pelt { opacity: 1; }
+  .pelt-icons .pelt.lost { opacity: 0.25; filter: grayscale(1); text-decoration: line-through; }
+  .wound-bar { font-size: 11px; color: #f96; }
+  .trophy { color: #ffd700; font-size: 12px; }
+  .pelt-vs { color: #ffd700; font-size: 14px; font-weight: bold; text-align: center; }
+
+  /* ===== 棋盘 5 路 ===== */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    margin: 6px 0;
+  }
+  .lane {
+    border: 1px solid #444;
+    padding: 6px;
+    min-height: 78px;
+    background: #22224a;
+    border-radius: 4px;
+    text-align: center;
+    position: relative;
+  }
+  .lane.deployable { border-color: gold; cursor: pointer; background: #33335a; }
+  .lane.deployable:hover { background: #44446a; }
+  .lane.clickable { cursor: pointer; }
+  .lane.clickable:hover { background: #33336a; }
+  .lane.aggressor { box-shadow: inset 0 0 0 2px #f80; }
+  .lane.guarded::after {
+    content: '🛡'; position: absolute; top: 2px; right: 4px; font-size: 11px; color: #8cf;
+  }
+  .lane.firstblow::after {
+    content: '⚡'; position: absolute; top: 2px; right: 4px; font-size: 11px; color: #fd0;
+  }
+  .lane-num { font-size: 10px; color: #888; }
+  .slot-empty { color: #666; font-size: 12px; line-height: 50px; }
+
+  /* ===== 卡牌样式 ===== */
+  .card {
+    display: inline-block;
+    padding: 4px 8px;
+    background: #fff;
+    color: #000;
+    border-radius: 3px;
+    margin: 2px;
+    font-weight: bold;
+    font-size: 14px;
+    border: 2px solid transparent;
+    min-width: 40px;
+    text-align: center;
+    vertical-align: middle;
+  }
+  .card.red { color: #d00; }
+  .card.clickable { cursor: pointer; }
+  .card.clickable:hover { background: #ffd; }
+  .card.selected { border-color: gold; background: #ffd; }
+  .card.unit { display: block; margin: 2px auto; width: 92%; }
+  .card.back { background: #4a5; color: #fff; }
+  .card.hole { background: #5a3; color: #fff; }
+  .card.community { background: #eee; }
+  .card.discard { background: #6a4; color: #fff; }
+  .card-stats { font-size: 10px; font-weight: normal; }
+  .card.buffed { box-shadow: 0 0 0 2px #fd0 inset; }
+
+  /* ===== 公共牌区 ===== */
+  #community {
+    text-align: center;
+    background: #16213e;
+    padding: 8px;
+    border-radius: 4px;
+    margin: 6px 0;
+    min-height: 50px;
+  }
+
+  /* ===== 资源栏 ===== */
+  .resources {
+    display: flex;
+    gap: 8px;
+    margin: 8px 0;
+    flex-wrap: wrap;
+  }
+  .resource {
+    background: #2a2a3e;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #444;
+    font-size: 13px;
+  }
+  .resource b { color: #ffd700; }
+  .resource.dealer { background: #432; border-color: #a80; }
+
+  /* ===== 手牌/底牌区 ===== */
+  #handCards, #holeCards {
+    background: #16213e;
+    padding: 8px;
+    border-radius: 4px;
+    margin: 6px 0;
+    min-height: 50px;
+  }
+  .section-title { color: #aaa; font-size: 12px; margin-bottom: 4px; }
+  .private-hint { color: #6cf; font-size: 12px; font-style: italic; margin-left: 8px; }
+
+  /* ===== 按钮 ===== */
+  .btn {
+    background: #2a7;
+    color: #fff;
+    border: none;
+    padding: 6px 14px;
+    cursor: pointer;
+    border-radius: 3px;
+    margin: 2px;
+    font-size: 13px;
+  }
+  .btn:hover:not(:disabled) { background: #3c8; }
+  .btn:disabled { background: #555; cursor: not-allowed; opacity: 0.5; }
+  .btn.danger { background: #c33; }
+  .btn.danger:hover:not(:disabled) { background: #e44; }
+  .btn.warn { background: #d80; }
+  .btn.warn:hover:not(:disabled) { background: #ea0; }
+  .btn.call { background: #36c; }
+  .btn.call:hover:not(:disabled) { background: #47d; }
+  .btn.raise { background: #960; }
+  .btn.raise:hover:not(:disabled) { background: #b70; }
+
+  /* 加注调整器 */
+  .raise-control {
+    display: inline-flex;
+    align-items: center;
+    background: #1c2;
+    border-radius: 4px;
+    padding: 4px;
+    margin: 2px;
+    gap: 4px;
+  }
+  .raise-control button {
+    background: #2d8; color: #fff; border: none; padding: 4px 10px;
+    cursor: pointer; font-weight: bold; border-radius: 3px;
+  }
+  .raise-control button:disabled { background: #555; cursor: not-allowed; }
+  .raise-amount { min-width: 60px; text-align: center; background: #000; color: #ffd700;
+    padding: 4px 8px; border-radius: 3px; font-weight: bold; }
+
+  /* ===== 日志 ===== */
+  .log {
+    background: #000;
+    padding: 8px;
+    height: 180px;
+    overflow-y: auto;
+    font-size: 12px;
+    border: 1px solid #333;
+    border-radius: 4px;
+    margin-top: 8px;
+    font-family: 'Consolas', monospace;
+  }
+  .log-entry { margin: 1px 0; }
+  .log-entry.event { color: #ffd700; }
+  .log-entry.combat { color: #f88; }
+  .log-entry.win { color: #4f4; font-weight: bold; }
+  .log-entry.lose { color: #f44; font-weight: bold; }
+  .log-entry.private { color: #6cf; }
+  .log-entry.bet { color: #fa0; }
+  .log-entry.pelt { color: #f0c; }
+
+  /* 行动区 */
+  #actions {
+    background: #16213e;
+    padding: 10px;
+    border-radius: 4px;
+    margin: 8px 0;
+    min-height: 40px;
+  }
+  .hint { color: #ffd700; font-style: italic; }
+  .bet-info { font-size: 12px; color: #aaa; margin: 4px 0; line-height: 1.5; }
+  .bet-info b { color: #fff; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>动物对垒 · 德州+兽皮 战术Demo</h1>
+  <div id="phaseInfo">准备开始</div>
+
+  <div class="pelt-bar" id="peltBar"></div>
+
+  <h2>敌方阵地（上）</h2>
+  <div class="board" id="enemyBoard"></div>
+
+  <div id="community"></div>
+
+  <h2>玩家阵地（下）</h2>
+  <div class="board" id="playerBoard"></div>
+
+  <div class="resources" id="resources"></div>
+
+  <div id="holeCards"></div>
+  <div id="handCards"></div>
+
+  <div id="actions"></div>
+
+  <div class="log" id="log"></div>
+</div>
+
+<script>
+'use strict';
+
+// ============================================================
+// 一、卡牌定义与生成
+// ============================================================
+
+// 花色：黑桃 红心 方片 梅花
+var SUITS = ['♠','♥','♦','♣'];
+// 点数 2-14（J=11 Q=12 K=13 A=14）
+var RANKS = [2,3,4,5,6,7,8,9,10,11,12,13,14];
+var RANK_NAMES = {11:'J',12:'Q',13:'K',14:'A'};
+
+function rankLabel(r) { return r <= 10 ? String(r) : RANK_NAMES[r]; }
+function isRed(s) { return s === '♥' || s === '♦'; }
+
+// 按花色定基调（rank 只用于牌型判定）
+// ♠黑桃 高攻低血，♥红心 平衡，♦方块 高血低攻，♣梅花 低费特殊
+function makeCard(rank, suit) {
+  var attack, hp, cost;
+  if (suit === '♠') {
+    attack = rank;
+    hp = Math.ceil(rank / 2);
+    cost = Math.ceil(rank / 5);
+  } else if (suit === '♥') {
+    attack = Math.floor(rank * 0.7);
+    hp = Math.floor(rank * 0.7);
+    cost = Math.ceil(rank / 5);
+  } else if (suit === '♦') {
+    attack = Math.ceil(rank / 2);
+    hp = rank;
+    cost = Math.ceil(rank / 5);
+  } else {
+    attack = Math.floor(rank * 0.6);
+    hp = Math.floor(rank * 0.8);
+    cost = Math.max(1, Math.ceil(rank / 5) - 1);
+  }
+  return {
+    rank: rank, suit: suit, attack: attack, hp: hp, maxHp: hp, cost: cost,
+    id: suit + rankLabel(rank)
+  };
+}
+
+function makeDeck() {
+  var deck = [];
+  for (var i=0; i<SUITS.length; i++)
+    for (var j=0; j<RANKS.length; j++)
+      deck.push(makeCard(RANKS[j], SUITS[i]));
+  return deck;
+}
+
+function shuffle(arr) {
+  for (var i = arr.length-1; i>0; i--) {
+    var j = Math.floor(Math.random()*(i+1));
+    var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+  }
+  return arr;
+}
+
+// ============================================================
+// 二、扑克牌型评估器
+// ============================================================
+function evaluate5(cards) {
+  var ranks = cards.map(function(c){return c.rank;}).slice().sort(function(a,b){return b-a;});
+  var suits = cards.map(function(c){return c.suit;});
+  var isFlush = suits.every(function(s){return s === suits[0];});
+
+  var uniqueRanks = [];
+  ranks.forEach(function(r){ if (uniqueRanks.indexOf(r)===-1) uniqueRanks.push(r); });
+  uniqueRanks.sort(function(a,b){return a-b;});
+  var isStraight = false, straightHigh = 0;
+  if (uniqueRanks.length === 5) {
+    if (uniqueRanks[4] - uniqueRanks[0] === 4) { isStraight = true; straightHigh = uniqueRanks[4]; }
+    if (uniqueRanks[0]===2 && uniqueRanks[1]===3 && uniqueRanks[2]===4
+        && uniqueRanks[3]===5 && uniqueRanks[4]===14) {
+      isStraight = true; straightHigh = 5;
+    }
+  }
+
+  var counts = {};
+  ranks.forEach(function(r){ counts[r] = (counts[r]||0)+1; });
+  var sortedByCount = Object.keys(counts).map(function(k){return [Number(k), counts[k]];})
+    .sort(function(a,b){ return b[1]-a[1] || b[0]-a[0]; });
+  var countVals = sortedByCount.map(function(x){return x[1];});
+
+  if (isStraight && isFlush) return [8, straightHigh];
+  if (countVals[0] === 4) return [7, sortedByCount[0][0], sortedByCount[1][0]];
+  if (countVals[0] === 3 && countVals[1] === 2) return [6, sortedByCount[0][0], sortedByCount[1][0]];
+  if (isFlush) return [5].concat(ranks);
+  if (isStraight) return [4, straightHigh];
+  if (countVals[0] === 3) return [3, sortedByCount[0][0]].concat(sortedByCount.slice(1).map(function(x){return x[0];}));
+  if (countVals[0] === 2 && countVals[1] === 2) return [2, sortedByCount[0][0], sortedByCount[1][0], sortedByCount[2][0]];
+  if (countVals[0] === 2) return [1, sortedByCount[0][0]].concat(sortedByCount.slice(1).map(function(x){return x[0];}));
+  return [0].concat(ranks);
+}
+
+function compareHands(a, b) {
+  var len = Math.max(a.length, b.length);
+  for (var i=0; i<len; i++) {
+    var av = a[i] || 0, bv = b[i] || 0;
+    if (av !== bv) return av - bv;
+  }
+  return 0;
+}
+
+function bestHand(cards) {
+  if (cards.length < 5) return null;
+  var n = cards.length, best = null, combo = [];
+  function combine(start) {
+    if (combo.length === 5) {
+      var h = evaluate5(combo);
+      if (!best || compareHands(h, best) > 0) best = h;
+      return;
+    }
+    for (var i = start; i < n; i++) {
+      combo.push(cards[i]);
+      combine(i+1);
+      combo.pop();
+    }
+  }
+  combine(0);
+  return best;
+}
+
+function handName(cat) {
+  return ['高牌','一对','两对','三条','顺子','同花','葫芦','四条','同花顺'][cat];
+}
+
+function hasFlushDraw(cards) {
+  var sc = {};
+  cards.forEach(function(c){ sc[c.suit] = (sc[c.suit]||0)+1; });
+  return Object.keys(sc).some(function(k){return sc[k]===4;});
+}
+function hasStraightDraw(cards) {
+  var set = {};
+  cards.forEach(function(c){ set[c.rank] = true; });
+  if (set[14]) set[1] = true;
+  var arr = Object.keys(set).map(Number).sort(function(a,b){return a-b;});
+  for (var i=0; i<=arr.length-4; i++) {
+    if (arr[i+3] - arr[i] === 3) return true;
+  }
+  return false;
+}
+
+// ============================================================
+// 三、兽皮系统定义
+// ============================================================
+// 五种兽皮，绑定被动效果（被夺时对方获得通用战利品）
+var PELT_TYPES = ['wolf','bear','deer','snake','boar'];
+var PELT_NAMES = {wolf:'狼皮', bear:'熊皮', deer:'鹿皮', snake:'蛇皮', boar:'野猪皮'};
+var PELT_ICONS = {wolf:'🐺', bear:'🐻', deer:'🦌', snake:'🐍', boar:'🐗'};
+var PELT_DESC = {
+  wolf:  '每街首次加注多1战术点',
+  bear:  '全押时一只动物获护卫',
+  deer:  'Flop可看牌库顶1张',
+  snake: '每局1次摊牌前窥视对手1底牌',
+  boar:  '空路直伤额外+1创伤'
+};
+
+// ============================================================
+// 四、游戏状态
+// ============================================================
+
+// 通用：构造一方状态
+function makeSide() {
+  return {
+    hand: [], hole: [],
+    chips: 20,
+    lanes: [null,null,null,null,null],
+    tacticalPoints: 0,     // 战术点（本街有效，跨街清零）
+    pelts: [],             // 兽皮数组（PELT_TYPES顺序），失去则置null
+    wounds: 0,              // 当前皮上累计创伤（0-4，>=5失皮）
+    trophies: 0,           // 战利品数
+    streetInvested: 0,      // 本街已投入筹码
+    acted: false,           // 本街是否已行动过
+    folded: false,          // 本局是否已弃牌
+    allIn: false,           // 本局是否已全押
+    resonanceUsed: 0,       // 本街共鸣效果使用数（上限3）
+    snakePeekUsed: false,   // 蛇皮摊牌前窥视本局是否用过
+    deerPeekUsed: false,    // 鹿皮Flop看牌库顶是否用过
+    wolfBonusUsed: false,   // 狼皮本街首次加注奖励是否用过
+    pressureOpts: []        // Pressure 进攻指令选项
+  };
+}
+
+var game = {
+  deck: [],
+  playerDiscard: [],
+  enemyDiscard: [],
+  community: [],
+  revealedCommunity: 0,
+  player: makeSide(),
+  enemy: makeSide(),
+  pot: 0,
+  currentBet: 0,           // 本街最高下注
+  lastRaiseSize: 1,        // 上次完整加注量（默认大盲1）
+  minBetUnit: 1,           // 大盲=2，最小加注单位
+  dealerIsPlayer: true,     // 庄家=小盲，每局轮换
+  actingSide: 'player',    // 当前行动方
+  aggressorSide: null,     // 本街Aggressor
+  pressurePending: false,  // 是否有Pressure进攻指令待处理
+  pendingDamage: {player:0, enemy:0}, // 本街待结算直伤
+  handCount: 0,
+  ended: false,
+  result: null,
+  phase: 'init',
+  sub: 'idle',
+  selectedCard: null,
+  selectedLane: null,
+  resonanceMode: null,     // 共鸣触发中需要选择
+  trophyMode: null,        // 战利品使用模式
+  pressureMode: false,     // Pressure指令模式
+  raiseAmount: 4           // 默认加注金额（动态调整）
+};
+
+// ============================================================
+// 五、日志
+// ============================================================
+function log(msg, cls) {
+  var div = document.createElement('div');
+  div.className = 'log-entry' + (cls ? ' '+cls : '');
+  div.textContent = msg;
+  var el = document.getElementById('log');
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ============================================================
+// 六、初始化与跨局处理
+// ============================================================
+
+// 初始化兽皮数组：5种各一张
+function initPelts(side) {
+  side.pelts = PELT_TYPES.slice();
+  side.wounds = 0;
+}
+
+function startGame() {
+  game.deck = shuffle(makeDeck());
+  game.playerDiscard = []; game.enemyDiscard = [];
+  game.community = []; game.revealedCommunity = 0;
+  game.player = makeSide(); game.enemy = makeSide();
+  initPelts(game.player); initPelts(game.enemy);
+  // 第一局庄家随机
+  game.dealerIsPlayer = Math.random() < 0.5;
+  game.pot = 0;
+  game.phase = 'init'; game.sub = 'idle';
+  game.selectedCard = null; game.selectedLane = null;
+  game.resonanceMode = null; game.trophyMode = null;
+  game.pressureMode = false; game.pressurePending = false;
+  game.pendingDamage = {player:0, enemy:0};
+  game.handCount = 0;
+  game.ended = false; game.result = null;
+  game.aggressorSide = null;
+  document.getElementById('log').innerHTML = '';
+  log('===== 战斗开始！双方各 20 筹码 / 5 兽皮 =====', 'event');
+  startNextHand();
+}
+
+// 下一局开始：庄家轮换、发盲注、发底牌
+function startNextHand() {
+  // 庄家轮换：仅在第2局及之后切换（首局沿用 startGame 设的随机值）
+  if (game.handCount > 0) game.dealerIsPlayer = !game.dealerIsPlayer;
+  game.handCount++;
+  // 旧底牌入各自弃牌堆
+  if (game.player.hole.length) game.player.hole.forEach(function(c){ game.playerDiscard.push(c); });
+  if (game.enemy.hole.length) game.enemy.hole.forEach(function(c){ game.enemyDiscard.push(c); });
+  game.community = []; game.revealedCommunity = 0;
+  // 合并洗牌
+  var merged = game.playerDiscard.concat(game.enemyDiscard).concat(game.deck);
+  game.deck = shuffle(merged);
+  game.playerDiscard = []; game.enemyDiscard = [];
+  // 重置本局状态
+  resetHandState(game.player);
+  resetHandState(game.enemy);
+  // 发2张底牌
+  game.player.hole = game.deck.splice(0, 2);
+  game.enemy.hole = game.deck.splice(0, 2);
+  // 补手牌到5
+  while (game.player.hand.length < 5 && game.deck.length) game.player.hand.push(game.deck.pop());
+  while (game.enemy.hand.length < 5 && game.deck.length) game.enemy.hand.push(game.deck.pop());
+  log('===== 第 ' + game.handCount + ' 局开始（庄家/小盲：' + (game.dealerIsPlayer?'玩家':'敌方') + '）=====', 'event');
+  // 盲注在 startStreet 内部（重置之后）发，避免被重置逻辑清零
+  startStreet('preflop');
+}
+
+function resetHandState(side) {
+  side.folded = false;
+  side.allIn = false;
+  side.snakePeekUsed = false;
+  side.deerPeekUsed = false;
+  side.tacticalPoints = 0;
+}
+
+// 盲注自动扣：庄家=小盲1，另一方=大盲2
+function postBlinds() {
+  var smallSide = game.dealerIsPlayer ? game.player : game.enemy;
+  var bigSide = game.dealerIsPlayer ? game.enemy : game.player;
+  // 实际投入按筹码上限（allin兜底）
+  var sb = Math.min(1, smallSide.chips);
+  var bb = Math.min(2, bigSide.chips);
+  smallSide.chips -= sb; smallSide.streetInvested = sb;
+  bigSide.chips -= bb; bigSide.streetInvested = bb;
+  game.pot = sb + bb;
+  game.currentBet = bb;
+  game.lastRaiseSize = bb - sb; // 大盲-小盲=1（最小加注量参考）
+  if (sb < 1 || bb < 2) {
+    // 筹码不足：盲注即全押
+    if (smallSide.chips === 0 && sb > 0) smallSide.allIn = true;
+    if (bigSide.chips === 0 && bb > 0) bigSide.allIn = true;
+  }
+  log('盲注：小盲' + sb + ' / 大盲' + bb + '，底池=' + game.pot, 'bet');
+}
+
+// 开始一个街段
+function startStreet(phase) {
+  game.phase = phase;
+  game.sub = 'bet';
+  // 街段重置
+  game.player.streetInvested = 0;
+  game.enemy.streetInvested = 0;
+  game.player.acted = false;
+  game.enemy.acted = false;
+  game.player.tacticalPoints = 0;
+  game.enemy.tacticalPoints = 0;
+  game.player.resonanceUsed = 0;
+  game.enemy.resonanceUsed = 0;
+  game.player.wolfBonusUsed = false;
+  game.enemy.wolfBonusUsed = false;
+  game.currentBet = 0;
+  game.lastRaiseSize = (phase === 'preflop') ? 1 : 0;
+  game.aggressorSide = null;
+  game.pendingDamage = {player:0, enemy:0};
+  // 临时攻击加成清零（街段级，进入新街清除上一街的）
+  for (var i=0; i<5; i++) {
+    if (game.player.lanes[i]) {
+      game.player.lanes[i].tempAtk = 0;
+      game.player.lanes[i].firstBlow = false;
+    }
+    if (game.enemy.lanes[i]) {
+      game.enemy.lanes[i].tempAtk = 0;
+      game.enemy.lanes[i].firstBlow = false;
+    }
+  }
+
+  // 盲注只在重置之后发（preflop专用），否则会被上面的重置逻辑清零
+  if (phase === 'preflop') postBlinds();
+
+  var names = {preflop:'Preflop 翻牌前', flop:'Flop 翻牌', turn:'Turn 转牌', river:'River 河牌'};
+  log('--- 第' + game.handCount + '局 ' + names[phase] + ' ---', 'event');
+
+  // 翻公共牌
+  if (phase === 'flop') {
+    game.revealedCommunity = 3;
+    log('翻开 Flop 3 张公共牌', 'event');
+    // 鹿皮：Flop可看牌库顶1张
+    if (hasPelt(game.player, 'deer') && !game.player.deerPeekUsed && game.deck.length) {
+      game.player.deerPeekUsed = true;
+      var top = game.deck[game.deck.length-1];
+      log('[鹿皮] 你看到牌库顶：' + top.id, 'private');
+    }
+    triggerResonance('player', 'flop');
+    triggerResonance('enemy', 'flop');
+  } else if (phase === 'turn') {
+    game.revealedCommunity = 4;
+    log('翻开 Turn 第4张公共牌', 'event');
+    triggerResonance('player', 'turn');
+    triggerResonance('enemy', 'turn');
+  } else if (phase === 'river') {
+    game.revealedCommunity = 5;
+    log('翻开 River 第5张公共牌', 'event');
+    triggerResonance('player', 'river');
+    triggerResonance('enemy', 'river');
+  } else {
+    // preflop
+    triggerResonance('player', 'preflop');
+    triggerResonance('enemy', 'preflop');
+  }
+
+  // 行动顺序：preflop 庄家(小盲)先；flop/turn/river 大盲先
+  if (phase === 'preflop') {
+    game.actingSide = game.dealerIsPlayer ? 'player' : 'enemy';
+  } else {
+    game.actingSide = game.dealerIsPlayer ? 'enemy' : 'player';
+  }
+  // 全押方不参与下注
+  if (game.player.allIn && game.enemy.allIn) {
+    // 双方全押：跳过下注阶段，直接进入战斗
+    game.sub = 'deploy';
+    log('双方均已全押，跳过下注直接进入战斗', 'bet');
+    render();
+    if (game.actingSide === 'enemy') setTimeout(aiBeginDeploy, 500);
+    return;
+  }
+  if (getPlayerSide().allIn) {
+    game.actingSide = 'enemy';
+  } else if (getEnemySide().allIn) {
+    game.actingSide = 'player';
+  }
+  render();
+  if (game.actingSide === 'enemy') setTimeout(aiAction, 600);
+}
+
+function getPlayerSide() { return game.player; }
+function getEnemySide() { return game.enemy; }
+function getSide(name) { return name === 'player' ? game.player : game.enemy; }
+function otherSide(name) { return name === 'player' ? 'enemy' : 'player'; }
+
+// ============================================================
+// 七、真德州下注状态机
+// ============================================================
+
+// 当前行动方信息：返回{toCall, minRaise, maxRaise, canCheck, facingBet, allInCap}
+function betContext(sideName) {
+  var side = getSide(sideName);
+  var opp = getSide(otherSide(sideName));
+  var toCall = Math.max(0, game.currentBet - side.streetInvested);
+  // 最小加注至 = currentBet + lastRaiseSize（preflop首次最小=大盲×2=4）
+  var minRaiseTo = game.currentBet + Math.max(game.lastRaiseSize, 1);
+  if (game.phase === 'preflop' && game.currentBet === 2 && game.lastRaiseSize <= 1) {
+    minRaiseTo = 4; // preflop首次最小加注到大盲×2
+  }
+  var maxRaiseTo = side.streetInvested + side.chips; // 全押到投入+剩余
+  var facingBet = toCall > 0;
+  var canCheck = !facingBet;
+  // 落后方补偿：只剩2皮时下注上限少限制（可更深跟注）—— 实现为允许加注额再+2
+  if (side.pelts.filter(function(p){return p;}).length === 2) {
+    minRaiseTo = Math.max(minRaiseTo - 1, game.currentBet + 1);
+  }
+  return {
+    toCall: toCall,
+    minRaiseTo: Math.min(minRaiseTo, maxRaiseTo),
+    maxRaiseTo: maxRaiseTo,
+    canCheck: canCheck,
+    facingBet: facingBet,
+    allInCap: side.chips,
+    oppAllIn: opp.allIn   // 对手已全押：不能再加注
+  };
+}
+
+// 玩家动作入口
+function playerAction(action, amount) {
+  if (game.sub !== 'bet' || game.ended || game.actingSide !== 'player' || game.player.allIn) return;
+  var ctx = betContext('player');
+  var side = game.player;
+  // 对手已全押：不允许下注/加注（只能跟注或弃牌）
+  if ((action === 'bet' || action === 'raise') && game.enemy.allIn) {
+    log('对手已全押，只能跟注或弃牌');
+    return;
+  }
+  if (action === 'fold') {
+    side.folded = true;
+    log('玩家弃牌', 'bet');
+    endHandByFold('enemy');
+    return;
+  }
+  if (action === 'check') {
+    if (!ctx.canCheck) { log('当前面对下注，无法过牌'); return; }
+    log('玩家过牌', 'bet');
+    side.acted = true;
+    afterAction();
+    return;
+  }
+  if (action === 'call') {
+    var pay = Math.min(ctx.toCall, side.chips);
+    side.chips -= pay; side.streetInvested += pay; game.pot += pay;
+    if (side.chips === 0) side.allIn = true;
+    log('玩家跟注 ' + pay + '（剩筹码 ' + side.chips + '）', 'bet');
+    side.acted = true;
+    afterAction();
+    return;
+  }
+  if (action === 'bet') {
+    // 无人下注时下注：amount是总投入
+    if (ctx.facingBet) { log('面对下注应使用加注'); return; }
+    var betAmt = Math.max(2, Math.min(amount, side.chips));
+    side.chips -= betAmt; side.streetInvested += betAmt; game.pot += betAmt;
+    if (side.chips === 0) side.allIn = true;
+    game.currentBet = side.streetInvested;
+    game.lastRaiseSize = betAmt;
+    game.aggressorSide = 'player';
+    log('玩家下注 ' + betAmt + '（剩筹码 ' + side.chips + '）', 'bet');
+    side.acted = true;
+    afterAction();
+    return;
+  }
+  if (action === 'raise') {
+    // 加注到 amount 总投入
+    var raiseTo = Math.max(ctx.minRaiseTo, Math.min(amount, ctx.maxRaiseTo));
+    var addPay = raiseTo - side.streetInvested;
+    if (addPay <= 0) { log('加注金额无效'); return; }
+    side.chips -= addPay; side.streetInvested += addPay; game.pot += addPay;
+    if (side.chips === 0) side.allIn = true;
+    var raiseDelta = side.streetInvested - game.currentBet;
+    game.lastRaiseSize = Math.max(raiseDelta, game.lastRaiseSize);
+    game.currentBet = side.streetInvested;
+    game.aggressorSide = 'player';
+    // 狼皮：每街首次加注多1战术点
+    if (hasPelt(side, 'wolf') && !side.wolfBonusUsed) {
+      side.wolfBonusUsed = true;
+      side.tacticalPoints += 1;
+      log('[狼皮] 首次加注额外获 1 战术点', 'pelt');
+    }
+    log('玩家加注到 ' + side.streetInvested + '（+投入 ' + addPay + '，剩筹码 ' + side.chips + '）', 'bet');
+    side.acted = true;
+    afterAction();
+    return;
+  }
+  if (action === 'allin') {
+    var allinAmt = side.chips;
+    side.chips = 0; side.streetInvested += allinAmt; game.pot += allinAmt;
+    side.allIn = true;
+    if (side.streetInvested > game.currentBet) {
+      var delta = side.streetInvested - game.currentBet;
+      if (delta >= game.lastRaiseSize || game.currentBet === 0) {
+        // 视作完整加注
+        game.lastRaiseSize = Math.max(delta, game.lastRaiseSize);
+        game.currentBet = side.streetInvested;
+        game.aggressorSide = 'player';
+      } else {
+        // 不够最小加注：仍按当前最高投入更新（但不视为完整加注，规则简化处理）
+        game.currentBet = side.streetInvested;
+      }
+    }
+    // 熊皮：全押时一只动物获护卫
+    if (hasPelt(side, 'bear')) {
+      var lanes = [];
+      for (var i=0; i<5; i++) if (side.lanes[i]) lanes.push(i);
+      if (lanes.length) {
+        var li = lanes[Math.floor(Math.random()*lanes.length)];
+        side.lanes[li].guarded = true;
+        log('[熊皮] 全押：路' + li + ' ' + side.lanes[li].id + ' 获护卫', 'pelt');
+      }
+    }
+    log('玩家全押 ' + allinAmt + '（投入累计 ' + side.streetInvested + '）', 'bet');
+    side.acted = true;
+    afterAction();
+    return;
+  }
+}
+
+// 加注调整器
+function adjustRaise(delta) {
+  var ctx = betContext('player');
+  var newAmt = game.raiseAmount + delta;
+  if (delta < 0) newAmt = Math.max(ctx.minRaiseTo, newAmt);
+  else newAmt = Math.min(ctx.maxRaiseTo, newAmt);
+  game.raiseAmount = newAmt;
+  render();
+}
+
+// 动作完成后判定本街下注轮是否结束
+function afterAction() {
+  // 一方弃牌已经走 endHandByFold，不会到这里
+  var p = game.player, e = game.enemy;
+  var investedEqual = (p.streetInvested === e.streetInvested);
+  // 有一方全押：单挑无边池，对方投入 >= 全押方投入即结束（超出部分在 endBettingRound 返还）；
+  // 否则只剩对方需要行动（跟齐或弃牌）——绝不能把行动权再丢回给全押方，之前两边来回切换会卡死
+  if (p.allIn || e.allIn) {
+    var allInInv = p.allIn ? p.streetInvested : e.streetInvested;
+    var otherInv = p.allIn ? e.streetInvested : p.streetInvested;
+    if (otherInv >= allInInv) {
+      log('投入已定，下注结束', 'bet');
+      endBettingRound();
+      return;
+    }
+    // 对方还没跟齐：行动权交给对方
+    game.actingSide = p.allIn ? 'enemy' : 'player';
+    render();
+    if (game.actingSide === 'enemy') setTimeout(aiAction, 700);
+    return;
+  }
+  // 双方都行动过且投入相等：结束
+  if (p.acted && e.acted && investedEqual) {
+    log('双方投入相等且都行动过，下注结束', 'bet');
+    endBettingRound();
+    return;
+  }
+  // 切换行动方（走到这里说明双方都没全押，不会切到无法行动的一方）
+  if (game.actingSide === 'player') game.actingSide = 'enemy';
+  else game.actingSide = 'player';
+  render();
+  if (game.actingSide === 'enemy') setTimeout(aiAction, 700);
+}
+
+// AI 下注逻辑：基于牌力+战场情况
+function aiAction() {
+  if (game.ended || game.sub !== 'bet' || game.actingSide !== 'enemy') return;
+  var side = game.enemy;
+  if (side.allIn) { afterAction(); return; }
+  var ctx = betContext('enemy');
+  // 评估牌力
+  var revealed = game.community.slice(0, game.revealedCommunity);
+  var myCards = side.hole.concat(revealed);
+  var strength = evalHandStrength(myCards);
+  // 战场紧急度：中路是否要被打穿
+  var centerUrgent = (!side.lanes[2] && game.player.lanes[2] && game.player.lanes[2].attack >= 5);
+  // 筹码低时谨慎
+  var lowChips = side.chips <= 3;
+  // 决策
+  var decision = decideAIAction(strength, ctx, lowChips, centerUrgent, side);
+  applyAIAction(side, decision, ctx);
+}
+
+function evalHandStrength(cards) {
+  // 0-1 概率强度估计
+  if (cards.length < 2) return 0.2;
+  if (cards.length === 2) {
+    // preflop
+    var r1 = cards[0].rank, r2 = cards[1].rank;
+    var pair = r1 === r2;
+    var suited = cards[0].suit === cards[1].suit;
+    var high = (r1 + r2) / 28;
+    var s = high * 0.4;
+    if (pair) s += 0.35;
+    if (suited) s += 0.1;
+    if (Math.abs(r1 - r2) === 1) s += 0.05;
+    return Math.min(s, 0.95);
+  }
+  // flop+
+  if (cards.length >= 5) {
+    var h = bestHand(cards);
+    var cat = h[0];
+    var map = [0.1, 0.35, 0.55, 0.7, 0.8, 0.85, 0.92, 0.96, 0.99];
+    var s = map[cat];
+    // 听牌加成
+    if (cat < 5 && hasFlushDraw(cards)) s += 0.08;
+    if (cat < 4 && hasStraightDraw(cards)) s += 0.06;
+    return Math.min(s, 0.99);
+  }
+  return 0.3;
+}
+
+function decideAIAction(strength, ctx, lowChips, urgent, side) {
+  // 弃牌阈值
+  var foldThreshold = lowChips ? 0.25 : 0.18;
+  if (ctx.facingBet && strength < foldThreshold && !urgent) {
+    return {action: 'fold'};
+  }
+  // 加注倾向
+  var aggressive = strength > 0.6 || (urgent && strength > 0.3);
+  // 跟注阈值
+  var callThreshold = lowChips ? 0.35 : 0.25;
+  if (ctx.facingBet) {
+    // 面对下注
+    // 对手已全押时禁用加注分支（只能跟/弃），否则全押方无法响应会来回切换卡死
+    if (aggressive && !ctx.oppAllIn && side.chips > ctx.toCall + 4) {
+      // 加注
+      var raiseTo = ctx.minRaiseTo + Math.floor((ctx.maxRaiseTo - ctx.minRaiseTo) * (strength - 0.5));
+      return {action: 'raise', amount: Math.max(ctx.minRaiseTo, Math.min(raiseTo, ctx.maxRaiseTo))};
+    }
+    if (strength >= callThreshold || urgent) {
+      return {action: 'call'};
+    }
+    return {action: 'fold'};
+  } else {
+    // 无人下注
+    if (aggressive && side.chips >= 2) {
+      var betAmt = 2 + Math.floor(strength * 4);
+      return {action: 'bet', amount: Math.min(betAmt, side.chips)};
+    }
+    return {action: 'check'};
+  }
+}
+
+function applyAIAction(side, dec, ctx) {
+  if (dec.action === 'fold') {
+    side.folded = true;
+    log('敌方弃牌', 'bet');
+    endHandByFold('player');
+    return;
+  }
+  if (dec.action === 'check') {
+    log('敌方过牌', 'bet');
+    side.acted = true;
+    afterAction();
+    return;
+  }
+  if (dec.action === 'call') {
+    var pay = Math.min(ctx.toCall, side.chips);
+    side.chips -= pay; side.streetInvested += pay; game.pot += pay;
+    if (side.chips === 0) side.allIn = true;
+    log('敌方跟注 ' + pay + '（剩筹码 ' + side.chips + '）', 'bet');
+    side.acted = true;
+    afterAction();
+    return;
+  }
+  if (dec.action === 'bet') {
+    var amt = Math.max(2, Math.min(dec.amount, side.chips));
+    side.chips -= amt; side.streetInvested += amt; game.pot += amt;
+    if (side.chips === 0) side.allIn = true;
+    game.currentBet = side.streetInvested;
+    game.lastRaiseSize = amt;
+    game.aggressorSide = 'enemy';
+    if (hasPelt(side, 'wolf') && !side.wolfBonusUsed) {
+      side.wolfBonusUsed = true;
+      side.tacticalPoints += 1;
+      log('[敌方狼皮] 首次加注额外获 1 战术点', 'pelt');
+    }
+    log('敌方下注 ' + amt + '（剩筹码 ' + side.chips + '）', 'bet');
+    side.acted = true;
+    afterAction();
+    return;
+  }
+  if (dec.action === 'raise') {
+    var raiseTo = Math.max(ctx.minRaiseTo, Math.min(dec.amount, ctx.maxRaiseTo));
+    var addPay = raiseTo - side.streetInvested;
+    side.chips -= addPay; side.streetInvested += addPay; game.pot += addPay;
+    if (side.chips === 0) side.allIn = true;
+    var delta = side.streetInvested - game.currentBet;
+    game.lastRaiseSize = Math.max(delta, game.lastRaiseSize);
+    game.currentBet = side.streetInvested;
+    game.aggressorSide = 'enemy';
+    if (hasPelt(side, 'wolf') && !side.wolfBonusUsed) {
+      side.wolfBonusUsed = true;
+      side.tacticalPoints += 1;
+      log('[敌方狼皮] 首次加注额外获 1 战术点', 'pelt');
+    }
+    log('敌方加注到 ' + side.streetInvested + '（+投入 ' + addPay + '）', 'bet');
+    side.acted = true;
+    afterAction();
+    return;
+  }
+}
+
+// 下注轮结束：发放战术点 + 进入部署/攻击
+function endBettingRound() {
+  // 1v1无边池：一方全押金额<另一方，多的返还
+  if (game.player.allIn || game.enemy.allIn) {
+    if (game.player.streetInvested > game.enemy.streetInvested) {
+      var refund = game.player.streetInvested - game.enemy.streetInvested;
+      game.player.chips += refund;
+      game.pot -= refund;
+      game.player.streetInvested = game.enemy.streetInvested;
+      log('玩家全押金额超出敌方跟注，返还 ' + refund + ' 筹码', 'bet');
+    } else if (game.enemy.streetInvested > game.player.streetInvested) {
+      var refund2 = game.enemy.streetInvested - game.player.streetInvested;
+      game.enemy.chips += refund2;
+      game.pot -= refund2;
+      game.enemy.streetInvested = game.player.streetInvested;
+      log('敌方全押金额超出玩家跟注，返还 ' + refund2 + ' 筹码', 'bet');
+    }
+  }
+  // 战术点换算：每投入2筹码=1战术点（向下取整，最低0）
+  // 一方加注另一方弃牌的情况由 endHandByFold 处理（加注方只获基础战术点）
+  var pTP = Math.floor(game.player.streetInvested / 2);
+  var eTP = Math.floor(game.enemy.streetInvested / 2);
+  // 双方全押：按有效筹码上限算（取较小投入封顶）
+  if (game.player.allIn && game.enemy.allIn) {
+    var cap = Math.min(game.player.streetInvested, game.enemy.streetInvested);
+    pTP = Math.floor(cap / 2);
+    eTP = Math.floor(cap / 2);
+  }
+  // 落后方补偿：只剩1皮→下一街获1免费战术点（这里直接加在本街）
+  if (game.player.pelts.filter(function(p){return p;}).length === 1) {
+    pTP += 1;
+    log('[落后补偿] 玩家只剩1皮，+1 战术点', 'pelt');
+  }
+  if (game.enemy.pelts.filter(function(p){return p;}).length === 1) {
+    eTP += 1;
+    log('[落后补偿] 敌方只剩1皮，+1 战术点', 'pelt');
+  }
+  game.player.tacticalPoints += pTP;
+  game.enemy.tacticalPoints += eTP;
+  log('战术点结算：玩家 +' + pTP + '（共 ' + game.player.tacticalPoints + '），敌方 +' + eTP + '（共 ' + game.enemy.tacticalPoints + '）', 'event');
+  // Pressure 系统：本街Aggressor 获1次进攻指令
+  if (game.aggressorSide) {
+    var agSide = getSide(game.aggressorSide);
+    agSide.pressureOpts = generatePressureOpts();
+    log('[Pressure] ' + (game.aggressorSide==='player'?'玩家':'敌方') + ' 本街Aggressor，获1次进攻指令', 'event');
+  }
+  game.sub = 'deploy';
+  render();
+  if (game.actingSide === 'enemy' || (!game.actingSide)) {
+    // 庄家不一定是玩家，部署阶段先玩家行动（顺序与下注无关）
+  }
+  // Aggressor 是玩家→玩家先选Pressure
+  if (game.aggressorSide === 'player' && game.player.pressureOpts.length) {
+    game.pressureMode = true;
+    game.pressurePending = true;
+    log('【Pressure】请选择一项进攻指令：', 'event');
+    render();
+    return;
+  }
+  // 否则如果 Aggressor 是敌方，AI 先用
+  if (game.aggressorSide === 'enemy') {
+    setTimeout(aiUsePressure, 500);
+    return;
+  }
+  // 双方都过牌：无Aggressor，直接部署
+}
+
+function generatePressureOpts() {
+  return [
+    {id:'buff', name:'+2攻击本街', desc:'选一只动物+2攻击（本街）'},
+    {id:'draw', name:'抽1张动物牌', desc:'从牌库抽1张到手中'},
+    {id:'debuff', name:'敌-2攻击本街', desc:'使敌方一只动物本街-2攻击'}
+  ];
+}
+
+function usePressure(optId) {
+  if (!game.pressureMode || game.aggressorSide !== 'player') return;
+  var opt = game.player.pressureOpts.find(function(o){return o.id===optId;});
+  if (!opt) return;
+  game.player.pressureOpts = [];
+  game.pressureMode = false;
+  if (opt.id === 'buff') {
+    // 进入选择状态
+    game.resonanceMode = 'pressure_buff';
+    log('选一只己方动物 +2 攻击（本街）', 'event');
+  } else if (opt.id === 'draw') {
+    if (game.deck.length) {
+      var c = game.deck.pop();
+      game.player.hand.push(c);
+      log('Pressure 抽牌：' + c.id, 'event');
+    }
+  } else if (opt.id === 'debuff') {
+    game.resonanceMode = 'pressure_debuff';
+    log('选一只敌方动物 -2 攻击（本街）', 'event');
+  }
+  game.pressurePending = false;
+  render();
+}
+
+function aiUsePressure() {
+  if (!game.aggressorSide || game.aggressorSide !== 'enemy') {
+    return;
+  }
+  var side = game.enemy;
+  if (!side.pressureOpts.length) return;
+  var opt = side.pressureOpts[Math.floor(Math.random()*side.pressureOpts.length)];
+  side.pressureOpts = [];
+  if (opt.id === 'buff') {
+    var lanes = [];
+    for (var i=0; i<5; i++) if (side.lanes[i]) lanes.push(i);
+    if (lanes.length) {
+      var li = lanes[Math.floor(Math.random()*lanes.length)];
+      side.lanes[li].tempAtk = (side.lanes[li].tempAtk||0) + 2;
+      log('敌方 Pressure：路' + li + ' ' + side.lanes[li].id + ' +2 攻击', 'event');
+    }
+  } else if (opt.id === 'draw') {
+    if (game.deck.length) {
+      var c = game.deck.pop();
+      side.hand.push(c);
+      log('敌方 Pressure 抽1张牌', 'event');
+    }
+  } else if (opt.id === 'debuff') {
+    var pLanes = [];
+    for (var i=0; i<5; i++) if (game.player.lanes[i]) pLanes.push(i);
+    if (pLanes.length) {
+      var li2 = pLanes[Math.floor(Math.random()*pLanes.length)];
+      game.player.lanes[li2].tempAtk = (game.player.lanes[li2].tempAtk||0) - 2;
+      log('敌方 Pressure：玩家路' + li2 + ' -2 攻击', 'event');
+    }
+  }
+  render();
+}
+
+// ============================================================
+// 八、战术点消费系统
+// ============================================================
+
+// 消费动作：deploy / move / buff / firstblow / guard / skill / recover
+function tpDeploy() {
+  if (game.sub !== 'deploy' || game.player.tacticalPoints < 1) {
+    log('部署需 1 战术点'); return;
+  }
+  game.resonanceMode = 'deploy_select';
+  log('部署：先选手牌，再选空路（消耗1战术点）', 'event');
+  render();
+}
+function tpMove() {
+  if (game.sub !== 'deploy' || game.player.tacticalPoints < 1) {
+    log('移动需 1 战术点'); return;
+  }
+  game.resonanceMode = 'move_select';
+  log('移动：选一只己方动物，再选相邻空路（消耗1战术点）', 'event');
+  render();
+}
+function tpBuff() {
+  if (game.sub !== 'deploy' || game.player.tacticalPoints < 1) {
+    log('+1攻击需 1 战术点'); return;
+  }
+  game.resonanceMode = 'buff_select';
+  log('选一只己方动物本街 +1 攻击', 'event');
+  render();
+}
+function tpFirstBlow() {
+  if (game.sub !== 'deploy' || game.player.tacticalPoints < 1) {
+    log('先攻需 1 战术点'); return;
+  }
+  game.resonanceMode = 'firstblow_select';
+  log('选一只己方动物获得先攻（本街先攻击）', 'event');
+  render();
+}
+function tpGuard() {
+  if (game.sub !== 'deploy' || game.player.tacticalPoints < 2) {
+    log('护卫需 2 战术点'); return;
+  }
+  game.resonanceMode = 'guard_select';
+  log('选一只己方动物获得护卫（替相邻路挡一次）', 'event');
+  render();
+}
+function tpRecover() {
+  if (game.sub !== 'deploy' || game.player.tacticalPoints < 3) {
+    log('召回需 3 战术点'); return;
+  }
+  if (game.playerDiscard.length === 0) { log('弃牌堆为空'); return; }
+  game.resonanceMode = 'recover_select';
+  log('选玩家弃牌堆中一张卡回收到手牌（生命复原）', 'event');
+  render();
+}
+
+// 选手牌
+function selectHandCard(card) {
+  if (game.sub !== 'deploy') return;
+  if (game.resonanceMode === 'deploy_select') {
+    game.selectedCard = (game.selectedCard === card) ? null : card;
+    render();
+    return;
+  }
+}
+
+// 部署到路
+function deployToLane(lane) {
+  if (game.resonanceMode !== 'deploy_select' || !game.selectedCard) { log('请先选手牌'); return; }
+  if (game.player.lanes[lane]) { log('该路已有单位'); return; }
+  if (game.player.tacticalPoints < 1) { log('战术点不足'); return; }
+  var card = game.selectedCard;
+  game.player.tacticalPoints -= 1;
+  game.player.hand = game.player.hand.filter(function(c){return c !== card;});
+  var unit = Object.assign({}, card, {tempAtk:0, firstBlow:false, guarded:false, guardedUsed:false});
+  game.player.lanes[lane] = unit;
+  log('玩家部署 ' + card.id + ' 到路' + lane + '（攻' + card.attack + '/血' + card.hp + '）', 'event');
+  game.selectedCard = null;
+  game.resonanceMode = null;
+  render();
+}
+
+// 移动
+function moveSelectLane(lane) {
+  if (game.resonanceMode !== 'move_select') return;
+  if (!game.player.lanes[lane]) { log('该路无单位'); return; }
+  game.selectedLane = lane;
+  log('选择目标相邻空路移动', 'event');
+  render();
+}
+function moveTargetLane(lane) {
+  if (game.resonanceMode !== 'move_select' || game.selectedLane === null) return;
+  var from = game.selectedLane;
+  if (Math.abs(from - lane) !== 1) { log('只能移动到相邻路'); return; }
+  if (game.player.lanes[lane]) { log('目标路已有单位'); return; }
+  if (game.player.tacticalPoints < 1) { log('战术点不足'); return; }
+  game.player.tacticalPoints -= 1;
+  game.player.lanes[lane] = game.player.lanes[from];
+  game.player.lanes[from] = null;
+  log('玩家移动 ' + game.player.lanes[lane].id + ' 从路' + from + ' 到路' + lane, 'event');
+  game.selectedLane = null;
+  game.resonanceMode = null;
+  render();
+}
+
+// Buff
+function buffSelectLane(lane) {
+  if (game.resonanceMode !== 'buff_select') return;
+  var u = game.player.lanes[lane];
+  if (!u) { log('该路无单位'); return; }
+  if (game.player.tacticalPoints < 1) { log('战术点不足'); return; }
+  game.player.tacticalPoints -= 1;
+  u.tempAtk = (u.tempAtk||0) + 1;
+  log('路' + lane + ' ' + u.id + ' 本街 +1 攻击', 'event');
+  game.resonanceMode = null;
+  render();
+}
+function firstBlowSelectLane(lane) {
+  if (game.resonanceMode !== 'firstblow_select') return;
+  var u = game.player.lanes[lane];
+  if (!u) { log('该路无单位'); return; }
+  if (game.player.tacticalPoints < 1) { log('战术点不足'); return; }
+  game.player.tacticalPoints -= 1;
+  u.firstBlow = true;
+  log('路' + lane + ' ' + u.id + ' 获得先攻（本街）', 'event');
+  game.resonanceMode = null;
+  render();
+}
+function guardSelectLane(lane) {
+  if (game.resonanceMode !== 'guard_select') return;
+  var u = game.player.lanes[lane];
+  if (!u) { log('该路无单位'); return; }
+  if (game.player.tacticalPoints < 2) { log('战术点不足'); return; }
+  game.player.tacticalPoints -= 2;
+  u.guarded = true;
+  log('路' + lane + ' ' + u.id + ' 获得护卫', 'event');
+  game.resonanceMode = null;
+  render();
+}
+function recoverCard(card) {
+  if (game.resonanceMode !== 'recover_select') return;
+  if (game.player.tacticalPoints < 3) { log('战术点不足'); return; }
+  game.player.tacticalPoints -= 3;
+  game.playerDiscard = game.playerDiscard.filter(function(c){return c !== card;});
+  card.hp = card.maxHp;
+  game.player.hand.push(card);
+  log('召回 ' + card.id + ' 回手牌（生命复原）', 'event');
+  game.resonanceMode = null;
+  render();
+}
+
+// 战利品使用（抽1牌/1战术点/动物+1/+1）
+function useTrophy(mode) {
+  if (game.player.trophies <= 0) { log('无战利品'); return; }
+  if (game.sub !== 'deploy') { log('只能在部署阶段使用'); return; }
+  game.player.trophies -= 1;
+  if (mode === 'draw') {
+    if (game.deck.length) {
+      var c = game.deck.pop();
+      game.player.hand.push(c);
+      log('战利品抽牌：' + c.id, 'event');
+    }
+  } else if (mode === 'tp') {
+    game.player.tacticalPoints += 1;
+    log('战利品换 1 战术点', 'event');
+  } else if (mode === 'buff') {
+    game.trophyMode = 'buff';
+    log('选一只己方动物 +1/+1（永久）', 'event');
+  }
+  render();
+}
+function trophyBuffSelect(lane) {
+  if (game.trophyMode !== 'buff') return;
+  var u = game.player.lanes[lane];
+  if (!u) { log('该路无单位'); return; }
+  u.attack += 1; u.maxHp += 1; u.hp += 1;
+  log('路' + lane + ' ' + u.id + ' 永久 +1/+1', 'event');
+  game.trophyMode = null;
+  render();
+}
+
+// 结束部署 → AI部署 → 攻击结算
+function endDeploy() {
+  if (game.sub !== 'deploy' || game.ended) return;
+  game.sub = 'aiDeploy';
+  render();
+  setTimeout(function(){
+    aiDeploy();
+    game.sub = 'attack';
+    render();
+    setTimeout(function(){
+      var ended = resolveCombat();
+      if (!ended) proceedAfterCombat();
+    }, 600);
+  }, 500);
+}
+
+function aiBeginDeploy() {
+  aiDeploy();
+  game.sub = 'attack';
+  render();
+  setTimeout(function(){
+    var ended = resolveCombat();
+    if (!ended) proceedAfterCombat();
+  }, 600);
+}
+
+// AI 部署：用战术点部署1-2只动物，强化单位
+function aiDeploy() {
+  if (game.ended) return;
+  var side = game.enemy;
+  // 部署1-2只动物（根据TP决定）
+  var deployCount = Math.min(Math.floor(side.tacticalPoints), 2);
+  for (var d=0; d<deployCount; d++) {
+    if (side.hand.length === 0) break;
+    var empty = [];
+    for (var i=0; i<5; i++) if (!side.lanes[i]) empty.push(i);
+    if (empty.length === 0) break;
+    // 选攻击最高的卡
+    side.hand.sort(function(a,b){return b.attack - a.attack;});
+    var card = side.hand[0];
+    var lane = empty[Math.floor(Math.random()*empty.length)];
+    side.tacticalPoints -= 1;
+    side.hand = side.hand.filter(function(c){return c !== card;});
+    side.lanes[lane] = Object.assign({}, card, {tempAtk:0, firstBlow:false, guarded:false, guardedUsed:false});
+    log('敌方部署 ' + card.id + ' 到路' + lane, 'event');
+  }
+  // 剩余TP：随机给单位+1攻击或护卫
+  while (side.tacticalPoints >= 1) {
+    var lanes = [];
+    for (var i=0; i<5; i++) if (side.lanes[i]) lanes.push(i);
+    if (lanes.length === 0) break;
+    var li = lanes[Math.floor(Math.random()*lanes.length)];
+    if (side.tacticalPoints >= 2 && Math.random() < 0.3) {
+      side.tacticalPoints -= 2;
+      side.lanes[li].guarded = true;
+      log('敌方路' + li + ' 获护卫', 'event');
+    } else {
+      side.tacticalPoints -= 1;
+      side.lanes[li].tempAtk = (side.lanes[li].tempAtk||0) + 1;
+      log('敌方路' + li + ' +1 攻击', 'event');
+    }
+  }
+}
+
+// ============================================================
+// 九、攻击结算（包含空路直伤 → 创伤）
+// ============================================================
+
+function resolveCombat() {
+  log('--- 攻击结算 ---', 'combat');
+  // 简化：同路同时打；先攻单位在同路先造成伤害（用 firstBlow 标记）
+  var pKills = 0, eKills = 0;
+  for (var lane=0; lane<5; lane++) {
+    var p = game.player.lanes[lane];
+    var e = game.enemy.lanes[lane];
+    var pAtk = p ? p.attack + (p.tempAtk || 0) : 0;
+    var eAtk = e ? e.attack + (e.tempAtk || 0) : 0;
+    if (p && e) {
+      // 检查护卫：若一方有护卫且未用过，替相邻路挡——简化为：本路有护卫则先消耗对方伤害
+      // 同路互打
+      e.hp -= pAtk;
+      p.hp -= eAtk;
+      log('路' + lane + ': 玩家 ' + p.id + '(' + pAtk + '攻) ⇄ 敌方 ' + e.id + '(' + eAtk + '攻)', 'combat');
+      if (e.hp <= 0) pKills++;
+      if (p.hp <= 0) eKills++;
+    } else if (p && !e) {
+      // 玩家空路直伤：进入待结算直伤
+      var dmg = pAtk;
+      // 野猪皮：空路直伤额外+1创伤
+      if (hasPelt(game.player, 'boar')) dmg += 1;
+      game.pendingDamage.player += dmg;
+      log('路' + lane + ': 玩家 ' + p.id + ' 空路直伤（待结算 +' + dmg + '）', 'combat');
+    } else if (!p && e) {
+      var dmgE = eAtk;
+      if (hasPelt(game.enemy, 'boar')) dmgE += 1;
+      game.pendingDamage.enemy += dmgE;
+      log('路' + lane + ': 敌方 ' + e.id + ' 空路直伤（待结算 +' + dmgE + '）', 'combat');
+    }
+  }
+  // 移除死亡单位
+  for (var i=0; i<5; i++) {
+    if (game.player.lanes[i] && game.player.lanes[i].hp <= 0) {
+      var dead = game.player.lanes[i];
+      game.playerDiscard.push(dead);
+      log('玩家 ' + dead.id + ' 阵亡', 'combat');
+      game.player.lanes[i] = null;
+    }
+    if (game.enemy.lanes[i] && game.enemy.lanes[i].hp <= 0) {
+      var dead2 = game.enemy.lanes[i];
+      game.enemyDiscard.push(dead2);
+      log('敌方 ' + dead2.id + ' 阵亡', 'combat');
+      game.enemy.lanes[i] = null;
+    }
+  }
+  render();
+  return false;
+}
+
+// 攻击结算后处理：摊牌倍率 / 进入下一街 / 结束局
+function proceedAfterCombat() {
+  // 若一方本局已弃牌：本街攻击完后结束本局
+  if (game.player.folded || game.enemy.folded) {
+    // 弃牌胜利方按 ×1.25 结算直伤
+    var winnerName = game.player.folded ? 'enemy' : 'player';
+    var loserName = game.player.folded ? 'player' : 'enemy';
+    applyShowdownMultiplier('fold', winnerName, loserName);
+    applyPeltDamage();
+    if (game.ended) return;
+    // 本局结束
+    setTimeout(startNextHand, 800);
+    return;
+  }
+  // 双方全押：剩余公共牌自动翻完，每街仍战斗
+  if (game.player.allIn && game.enemy.allIn) {
+    if (game.phase === 'preflop') {
+      // 继续 flop
+      proceedNext();
+      return;
+    } else if (game.phase === 'flop') {
+      proceedNext(); return;
+    } else if (game.phase === 'turn') {
+      proceedNext(); return;
+    } else if (game.phase === 'river') {
+      // 摊牌
+      doShowdown();
+      return;
+    }
+  }
+  // 普通流程：进入下一街或摊牌
+  if (game.phase === 'preflop' || game.phase === 'flop' || game.phase === 'turn') {
+    proceedNext();
+  } else {
+    // river 之后摊牌
+    doShowdown();
+  }
+}
+
+// 进入下一街
+function proceedNext() {
+  if (game.phase === 'preflop') startStreet('flop');
+  else if (game.phase === 'flop') startStreet('turn');
+  else if (game.phase === 'turn') startStreet('river');
+  else if (game.phase === 'river') doShowdown();
+}
+
+// ============================================================
+// 十、摊牌倍率系统
+// ============================================================
+
+function applyShowdownMultiplier(scenario, winnerName, loserName) {
+  var winSide = getSide(winnerName);
+  var loseSide = getSide(loserName);
+  var pPending = game.pendingDamage.player;
+  var ePending = game.pendingDamage.enemy;
+  // 默认场景：双方直伤按各自倍率
+  if (scenario === 'fold') {
+    // 弃牌胜利：赢家×1.25，输家×0.75
+    if (winnerName === 'player') {
+      game.pendingDamage.player = Math.floor(pPending * 1.25);
+      game.pendingDamage.enemy = Math.floor(ePending * 0.75);
+    } else {
+      game.pendingDamage.enemy = Math.floor(ePending * 1.25);
+      game.pendingDamage.player = Math.floor(pPending * 0.75);
+    }
+    log('[摊牌倍率] 弃牌胜：赢家×1.25 / 输家×0.75', 'event');
+  } else if (scenario === 'pair') {
+    // 高牌/一对胜：双方×1
+    log('[摊牌倍率] 一对/高牌：×1（不变）', 'event');
+  } else if (scenario === 'twopair_trips') {
+    // 两对/三条：赢家+1总直伤
+    if (winnerName === 'player') game.pendingDamage.player += 1;
+    else game.pendingDamage.enemy += 1;
+    log('[摊牌倍率] 两对/三条胜：赢家+1直伤', 'event');
+  } else if (scenario === 'straight_flush') {
+    // 顺子/同花：赢家选1路直伤翻倍——简化为直伤翻倍
+    if (winnerName === 'player') game.pendingDamage.player *= 2;
+    else game.pendingDamage.enemy *= 2;
+    log('[摊牌倍率] 顺子/同花胜：赢家直伤翻倍', 'event');
+  } else if (scenario === 'fullhouse_quad') {
+    // 葫芦/四条：赢家额外发动1次已存活动物攻击 → 转化为直伤
+    var atkLanes = [];
+    for (var i=0; i<5; i++) if (winSide.lanes[i]) atkLanes.push(i);
+    if (atkLanes.length) {
+      var extraAtk = winSide.lanes[atkLanes[0]].attack + (winSide.lanes[atkLanes[0]].tempAtk||0);
+      if (winnerName === 'player') game.pendingDamage.player += extraAtk;
+      else game.pendingDamage.enemy += extraAtk;
+      log('[摊牌倍率] 葫芦/四条胜：赢家额外发动 ' + winSide.lanes[atkLanes[0]].id + ' 攻击 +' + extraAtk, 'event');
+    } else {
+      log('[摊牌倍率] 葫芦/四条胜：但无存活动物，无效', 'event');
+    }
+  } else if (scenario === 'straightflush') {
+    // 同花顺：夺1皮 或 本街所有直伤翻倍 —— 默认夺1皮
+    var losePelts = loseSide.pelts.filter(function(p){return p;});
+    if (losePelts.length > 0) {
+      var idx = loseSide.pelts.lastIndexOf(losePelts[losePelts.length-1]);
+      var stolen = loseSide.pelts[idx];
+      loseSide.pelts[idx] = null;
+      winSide.trophies += 1;
+      log('[摊牌倍率] 同花顺胜！夺走敌方 ' + PELT_NAMES[stolen] + '，获1战利品', 'pelt');
+    } else {
+      // 没皮可夺：所有直伤翻倍
+      game.pendingDamage.player *= 2;
+      game.pendingDamage.enemy *= 2;
+      log('[摊牌倍率] 同花顺胜：敌方无皮可夺，所有直伤翻倍', 'event');
+    }
+  }
+}
+
+// 将待结算直伤转为创伤
+function applyPeltDamage() {
+  // 玩家直伤→敌方创伤，敌方直伤→玩家创伤
+  var pDmg = game.pendingDamage.player;
+  var eDmg = game.pendingDamage.enemy;
+  game.pendingDamage = {player:0, enemy:0};
+  if (pDmg > 0) {
+    log('玩家造成 ' + pDmg + ' 创伤给敌方', 'pelt');
+    dealWounds('enemy', pDmg);
+  }
+  if (eDmg > 0) {
+    log('敌方造成 ' + eDmg + ' 创伤给玩家', 'pelt');
+    dealWounds('player', eDmg);
+  }
+  // 检查是否结束
+  if (game.player.pelts.filter(function(p){return p;}).length === 0) {
+    endGame('enemy', '玩家失尽 5 兽皮，敌方胜利！');
+    return;
+  }
+  if (game.enemy.pelts.filter(function(p){return p;}).length === 0) {
+    endGame('player', '敌方失尽 5 兽皮，玩家胜利！');
+    return;
+  }
+  render();
+}
+
+// 处理创伤：每5创伤夺1皮，溢出保留
+function dealWounds(sideName, amount) {
+  var side = getSide(sideName);
+  side.wounds += amount;
+  log((sideName==='player'?'玩家':'敌方') + ' 当前创伤 ' + side.wounds + '（失皮需≥5）', 'pelt');
+  while (side.wounds >= 5) {
+    side.wounds -= 5;
+    // 失一张皮
+    var idx = -1;
+    for (var i=side.pelts.length-1; i>=0; i--) {
+      if (side.pelts[i]) { idx = i; break; }
+    }
+    if (idx === -1) {
+      // 无皮可失
+      endGame(sideName==='player'?'enemy':'player', (sideName==='player'?'玩家':'敌方') + '失尽兽皮！');
+      return;
+    }
+    var lost = side.pelts[idx];
+    side.pelts[idx] = null;
+    var winnerName = otherSide(sideName);
+    var winSide = getSide(winnerName);
+    winSide.trophies += 1;
+    log('【夺皮】' + (sideName==='player'?'玩家':'敌方') + ' 失去 ' + PELT_NAMES[lost] + '！' + (winnerName==='player'?'玩家':'敌方') + ' 获1战利品', 'pelt');
+    // 单街最多夺1皮：剩余创伤清零
+    side.wounds = 0;
+    break;
+  }
+}
+
+// ============================================================
+// 十一、弃牌结束本局
+// ============================================================
+
+function endHandByFold(winnerName) {
+  // 加注方赢底池，但只获基础战术点（不获加注部分完整战术点）
+  var winSide = getSide(winnerName);
+  winSide.chips += game.pot;
+  log((winnerName==='player'?'玩家':'敌方') + ' 弃牌胜，赢得底池 ' + game.pot, winnerName==='player'?'win':'lose');
+  game.pot = 0;
+  // 弃牌胜方只获1基础战术点（不获加注部分完整战术点，按规则限制富者恒富）
+  winSide.tacticalPoints += 1;
+  log('弃牌胜方获 1 基础战术点', 'event');
+  // 战斗攻击照常进行：进入部署阶段。本街待结算直伤倍率在 combat 后于 proceedAfterCombat 应用
+  game.sub = 'deploy';
+  game.phase = 'foldCombat';
+  game.pendingDamage = {player:0, enemy:0};
+  log('本街仍进行战场行动（部署+攻击）', 'event');
+  // Pressure：若有Aggressor
+  if (game.aggressorSide === 'player' && game.player.pressureOpts.length) {
+    game.pressureMode = true;
+    render();
+    return;
+  }
+  if (game.aggressorSide === 'enemy') {
+    setTimeout(aiUsePressure, 500);
+    render();
+    return;
+  }
+  render();
+}
+
+// ============================================================
+// 十二、摊牌
+// ============================================================
+
+function doShowdown() {
+  game.phase = 'showdown';
+  game.sub = 'showdown';
+  log('--- 第' + game.handCount + '局 Showdown 摊牌 ---', 'event');
+  log('敌方底牌：' + game.enemy.hole.map(function(c){return c.id;}).join(' '), 'event');
+
+  var pCards = game.player.hole.concat(game.community);
+  var eCards = game.enemy.hole.concat(game.community);
+  var pBest = bestHand(pCards);
+  var eBest = bestHand(eCards);
+  log('玩家最佳牌型：' + handName(pBest[0]));
+  log('敌方最佳牌型：' + handName(eBest[0]));
+
+  var cmp = compareHands(pBest, eBest);
+  var pCat = pBest[0], eCat = eBest[0];
+
+  if (cmp > 0) {
+    // 玩家赢
+    settleShowdownWin('player', 'enemy', pCat);
+  } else if (cmp < 0) {
+    settleShowdownWin('enemy', 'player', eCat);
+  } else {
+    // 平局：平分底池，无倍率
+    var half = Math.floor(game.pot/2);
+    game.player.chips += half;
+    game.enemy.chips += game.pot - half;
+    game.pot = 0;
+    log('平局，平分底池（各 ' + half + '）', 'event');
+  }
+  // 结算创伤
+  applyPeltDamage();
+  if (game.ended) return;
+
+  // 检查是否结束战斗
+  if (game.player.chips === 0 && game.enemy.chips === 0) {
+    endGame('draw', '双方均无筹码，平局！');
+    return;
+  }
+  if (game.player.chips === 0) {
+    endGame('enemy', '玩家筹码耗尽！');
+    return;
+  }
+  if (game.enemy.chips === 0) {
+    endGame('player', '敌方筹码耗尽！');
+    return;
+  }
+
+  render();
+  setTimeout(startNextHand, 1000);
+}
+
+// 摊牌胜方结算：发底池+倍率
+function settleShowdownWin(winnerName, loserName, cat) {
+  var winSide = getSide(winnerName);
+  winSide.chips += game.pot;
+  log((winnerName==='player'?'玩家':'敌方') + ' 赢底池 ' + game.pot, winnerName==='player'?'win':'lose');
+  game.pot = 0;
+  // 摊牌倍率
+  var scenario = 'pair';
+  if (cat === 0 || cat === 1) scenario = 'pair';
+  else if (cat === 2 || cat === 3) scenario = 'twopair_trips';
+  else if (cat === 4 || cat === 5) scenario = 'straight_flush';
+  else if (cat === 6 || cat === 7) scenario = 'fullhouse_quad';
+  else if (cat === 8) scenario = 'straightflush';
+  applyShowdownMultiplier(scenario, winnerName, loserName);
+}
+
+function endGame(winner, reason) {
+  game.ended = true;
+  game.result = {winner: winner, reason: reason};
+  game.sub = 'ended';
+  log('【结果】' + reason, winner === 'player' ? 'win' : (winner === 'enemy' ? 'lose' : 'event'));
+  render();
+}
+
+// ============================================================
+// 十三、牌势共鸣（私有，影响战斗）
+// ============================================================
+
+function triggerResonance(sideName, phase) {
+  var side = getSide(sideName);
+  if (side.resonanceUsed >= 3) return;
+  var revealed = game.community.slice(0, game.revealedCommunity);
+  var cards = side.hole.concat(revealed);
+
+  // Preflop：只看2底牌
+  if (phase === 'preflop') {
+    if (cards.length < 2) return;
+    var h0 = side.hole[0], h1 = side.hole[1];
+    if (h0.rank === h1.rank) {
+      // 口袋对子：选1只同点数动物 +1/+2
+      var matching = findUnitsByRank(side, h0.rank);
+      if (matching.length && side.resonanceUsed < 3) {
+        var li = matching[0];
+        side.lanes[li].tempAtk = (side.lanes[li].tempAtk||0) + 1;
+        side.lanes[li].hp += 2;
+        side.lanes[li].maxHp += 2;
+        side.resonanceUsed += 1;
+        if (sideName === 'player') log('[共鸣] 口袋对子 ' + h0.id + h1.id + '：路' + li + ' ' + side.lanes[li].id + ' +1攻/+2血', 'private');
+      } else {
+        if (sideName === 'player') log('[共鸣] 你有口袋对子(' + h0.id + '/' + h1.id + ')，但场上无同点数动物', 'private');
+      }
+    }
+    return;
+  }
+
+  // Flop/Turn/River
+  if (cards.length < 3) return;
+  // 已成对子（底牌+公共牌）
+  var rankCounts = {};
+  cards.forEach(function(c){ rankCounts[c.rank] = (rankCounts[c.rank]||0)+1; });
+  // 找已成对子/三条/四条
+  Object.keys(rankCounts).forEach(function(rk){
+    if (side.resonanceUsed >= 3) return;
+    var count = rankCounts[rk];
+    if (count === 2) {
+      // 对子：对应点数动物 +1/+2
+      var matching = findUnitsByRank(side, Number(rk));
+      if (matching.length) {
+        var li = matching[0];
+        side.lanes[li].tempAtk = (side.lanes[li].tempAtk||0) + 1;
+        side.lanes[li].hp += 2;
+        side.lanes[li].maxHp += 2;
+        side.resonanceUsed += 1;
+        if (sideName === 'player') log('[共鸣] 对子(' + rk + ')：路' + li + ' ' + side.lanes[li].id + ' +1/+2', 'private');
+      }
+    } else if (count === 3) {
+      // 三条：对应点数动物狂暴+2攻
+      var matching2 = findUnitsByRank(side, Number(rk));
+      if (matching2.length) {
+        var li2 = matching2[0];
+        side.lanes[li2].tempAtk = (side.lanes[li2].tempAtk||0) + 2;
+        side.resonanceUsed += 1;
+        if (sideName === 'player') log('[共鸣] 三条(' + rk + ')：路' + li2 + ' 狂暴+2攻', 'private');
+      }
+    } else if (count === 4) {
+      // 四条：对应点数动物 +3 攻（强力）
+      var matching3 = findUnitsByRank(side, Number(rk));
+      if (matching3.length) {
+        var li3 = matching3[0];
+        side.lanes[li3].tempAtk = (side.lanes[li3].tempAtk||0) + 3;
+        side.resonanceUsed += 1;
+        if (sideName === 'player') log('[共鸣] 四条(' + rk + ')：路' + li3 + ' ' + side.lanes[li3].id + ' +3 攻', 'private');
+      }
+    }
+  });
+  // 四张同花听：对应花色动物获闪避（暂用guarded近似）
+  if (side.resonanceUsed < 3) {
+    var suitCounts = {};
+    cards.forEach(function(c){ suitCounts[c.suit] = (suitCounts[c.suit]||0)+1; });
+    Object.keys(suitCounts).forEach(function(s){
+      if (suitCounts[s] === 4) {
+        var lanes = findUnitsBySuit(side, s);
+        if (lanes.length) {
+          var li = lanes[0];
+          side.lanes[li].guarded = true;
+          side.resonanceUsed += 1;
+          if (sideName === 'player') log('[共鸣] 同花听(' + s + ')：路' + li + ' ' + side.lanes[li].id + ' 获护卫', 'private');
+        }
+      }
+    });
+  }
+  // 已成同花：对应花色动物攻击后回复1血——简化为maxHp+1
+  // 已成顺子：免费移动1只动物
+  if (side.resonanceUsed < 3 && cards.length >= 5) {
+    var best = bestHand(cards);
+    if (best && best[0] === 4) {
+      // 顺子：免费移动1只动物
+      var lanes = [];
+      for (var i=0; i<5; i++) if (side.lanes[i]) lanes.push(i);
+      if (lanes.length) {
+        var from = lanes[0];
+        var targets = [];
+        for (var j=0; j<5; j++) if (!side.lanes[j] && Math.abs(j-from)===1) targets.push(j);
+        if (targets.length) {
+          var to = targets[0];
+          side.lanes[to] = side.lanes[from];
+          side.lanes[from] = null;
+          side.resonanceUsed += 1;
+          if (sideName === 'player') log('[共鸣] 顺子：免费移动路' + from + '→' + to, 'private');
+        }
+      }
+    }
+  }
+}
+
+function findUnitsByRank(side, rank) {
+  var out = [];
+  for (var i=0; i<5; i++) if (side.lanes[i] && side.lanes[i].rank === rank) out.push(i);
+  return out;
+}
+function findUnitsBySuit(side, suit) {
+  var out = [];
+  for (var i=0; i<5; i++) if (side.lanes[i] && side.lanes[i].suit === suit) out.push(i);
+  return out;
+}
+
+// ============================================================
+// 十四、兽皮工具函数
+// ============================================================
+
+function hasPelt(side, peltType) {
+  return side.pelts.some(function(p){return p === peltType;});
+}
+
+// ============================================================
+// 十五、渲染
+// ============================================================
+
+function render() {
+  renderPhase();
+  renderPeltBar();
+  renderBoards();
+  renderCommunity();
+  renderResources();
+  renderHole();
+  renderHand();
+  renderActions();
+}
+
+function renderPhase() {
+  var phaseNames = {
+    init: '准备中', preflop: 'Preflop（翻牌前）', flop: 'Flop（翻牌）',
+    turn: 'Turn（转牌）', river: 'River（河牌）',
+    showdown: 'Showdown（摊牌）', foldCombat: '弃牌后战斗', ended: '游戏结束'
+  };
+  var subNames = {
+    streetStart: '街段开始', bet: '下注阶段', aiBet: 'AI下注中...',
+    deploy: '部署阶段', aiDeploy: 'AI部署中...', attack: '攻击结算中...',
+    showdown: '摊牌', ended: ''
+  };
+  var txt = phaseNames[game.phase] || game.phase;
+  if (!game.ended && subNames[game.sub]) txt += ' · ' + subNames[game.sub];
+  if (game.ended && game.result) txt += ' · ' + game.result.reason;
+  // 庄家标识
+  if (!game.ended) txt += '  [庄家/小盲:' + (game.dealerIsPlayer?'玩家':'敌方') + ']';
+  document.getElementById('phaseInfo').textContent = txt;
+}
+
+function renderPeltBar() {
+  var el = document.getElementById('peltBar');
+  var pHtml = renderPeltSide('player');
+  var eHtml = renderPeltSide('enemy');
+  el.innerHTML =
+    '<div class="pelt-side enemy">' + eHtml + '</div>' +
+    '<div class="pelt-vs">VS</div>' +
+    '<div class="pelt-side player">' + pHtml + '</div>';
+}
+
+function renderPeltSide(sideName) {
+  var side = getSide(sideName);
+  var html = '<div class="label">' + (sideName==='player'?'玩家':'敌方') + ' 兽皮</div>';
+  html += '<div class="pelt-icons">';
+  side.pelts.forEach(function(p){
+    if (p) html += '<span class="pelt" title="' + PELT_DESC[p] + '">' + PELT_ICONS[p] + '</span>';
+    else html += '<span class="pelt lost">✖</span>';
+  });
+  html += '</div>';
+  html += '<div class="wound-bar">创伤 ' + side.wounds + '/5</div>';
+  html += '<div class="trophy">🏆 战利品 ' + side.trophies + '</div>';
+  return html;
+}
+
+function renderCommunity() {
+  var el = document.getElementById('community');
+  var html = '<div class="section-title">公共牌</div>';
+  for (var i=0; i<5; i++) {
+    if (i < game.revealedCommunity) {
+      html += cardHtml(game.community[i], 'community');
+    } else {
+      html += '<span class="card back">?</span>';
+    }
+  }
+  el.innerHTML = html;
+}
+
+function renderBoards() {
+  // 敌方
+  var eh = '';
+  for (var i=0; i<5; i++) {
+    var u = game.enemy.lanes[i];
+    var cls = 'lane';
+    if (u && u.guarded) cls += ' guarded';
+    if (u && u.firstBlow) cls += ' firstblow';
+    eh += '<div class="' + cls + '"><div class="lane-num">路' + i + '</div>';
+    if (u) {
+      var atk = u.attack + (u.tempAtk || 0);
+      eh += '<div class="card unit ' + (isRed(u.suit)?'red':'') + '">' + u.id
+         + '<div class="card-stats">攻' + atk + '/血' + u.hp + '</div></div>';
+    } else {
+      eh += '<div class="slot-empty">空</div>';
+    }
+    eh += '</div>';
+  }
+  document.getElementById('enemyBoard').innerHTML = eh;
+
+  // 玩家
+  var ph = '';
+  var canDeploy = (game.sub === 'deploy') && game.resonanceMode === 'deploy_select' && game.selectedCard;
+  var buffMode = game.resonanceMode === 'buff_select' || game.resonanceMode === 'pressure_buff';
+  var firstBlowMode = game.resonanceMode === 'firstblow_select';
+  var guardMode = game.resonanceMode === 'guard_select';
+  var moveSelMode = game.resonanceMode === 'move_select';
+  var trophyBuffMode = game.trophyMode === 'buff';
+  var pressureDebuffMode = game.resonanceMode === 'pressure_debuff';
+
+  for (var i2=0; i2<5; i2++) {
+    var u2 = game.player.lanes[i2];
+    var cls2 = 'lane';
+    var click2 = '';
+    if (canDeploy && !u2) { cls2 += ' deployable'; click2 = ' onclick="deployToLane(' + i2 + ')"'; }
+    if (buffMode && u2) { cls2 += ' clickable'; click2 = ' onclick="' + (game.resonanceMode==='pressure_buff'?'applyPressureBuff(' + i2 + ')':'buffSelectLane(' + i2 + ')') + '"'; }
+    if (firstBlowMode && u2) { cls2 += ' clickable'; click2 = ' onclick="firstBlowSelectLane(' + i2 + ')"'; }
+    if (guardMode && u2) { cls2 += ' clickable'; click2 = ' onclick="guardSelectLane(' + i2 + ')"'; }
+    if (moveSelMode && u2) { cls2 += ' clickable'; click2 = ' onclick="moveSelectLane(' + i2 + ')"'; }
+    if (moveSelMode && !u2 && game.selectedLane !== null && Math.abs(game.selectedLane - i2)===1) {
+      cls2 += ' deployable'; click2 = ' onclick="moveTargetLane(' + i2 + ')"';
+    }
+    if (trophyBuffMode && u2) { cls2 += ' clickable'; click2 = ' onclick="trophyBuffSelect(' + i2 + ')"'; }
+    if (pressureDebuffMode && u2) { cls2 += ' clickable'; click2 = ' onclick="applyPressureDebuff(' + i2 + ')"'; }
+    if (u2 && u2.guarded) cls2 += ' guarded';
+    if (u2 && u2.firstBlow) cls2 += ' firstblow';
+    ph += '<div class="' + cls2 + '"' + click2 + '><div class="lane-num">路' + i2 + '</div>';
+    if (u2) {
+      var atk2 = u2.attack + (u2.tempAtk || 0);
+      ph += '<div class="card unit ' + (isRed(u2.suit)?'red':'') + (u2.tempAtk?' buffed':'') + '">' + u2.id
+         + '<div class="card-stats">攻' + atk2 + '/血' + u2.hp + '</div></div>';
+    } else {
+      ph += '<div class="slot-empty">空</div>';
+    }
+    ph += '</div>';
+  }
+  document.getElementById('playerBoard').innerHTML = ph;
+}
+
+// Pressure buff/debuff 应用
+function applyPressureBuff(lane) {
+  if (game.resonanceMode !== 'pressure_buff') return;
+  var u = game.player.lanes[lane];
+  if (!u) { log('该路无单位'); return; }
+  u.tempAtk = (u.tempAtk||0) + 2;
+  log('Pressure：路' + lane + ' ' + u.id + ' +2 攻击（本街）', 'event');
+  game.resonanceMode = null;
+  render();
+}
+function applyPressureDebuff(lane) {
+  if (game.resonanceMode !== 'pressure_debuff') return;
+  var u = game.enemy.lanes[lane];
+  if (!u) { log('该路无单位'); return; }
+  u.tempAtk = (u.tempAtk||0) - 2;
+  log('Pressure：敌方路' + lane + ' ' + u.id + ' -2 攻击（本街）', 'event');
+  game.resonanceMode = null;
+  render();
+}
+
+function renderResources() {
+  var el = document.getElementById('resources');
+  var p = game.player, e = game.enemy;
+  var pTP = p.tacticalPoints, eTP = e.tacticalPoints;
+  var pInv = p.streetInvested, eInv = e.streetInvested;
+  var ctxP = betContext('player');
+  var el2 = el;
+  el2.innerHTML =
+    '<div class="resource' + (game.dealerIsPlayer?' dealer':'') + '">庄家: <b>' + (game.dealerIsPlayer?'玩家':'敌方') + '</b></div>' +
+    '<div class="resource">筹码 <b>' + p.chips + '</b></div>' +
+    '<div class="resource">战术点 <b>' + pTP + '</b></div>' +
+    '<div class="resource">本街投入 <b>' + pInv + '</b></div>' +
+    '<div class="resource">底池 <b>' + game.pot + '</b></div>' +
+    '<div class="resource">本街最高下注 <b>' + game.currentBet + '</b></div>' +
+    '<div class="resource">需跟注 <b>' + ctxP.toCall + '</b></div>' +
+    '<div class="resource">牌堆 <b>' + game.deck.length + '</b></div>' +
+    '<div class="resource">玩家弃牌堆 <b>' + game.playerDiscard.length + '</b></div>' +
+    '<div class="resource" style="margin-left:auto">敌方筹码 <b>' + e.chips + '</b></div>' +
+    '<div class="resource">敌方战术点 <b>' + eTP + '</b></div>' +
+    '<div class="resource">敌方投入 <b>' + eInv + '</b></div>' +
+    '<div class="resource">第 <b>' + game.handCount + '</b> 局</div>';
+}
+
+function renderHole() {
+  var el = document.getElementById('holeCards');
+  var html = '<div class="section-title">底牌（私有，仅自己可见；摊牌时显示敌方）</div>';
+  game.player.hole.forEach(function(c){ html += cardHtml(c, 'hole'); });
+  if (game.phase === 'showdown' || game.ended) {
+    html += '<span style="color:#888"> ← 敌方底牌：';
+    game.enemy.hole.forEach(function(c){ html += cardHtml(c, ''); });
+    html += '</span>';
+  }
+  el.innerHTML = html;
+}
+
+function renderHand() {
+  var el = document.getElementById('handCards');
+  var html = '<div class="section-title">手牌（部署阶段点击选择用于部署）</div>';
+  if (game.player.hand.length === 0) {
+    html += '<span style="color:#666">无手牌</span>';
+  } else {
+    game.player.hand.forEach(function(c){
+      var sel = game.selectedCard === c ? 'selected' : '';
+      var canClick = (game.sub === 'deploy') && game.resonanceMode === 'deploy_select';
+      var click = canClick ? ' onclick="selectHandCard(findHand(\'' + c.id + '\'))"' : '';
+      html += '<span class="card ' + (isRed(c.suit)?'red':'') + ' ' + sel
+           + (canClick?' clickable':'') + '"' + click + ' style="cursor:pointer">'
+           + c.id + '<div class="card-stats">攻' + c.attack + '/血' + c.hp + ' 费' + c.cost + '</div></span>';
+    });
+  }
+  el.innerHTML = html;
+}
+
+function renderActions() {
+  var el = document.getElementById('actions');
+  if (game.ended) {
+    el.innerHTML = '<button class="btn warn" onclick="startGame()">重新开始</button>';
+    return;
+  }
+  var html = '';
+  // Pressure 进攻指令选择
+  if (game.pressureMode && game.aggressorSide === 'player') {
+    html += '<span class="hint">【Pressure 进攻指令】选一项：</span><br>';
+    game.player.pressureOpts.forEach(function(o){
+      html += '<button class="btn warn" onclick="usePressure(\'' + o.id + '\')">' + o.name + '</button>';
+    });
+    html += '<br><span class="private-hint">' + (game.player.pressureOpts.map(function(o){return o.desc;}).join(' / ')) + '</span>';
+    el.innerHTML = html;
+    return;
+  }
+  // 下注阶段
+  if (game.sub === 'bet' && game.actingSide === 'player') {
+    html += renderBetActions();
+    el.innerHTML = html;
+    return;
+  }
+  // 部署阶段
+  if (game.sub === 'deploy') {
+    html += renderDeployActions();
+    el.innerHTML = html;
+    return;
+  }
+  if (game.sub === 'bet' && game.actingSide === 'enemy') {
+    html += '<span class="hint">敌方下注中...</span>';
+  } else if (game.sub === 'aiDeploy' || game.sub === 'attack') {
+    html += '<span class="hint">AI 行动 / 结算中...</span>';
+  } else if (game.sub === 'showdown') {
+    html += '<span class="hint">摊牌完成</span>';
+  }
+  el.innerHTML = html;
+}
+
+function renderBetActions() {
+  var ctx = betContext('player');
+  // 初始化/夹紧 raiseAmount 到合法范围
+  var lowerBound = ctx.facingBet ? ctx.minRaiseTo : 2;
+  if (game.raiseAmount < lowerBound) game.raiseAmount = lowerBound;
+  if (game.raiseAmount > ctx.maxRaiseTo) game.raiseAmount = ctx.maxRaiseTo;
+  if (game.raiseAmount < lowerBound) game.raiseAmount = lowerBound;
+  var html = '<div class="bet-info">';
+  html += '底池 <b>' + game.pot + '</b> · ';
+  html += '本街投入 玩家<b>' + game.player.streetInvested + '</b>/敌方<b>' + game.enemy.streetInvested + '</b> · ';
+  html += '本街最高 <b>' + game.currentBet + '</b> · ';
+  html += '需跟注 <b>' + ctx.toCall + '</b> · ';
+  html += '最小加注至 <b>' + ctx.minRaiseTo + '</b> · ';
+  html += '剩余筹码 <b>' + game.player.chips + '</b>';
+  html += '</div>';
+  // 全押不足以正常跟注
+  var allinOnly = game.player.chips <= ctx.toCall && ctx.toCall > 0;
+  if (ctx.facingBet) {
+    html += '<button class="btn danger" onclick="playerAction(\'fold\')">弃牌</button>';
+    if (!allinOnly) {
+      html += '<button class="btn call" onclick="playerAction(\'call\')">跟注 ' + ctx.toCall + '</button>';
+    }
+    // 加注按钮
+    var canRaise = ctx.maxRaiseTo > game.player.streetInvested && game.player.chips > ctx.toCall;
+    html += '<div class="raise-control">';
+    html += '<button onclick="adjustRaise(-1)" ' + (game.raiseAmount<=ctx.minRaiseTo?'disabled':'') + '>−</button>';
+    html += '<span class="raise-amount">加注到 ' + game.raiseAmount + '</span>';
+    html += '<button onclick="adjustRaise(1)" ' + (game.raiseAmount>=ctx.maxRaiseTo?'disabled':'') + '>+</button>';
+    html += '<button class="btn raise" onclick="playerAction(\'raise\',' + game.raiseAmount + ')" ' + (canRaise?'':'disabled') + '>加注</button>';
+    html += '</div>';
+    html += '<button class="btn warn" onclick="playerAction(\'allin\')">全押 ' + game.player.chips + '</button>';
+  } else {
+    // 无人下注：过牌/下注/全押
+    html += '<button class="btn" onclick="playerAction(\'check\')">过牌 Check</button>';
+    var canBet = game.player.chips >= 2;
+    html += '<div class="raise-control">';
+    html += '<button onclick="adjustRaise(-1)" ' + (game.raiseAmount<=2?'disabled':'') + '>−</button>';
+    html += '<span class="raise-amount">下注 ' + game.raiseAmount + '</span>';
+    html += '<button onclick="adjustRaise(1)" ' + (game.raiseAmount>=ctx.maxRaiseTo?'disabled':'') + '>+</button>';
+    html += '<button class="btn" onclick="playerAction(\'bet\',' + game.raiseAmount + ')" ' + (canBet?'':'disabled') + '>下注</button>';
+    html += '</div>';
+    html += '<button class="btn warn" onclick="playerAction(\'allin\')">全押 ' + game.player.chips + '</button>';
+  }
+  return html;
+}
+
+function renderDeployActions() {
+  var html = '';
+  // 战利品使用
+  html += '<div style="margin-bottom:6px">';
+  html += '<span class="hint">战利品 (🏆' + game.player.trophies + ')</span> ';
+  html += '<button class="btn warn" onclick="useTrophy(\'draw\')" ' + (game.player.trophies<1?'disabled':'') + '>抽1牌</button>';
+  html += '<button class="btn warn" onclick="useTrophy(\'tp\')" ' + (game.player.trophies<1?'disabled':'') + '>1战术点</button>';
+  html += '<button class="btn warn" onclick="useTrophy(\'buff\')" ' + (game.player.trophies<1?'disabled':'') + '>动物+1/+1</button>';
+  html += '</div>';
+  // 战术点消费
+  html += '<div style="margin-bottom:6px">';
+  html += '<span class="hint">战术点 (TP=' + game.player.tacticalPoints + ')</span> ';
+  html += '<button class="btn" onclick="tpDeploy()" ' + (game.player.tacticalPoints<1?'disabled':'') + '>部署(1)</button>';
+  html += '<button class="btn" onclick="tpMove()" ' + (game.player.tacticalPoints<1?'disabled':'') + '>移动(1)</button>';
+  html += '<button class="btn" onclick="tpBuff()" ' + (game.player.tacticalPoints<1?'disabled':'') + '>+1攻(1)</button>';
+  html += '<button class="btn" onclick="tpFirstBlow()" ' + (game.player.tacticalPoints<1?'disabled':'') + '>先攻(1)</button>';
+  html += '<button class="btn" onclick="tpGuard()" ' + (game.player.tacticalPoints<2?'disabled':'') + '>护卫(2)</button>';
+  html += '<button class="btn" onclick="tpRecover()" ' + (game.player.tacticalPoints<3||game.playerDiscard.length===0?'disabled':'') + '>召回(3)</button>';
+  html += '</div>';
+  // 状态提示
+  if (game.resonanceMode === 'deploy_select') html += '<span class="hint">部署：选了手牌→点空路</span>';
+  else if (game.resonanceMode === 'move_select') html += '<span class="hint">移动：选己方动物→点相邻空路</span>';
+  else if (game.resonanceMode === 'buff_select') html += '<span class="hint">强化：点己方动物+1攻</span>';
+  else if (game.resonanceMode === 'firstblow_select') html += '<span class="hint">先攻：点己方动物获先攻</span>';
+  else if (game.resonanceMode === 'guard_select') html += '<span class="hint">护卫：点己方动物获护卫</span>';
+  else if (game.resonanceMode === 'recover_select') html += '<span class="hint">召回：点弃牌堆中一张牌</span>';
+  else if (game.resonanceMode === 'pressure_buff') html += '<span class="hint">Pressure +2攻：点己方动物</span>';
+  else if (game.resonanceMode === 'pressure_debuff') html += '<span class="hint">Pressure -2攻：点敌方动物</span>';
+  // 召回模式：显示弃牌堆
+  if (game.resonanceMode === 'recover_select') {
+    html += '<br><span class="hint">玩家弃牌堆（点击回收，生命复原）：</span><br>';
+    game.playerDiscard.forEach(function(c){
+      html += '<span class="card discard clickable ' + (isRed(c.suit)?'red':'') + '" style="cursor:pointer" onclick="recoverCard(findDiscard(\'' + c.id + '\'))">' + c.id + '<div class="card-stats">攻' + c.attack + '/血' + c.maxHp + ' 费' + c.cost + '</div></span>';
+    });
+  }
+  html += '<br><button class="btn warn" onclick="endDeploy()">结束部署 →</button>';
+  return html;
+}
+
+function cardHtml(c, extraClass) {
+  var red = isRed(c.suit) ? 'red' : '';
+  return '<span class="card ' + red + ' ' + (extraClass||'') + '">' + c.id + '</span>';
+}
+
+function findHand(id) {
+  for (var i=0; i<game.player.hand.length; i++)
+    if (game.player.hand[i].id === id) return game.player.hand[i];
+  return null;
+}
+function findDiscard(id) {
+  for (var i=0; i<game.playerDiscard.length; i++)
+    if (game.playerDiscard[i].id === id) return game.playerDiscard[i];
+  return null;
+}
+
+// ============================================================
+// 十六、启动
+// ============================================================
+startGame();
+
+</script>
+</body>
+</html>

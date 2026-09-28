@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a6d51ac5e1c0f14f805128da0fee980, type: 3}
+  m_Name: EnemyConfig
+  m_EditorClassIdentifier: 
+  enemyName: "\u5C0F\u602A"
+  maxHealth: 300
+  deck:
+  - {fileID: 11400000, guid: b06d2d080bfe79549a776b26fe4b5c3c, type: 2}
+  - {fileID: 11400000, guid: 862239c2eafa6e34bb28534cbfd31ccd, type: 2}
+  - {fileID: 11400000, guid: d08f884b2334c2740b3d35c1d813dbf3, type: 2}
+  - {fileID: 11400000, guid: a0280d0f8d83ec24c86f852cbd55ae1f, type: 2}
+  - {fileID: 11400000, guid: aecbe8d14134b3e4fa085b6f324852b9, type: 2}
+  - {fileID: 11400000, guid: 57d47a5065838a043b211c6189c8a786, type: 2}
+  handSize: 7
+  checkChance: 0.2
+  raiseChance: 0.25
+  callDamageMultiplier: 0.7
+  raiseDamageMultiplier: 1.2
+  callCardCount: 3
+  raiseCardCount: 3
