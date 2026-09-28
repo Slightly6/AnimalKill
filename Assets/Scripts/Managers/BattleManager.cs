@@ -17,11 +17,8 @@ public class BattleManager : Singleton<BattleManager>
     [Header("每关次数")]
     public int playsPerLevel = 8;      // 出牌次数+弃牌次数
     [Header("不勾选为call")]
-    public bool isPlay = false;        // false 打人，true 加盾
+    public bool isPlayfold = false;        // false 打人，true 弃牌进主池
     public int actionsLeft { get; private set; }
-
-    [Header("护盾")]
-    private int currentCheck = 0;      // 当前未使用，后期填（弃牌获得 80% 伤害的护盾，每回合衰减 1）
 
     private bool playRequested = false;   // 玩家按了铃铛
     private bool levelEnded = false;      // 本关结束（过关或玩家输）
@@ -44,7 +41,7 @@ public class BattleManager : Singleton<BattleManager>
     private void OnEndPlayPhase(EndPlayPhaseEvent e)
     {
         playRequested = true;
-        isPlay = e.isPlay;
+        isPlayfold = e.isPlay;
     }
 
     private void OnLevelCleared(LevelClearedEvent e) { levelEnded = true; }
@@ -136,17 +133,17 @@ public class BattleManager : Singleton<BattleManager>
         int damage = PokerResolver.CalcDamage(baseChips, cardBonus, mult);
 
         // 3. 纯演出（BattleView）：飞牌+计分+飞撞+销毁牌
-        yield return BattleView.Instance.PlayResolveSequence(cards, type, baseChips, mult, damage, coreIndices, isPlay);
+        yield return BattleView.Instance.PlayResolveSequence(cards, type, baseChips, mult, damage, coreIndices, isPlayfold);
 
-        // 4. 游戏逻辑（出牌打人扣敌人筹码；弃牌加盾后期填 currentCheck）
-        if (!isPlay)
+        // 4. 游戏逻辑：isPlayfold=false 出牌扣敌人筹码；isPlayfold=true 弃牌进主池
+        if (!isPlayfold)
         {
             GameManager.Instance.EnemyLoseChips(damage);
         }
-         else 
-        { 
-            currentCheck += Mathf.RoundToInt(damage * 0.8f); 
-        }  // 后期填
+        else
+        {
+            GameManager.Instance.DiscardToPot(damage);
+        }
 
         actionsLeft--;
 
@@ -196,12 +193,10 @@ public class BattleManager : Singleton<BattleManager>
         // 演出
         // yield return BattleView.Instance.PlayEnemyResolveSequence(playData, damage);
         yield return BattleView.Instance.PlayEnemyResolveSequence(playData, type, baseChips, mult, damage, coreIndices);
-        // 游戏逻辑：先扣护盾，剩余扣玩家筹码
-        int blocked = Mathf.Min(currentCheck, damage);
-        currentCheck -= blocked;
-        int actualDamage = damage - blocked;
-        Debug.Log("[敌人攻击] 总:" + damage + " 护盾挡:" + blocked + " 实际:" + actualDamage);
-        if (actualDamage > 0) GameManager.Instance.LoseChips(actualDamage);
+
+        // 游戏逻辑：敌人直接扣玩家筹码（无护盾），扣掉的进主池
+        Debug.Log("[敌人攻击] 伤害:" + damage);
+        GameManager.Instance.LoseChips(damage);
 
         // 敌人手牌更新 + 补牌 + 下回合意图
         EnemyController.Instance.CommitPlayedCards(playData);

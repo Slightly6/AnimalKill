@@ -534,25 +534,20 @@ public class Card : MonoBehaviour
         // 玩家朝 -Z（打向敌人远端），敌方朝 +Z（打向玩家）
         Vector3 dir = IsPlayer ? -Vector3.forward : Vector3.forward;
 
-        Vector3 reachPos = homePos + dir * 1.0f;   // 冲过去落在对方脸前面一点
-
         // 打出去的牌全程显示在最上面，避免穿模
         int oldOrder = sortingGroup.sortingOrder;
         sortingGroup.sortingOrder = 50;
-
-        // ① 前倾 + 半圆弧猛冲（爆发）
-        yield return CardAnimator.ArcWithTilt(transform, reachPos, arcHeight, tiltAngle, dir, rushDuration);
 
         // ② 命中：打脸
         int damage = CurrentPower;
         AudioManager.Instance.PlayFace();   // 打脸音效
         if (IsPlayer)
         {
-            GameManager.Instance.TransferChips(damage, true);   // 敌人筹码转给我（打脸赢的）
+            GameManager.Instance.LoseChips(damage);  
         }
         else
         {
-            GameManager.Instance.TransferChips(damage, false);  // 我的筹码转给敌人（被打脸输的）
+            GameManager.Instance.EnemyLoseChips(damage); 
         }
         Debug.Log("[战斗] " + CardName + " 打脸 " + damage + " 点");
 

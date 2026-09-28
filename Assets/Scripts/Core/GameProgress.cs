@@ -9,6 +9,7 @@ using UnityEngine;
     {
         public static int currentLevel = 0;      // 当前要打的关卡index（0~51），默认 0 = 第1关
         public static int playerChips = 100;     // 玩家筹码（跨关继承），默认 100= 开局筹码
+        public static int gold = 0;              // 金币（商店用，关结束 Pot 分账获得）
         public static bool cheatMode = false;    // 开挂模式（跨场景，勾 GameManager 上的开关）
         public static bool chipsInitialized = false;   // 筹码是否初始化过（第一关用开局筹码，之后跨关继承）
         public static List<CardDataSO> playerDeck = new List<CardDataSO>();   // 玩家牌组数据（跨关继承），空 = 用初始牌组
@@ -62,6 +63,7 @@ using UnityEngine;
         {
             currentLevel = 0;
             playerChips = 100;
+            gold = 0;
             chipsInitialized = false;
             playerDeck = new List<CardDataSO>();
             map = new List<MapNodeData>();

@@ -111,6 +111,14 @@ public struct ChipsChangedEvent
 {
     public int playerChips;   // 玩家当前筹码
     public int enemyChips;    // 敌人当前筹码
+    public int potChips;      // 主池筹码
+    public int sidePotChips;  // 边池筹码（下关血量）
+}
+
+// 敌人对白（过关时主池超出上限触发）
+public struct EnemySpeakEvent
+{
+    public string text;
 }
 
 // 筹码转移（打脸：从一方转到另一方，用于飞过去动画）
