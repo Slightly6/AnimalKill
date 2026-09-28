@@ -211,13 +211,16 @@ public class GameManager : Singleton<GameManager>
         CheckWin();
     }
 
-    // 弃牌：暂时直接回血（牌型伤害 × 0.8），后期改回进主池
+    // 弃牌：暂时直接回血（牌型伤害 × 0.8）
     public void DiscardToPot(int cardDamage)
     {
         if (IsGameOver) return;
         int heal = Mathf.RoundToInt(cardDamage * 0.8f);
+        // 边池不够时只能拿走边池里有的，不能扣成负数
+        heal = Mathf.Min(heal, SidePotChips);
+        if (heal <= 0) return;
+        SidePotChips -= heal;
         PlayerChips += heal;
-        Debug.Log("[弃牌] 牌型伤害 " + cardDamage + "，回血 +" + heal);
         SendChipsChanged();
         CheckWin();
     }
