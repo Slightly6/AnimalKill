@@ -118,9 +118,17 @@ public class DeckManager : Singleton<DeckManager>
 
         if (drawPile.Count == 0)
         {
-            Debug.Log("牌堆空了");
-            yield break;
+            if (discardPile.Count == 0)
+            {
+                Debug.Log("牌堆和弃牌堆都空了");
+                yield break;
+            }
+            drawPile = new List<CardDataSO>(discardPile);
+            discardPile.Clear();
+            Shuffle(drawPile);
+            Debug.Log("[牌堆] 抽牌堆已空，弃牌堆洗回（" + drawPile.Count + " 张）");
         }
+
 
         CardDataSO data = drawPile[0];
         drawPile.RemoveAt(0);
@@ -192,22 +200,12 @@ public class DeckManager : Singleton<DeckManager>
         EventBus.Publish(new HandChangedEvent());
     }
 
-    // 补手牌到 7 张（每轮结算完调用）；抽牌堆空了把弃牌堆洗回去，两堆都空则有几张补几张
-    public System.Collections.IEnumerator RefillHand()
-    {
-        while (HandCards.Count < 7)
-        {
-            if (drawPile.Count == 0)
-            {
-                if (discardPile.Count == 0) yield break;   // 两堆全空，补不了了
-                drawPile = new List<CardDataSO>(discardPile);
-                discardPile.Clear();
-                Shuffle(drawPile);
-                Debug.Log("[牌堆] 抽牌堆已空，弃牌堆洗回（" + drawPile.Count + " 张）");
-            }
-            yield return DrawOneCard();
-        }
-    }
+    // // 补手牌到 7 张（每轮结算完调用）
+    // public System.Collections.IEnumerator RefillHand()
+    // {
+    //     while (HandCards.Count < 7)
+    //         yield return DrawOneCard(); 
+    // }
 
     // 洗牌
     private void Shuffle<T>(List<T> list)

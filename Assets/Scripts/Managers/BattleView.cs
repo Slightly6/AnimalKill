@@ -625,7 +625,7 @@ public class BattleView : Singleton<BattleView>
 
     // 刷新敌人手牌显示（BattleManager.StartLevel 和 EnemyController.RefillHand 后调）
      // 敌人手牌刷新：增量更新（已有的不动，只补缺的、删多余的）
-    public void RefreshEnemyHand()
+    public void RefreshEnemyHand()   //手牌视图无限增加啊bug******
     {
         if (EnemyController.Instance == null) return;
         if (DeckManager.Instance == null || DeckManager.Instance.cardPrefab == null)

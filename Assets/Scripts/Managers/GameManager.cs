@@ -12,6 +12,7 @@ public class GameManager : Singleton<GameManager>
 
     [Header("开局筹码")]
     public int startingPlayerChips = 100;   // 玩家开局筹码数（在 Inspector 里填）
+    public int startingSidePot = 50;        // 边池开局筹码数（在 Inspector 里填）
 
     [Header("开挂模式（勾上：无限筹码 / 地图全亮 / 可跳过此关）")]
     public bool cheatMode = false;
@@ -72,6 +73,7 @@ public class GameManager : Singleton<GameManager>
             GameProgress.chipsInitialized = true;
         }
         PlayerChips = GameProgress.playerChips;
+        SidePotChips = GameProgress.sidePotChips;
 
         GameProgress.cheatMode = cheatMode;  // 开挂开关同步到全局（跨场景）
     }
@@ -94,16 +96,20 @@ public class GameManager : Singleton<GameManager>
     public void LoadLevel(LevelConfig cfg)
     {
         EnemyChips = cfg.enemyStartingChips;
-        int sidePotToBlood = SidePotChips;         // 记下边池数量（日志用）
-        PlayerChips += sidePotToBlood;              // 边池→玩家血量（上关留下的）
-        SidePotChips = 0;                           // 边池已转血量，清空
-        PotChips = 0;                               // 主池每关重置
+
+        // 上关 SettlePot 累加的边池保留到本关，本关可弃牌回血
+        // 第一关 SidePotChips 还是 0，下面赋初始值
+        SidePotChips = GameProgress.sidePotChips;
+        PlayerChips = GameProgress.playerChips;
+        if (SidePotChips <= 0)
+            SidePotChips = startingSidePot;
+        PotChips = 0;       // 主池每关重置
         trophy.Clear();
         HookLocked = false;
 
         SendChipsChanged();
         EventBus.Publish(new TrophyChangedEvent { count = 0 });
-        Debug.Log("[关卡] 进入 " + cfg.levelName + "，敌人筹码 " + EnemyChips + "，边池转血量 " + sidePotToBlood);
+        Debug.Log("[关卡] 进入 " + cfg.levelName + "，敌人筹码 " + EnemyChips + "，边池 " + SidePotChips);
     }
 
     // 整局胜利（MapManager 打完 52 关后调用）
@@ -253,37 +259,19 @@ public class GameManager : Singleton<GameManager>
         });
     }
 
-    // 关结束分账：主池按比例分成回血+边池+金币
+    // 关结束分账：主池筹码全部清空，按 1/10 汇率转金币（10 筹码 = 1 金币，余数舍掉）
+    // 注意：边池不再有进账，只剩开局值+跨关剩余；回血渠道后期由商店金币消费承接
     private void SettlePot()
     {
         if (PotChips <= 0) return;
 
-        int toPlayer = Mathf.RoundToInt(PotChips * returnRatio);
-        int toSide = Mathf.RoundToInt(PotChips * sideRatio);
-        int toGold = PotChips - toPlayer - toSide;
-
-        // 回血上限：超出部分留在主池（敌人留着等下一位挑战者）
-        int actualToPlayer = Mathf.Min(toPlayer, takeLimit);
-        int leftover = toPlayer - actualToPlayer;
-
-        PlayerChips += actualToPlayer;
-        SidePotChips = Mathf.Min(SidePotChips + toSide, sidePotCap);
+        int toGold = PotChips / 10;
         GameProgress.gold += toGold;
 
-        PotChips = leftover;
+        Debug.Log("[关结束分账] 主池 " + PotChips + " → 金币+" + toGold + "，当前金币 " + GameProgress.gold);
 
-        Debug.Log("[关结束分账] 回血+" + actualToPlayer + "(上限" + takeLimit + ")，边池+" + toSide
-            + "(上限" + sidePotCap + ")，金币+" + toGold + "，留给下一位" + leftover);
-
-        if (leftover > 0)
-        {
-            EventBus.Publish(new EnemySpeakEvent
-            {
-                text = "我只能让你拿走这么些，我还要留些等待下一位挑战者。"
-            });
-        }
-
-        SendChipsChanged();
+        PotChips = 0;
+        SendChipsChanged();   // 主池清零，刷新 PotArea 显示
     }
 
     // 胜负：敌人筹码归零 = 过关；玩家筹码归零 = 整局失败
@@ -294,6 +282,7 @@ public class GameManager : Singleton<GameManager>
             EnemyChips = 0;
             SettlePot();                                  // 关结束分账
             GameProgress.playerChips = PlayerChips;       // 跨关继承玩家筹码
+            GameProgress.sidePotChips = SidePotChips;     // 跨关继承边池筹码
             EventBus.Publish(new LevelClearedEvent());    // 过关（是否胜利由 MapManager 判）
         }
         else if (PlayerChips <= 0)

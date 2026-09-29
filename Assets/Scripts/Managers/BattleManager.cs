@@ -148,8 +148,12 @@ public class BattleManager : Singleton<BattleManager>
         actionsLeft--;
 
         // 5. 补手牌
-        if (DeckManager.Instance != null) yield return DeckManager.Instance.RefillHand();
-
+        if (DeckManager.Instance != null)
+        {
+            int need = GameProgress.targetHandSize - DeckManager.Instance.HandCards.Count;
+            if (need > 0)
+                yield return DeckManager.Instance.DrawCards(need);
+        }
         resolving = false;
         GameProgress.transitioning = false;
     }
@@ -157,6 +161,8 @@ public class BattleManager : Singleton<BattleManager>
         // 敌人回合：意图出牌→演出→扣玩家筹码→补牌
     private IEnumerator ResolveEnemyTurn()
     {
+        while (GameProgress.chipFly)
+            yield return null;
         if (EnemyController.Instance == null) yield break;
 
         resolving = true;
@@ -200,8 +206,8 @@ public class BattleManager : Singleton<BattleManager>
 
         // 敌人手牌更新 + 补牌 + 下回合意图
         EnemyController.Instance.CommitPlayedCards(playData);
-        EnemyController.Instance.RefillHand();
-        BattleView.Instance.RefreshEnemyHand();
+        EnemyController.Instance.RefillHand();      //自动发布事件调用下面那个函数
+        //BattleView.Instance.RefreshEnemyHand();      
         EnemyController.Instance.PrepareIntent();
 
         resolving = false;

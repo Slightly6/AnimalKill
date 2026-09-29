@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
+
 /// <summary>
 /// 关卡流程总管（战斗场景里，全程不切场景）。
 /// 开局：开始 GameProgress.currentLevel 关。
@@ -288,11 +289,22 @@ public class MapManager : Singleton<MapManager>
         OpenMapUI();   // 普通关/Boss章节末：同场景卷轴选关
     }
 
-    // 打开卷轴地图（找场景里的 MapScrollUI）
+    // 打开地图：优先用 3D 卷纸 RollingMap3D，没有则 fallback 到旧 MapScrollUI
     void OpenMapUI()
     {
-        var ui = FindObjectOfType<MapScrollUI>();
-        if (ui != null) ui.OpenMap();
-        else Debug.LogError("[MapManager] 场景里找不到 MapScrollUI，无法打开地图");
+        var rolling = FindObjectOfType<RollingMap3D>();
+        if (rolling != null)
+        {
+            // 先生成地图数据（复用 MapScrollUI 的生成逻辑）
+            var ui = FindObjectOfType<MapScrollUI>();
+            if (ui != null) ui.EnsureMapGenerated();
+            rolling.RollOut();
+        }
+        else
+        {
+            var ui = FindObjectOfType<MapScrollUI>();
+            if (ui != null) ui.OpenMap();
+            else Debug.LogError("[MapManager] 场景里找不到 RollingMap3D 或 MapScrollUI");
+        }
     }
 }

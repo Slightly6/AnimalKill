@@ -19,6 +19,8 @@ public class SaveManager : Singleton<SaveManager>
         public int currentLevel;
         public int currentSuit;
         public int playerChips;
+        public int sidePotChips;
+        public int targetHandSize;
         public bool chipsInitialized;
         public int hides;
         public int mapRow;
@@ -37,7 +39,9 @@ public class SaveManager : Singleton<SaveManager>
         SaveData data = new SaveData();
         data.currentLevel = GameProgress.currentLevel;
         data.currentSuit = GameProgress.currentSuit;
+        data.targetHandSize = GameProgress.targetHandSize;
         data.playerChips = GameProgress.playerChips;
+        data.sidePotChips = GameProgress.sidePotChips;
         data.chipsInitialized = GameProgress.chipsInitialized;
         data.hides = GameProgress.hides;
         data.mapRow = GameProgress.mapRow;
@@ -75,7 +79,9 @@ public class SaveManager : Singleton<SaveManager>
 
         GameProgress.currentLevel = data.currentLevel;
         GameProgress.currentSuit = data.currentSuit;
+        GameProgress.sidePotChips = data.sidePotChips;
         GameProgress.playerChips = data.playerChips;
+        GameProgress.targetHandSize = data.targetHandSize;
         GameProgress.chipsInitialized = data.chipsInitialized;
         GameProgress.hides = data.hides;
         GameProgress.mapRow = data.mapRow;
