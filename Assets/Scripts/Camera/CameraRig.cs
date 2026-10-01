@@ -53,7 +53,7 @@ using UnityEngine;
       void Update()
       {
           if (GameProgress.InputLocked) return;   // 卷轴地图打开/切关过渡：滚轮归 ScrollRect，禁止切机位
-          if (GameProgress.currentNodeType == NodeType.Upgrade) return;   // 非战斗节点不动相机
+        //   if (GameProgress.currentNodeType == MapNodeType.Upgrade) return;   // 非战斗节点不动相机
           if (positions == null || positions.Length == 0) return;
 
           float wheel = Input.mouseScrollDelta.y;
@@ -89,7 +89,7 @@ using UnityEngine;
           }
           else
           {
-              if (GameProgress.currentNodeType == NodeType.Upgrade) return;   // 非战斗节点不动相机
+            //   if (GameProgress.currentNodeType == NodeType.Upgrade) return;   // 非战斗节点不动相机
               targetPos = positions[currentIndex] + Vector3.up * boardHeight;
           }
 

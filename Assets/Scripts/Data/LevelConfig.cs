@@ -1,15 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 // 地图节点类型
-public enum NodeType
-{
-    Battle,    // 必过关（战斗，对应 LevelDatabase 的关）
-    Extra,     // 小关（额外战斗，占位）
-    Shop,      // 商店（占位）
-    Upgrade,   // 强化（占位）
-    Chest,      //箱子
-    Boss       // Boss（K）
-}
+
 
 /// <summary>
 /// 一个战斗关卡的所有可变配置。放进 LevelDatabase 的大数组里，逐关填。

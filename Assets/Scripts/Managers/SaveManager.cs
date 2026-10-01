@@ -23,8 +23,7 @@ public class SaveManager : Singleton<SaveManager>
         public int targetHandSize;
         public bool chipsInitialized;
         public int hides;
-        public int mapRow;
-        public int mapCol;
+        public int currentNodeId;
         public bool mapGenerated;
         public int mapSuit;
         public int currentNodeType;                              // NodeType 转成 int 存
@@ -44,8 +43,7 @@ public class SaveManager : Singleton<SaveManager>
         data.sidePotChips = GameProgress.sidePotChips;
         data.chipsInitialized = GameProgress.chipsInitialized;
         data.hides = GameProgress.hides;
-        data.mapRow = GameProgress.mapRow;
-        data.mapCol = GameProgress.mapCol;
+        data.currentNodeId = GameProgress.currentNodeId;
         data.mapGenerated = GameProgress.mapGenerated;
         data.mapSuit = GameProgress.mapSuit;
         data.currentNodeType = (int)GameProgress.currentNodeType;
@@ -84,11 +82,10 @@ public class SaveManager : Singleton<SaveManager>
         GameProgress.targetHandSize = data.targetHandSize;
         GameProgress.chipsInitialized = data.chipsInitialized;
         GameProgress.hides = data.hides;
-        GameProgress.mapRow = data.mapRow;
-        GameProgress.mapCol = data.mapCol;
+        GameProgress.currentNodeId = data.currentNodeId;
         GameProgress.mapGenerated = data.mapGenerated;
         GameProgress.mapSuit = data.mapSuit;
-        GameProgress.currentNodeType = (NodeType)data.currentNodeType;
+        GameProgress.currentNodeType = (MapNodeType)data.currentNodeType;
         if (data.map != null) GameProgress.map = data.map;
         // 道具名单：BeginRun 进 SampleScene 后按名恢复成实体（新游戏/旧存档缺字段时为空）
         GameProgress.ownedItemNames = data.ownedItemNames ?? new List<string>();

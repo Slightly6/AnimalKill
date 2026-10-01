@@ -22,7 +22,7 @@ public class GoodsManager : Singleton<GoodsManager>
     void Update()
     {
         // 只在商店节点检测商品：战斗关/卷轴打开/切关过渡时一律不能买
-        if (GameProgress.currentNodeType != NodeType.Shop) return;
+        if (GameProgress.currentNodeType != MapNodeType.Shop) return;
 
         if (GameProgress.InputLocked)   // 卷轴地图打开/切关过渡时：商店悬停/购买射线全部停掉
         {

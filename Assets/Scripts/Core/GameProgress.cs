@@ -18,13 +18,12 @@ using UnityEngine;
 
         // 地图相关（本局随机地图，跨场景保留）
         public static List<MapNodeData> map = new List<MapNodeData>();   // 当前章的地图
-        public static int mapRow = 0;          // 玩家当前要选第几横排
-        public static int mapCol = 0;          // 上一排选的是第几列（锁定走哪条线）
+        public static int currentNodeId = -1;   // 当前要打的关卡index（0~51），默认 -1 = 第1关
         public static bool mapGenerated = false;
         public static int currentSuit = 0;     // 当前第几章（0=♠ 1=♥ 2=♦ 3=♣）
         public static int mapSuit = -1;        // 已生成的地图属于哪章（-1=还没生成）
         public static int hides = 0;                    // 兽皮数（跨关继承，奖励关献祭用）
-        public static NodeType currentNodeType = NodeType.Battle;   // 当前进的哪种节点（跨场景）
+        public static MapNodeType currentNodeType = MapNodeType.Monster;   // 当前进的哪种节点（跨场景）
 
         // 道具不再做跨场景/跨关记录：买下的道具就是留在 SampleScene 里的 TableItem 实体，
         // 数据挂在实体上，换关不重建，消耗品用完销毁实体即可。
@@ -73,13 +72,12 @@ using UnityEngine;
             chipsInitialized = false;
             playerDeck = new List<CardDataSO>();
             map = new List<MapNodeData>();
-            mapRow = 0;
-            mapCol = 0;
+            currentNodeId = -1;
             mapGenerated = false;
             currentSuit = 0;
             mapSuit = -1;
             hides = 0;
-            currentNodeType = NodeType.Battle;
+            currentNodeType = MapNodeType.Monster;
             ownedItemNames = new List<string>();
             awakenedCardNames = new HashSet<string>();
             mapOpen = false;
@@ -87,29 +85,11 @@ using UnityEngine;
             chipFly=false;
         }
 
-        // 是不是不用战斗的节点（商店/奖励关：进去不摆棋盘、不抽手牌）
+        //是不是不用战斗的节点（商店/奖励关：进去不摆棋盘、不抽手牌）
         public static bool IsNonBattleNode()
         {
-            return currentNodeType == NodeType.Shop || currentNodeType == NodeType.Upgrade;
+            return currentNodeType == MapNodeType.Shop;
         }
 
-        // 找某排某列的节点（找不到返回 null）
-        public static MapNodeData FindNode(int row, int col)
-        {
-            for (int i = 0; i < map.Count; i++)
-            {
-                if (map[i].row == row && map[i].col == col) return map[i];
-            }
-            return null;
-        }
 
-        // 这个节点现在能不能点：必须是当前横排，且上一排选的线能走到这一列
-        public static bool CanSelectNode(int row, int col)
-        {
-            if (row != mapRow) return false;   // 不是当前横排
-            if (row == 0) return true;         // 第一排就一个节点，随便点
-            MapNodeData from = FindNode(row - 1, mapCol);
-            if (from == null) return true;     // 找不到上一排节点（兜底放行）
-            return from.nextCols.Contains(col);   // 上一排那条线连不连得到这一列
-        }
     }

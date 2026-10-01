@@ -106,48 +106,17 @@ public class MapManager : Singleton<MapManager>
     }
 
     // ========== 卷轴选关入口（UIMapNode 点击调用，全程不切场景） ==========
-    public void SelectNode(MapNodeData data)
-    {
-        if (data == null) return;
 
-        // 前进到下一排，记住选了哪条线
-        GameProgress.mapRow = data.row + 1;
-        GameProgress.mapCol = data.col;
-        GameProgress.currentNodeType = data.type;
-
-        // 战斗/Boss 用节点自己的关卡索引；小关(Extra)复用上一关索引（levelIndex=-1）
-        if (data.type == NodeType.Battle || data.type == NodeType.Boss)
-            GameProgress.currentLevel = data.levelIndex;
-
-        bool battleNode = data.type != NodeType.Shop
-                       && data.type != NodeType.Upgrade
-                       && data.type != NodeType.Chest;
-
-        // 非战斗实体（未买商品、旧宝箱）先清掉
-        ClearSpawnedNonBattleObjects();
-
-        if (battleNode)
-        {
-            StartLevel(GameProgress.currentLevel);
-            // 桌上道具就是场景里的实体，换关不动它们；
-            // transitioning 保持 true，由 BattleManager 进入出牌阶段时解锁
-        }
-        else
-        {
-            EnterNonBattleNode();
-            GameProgress.transitioning = false;   // 非战斗节点没有出牌阶段，直接可操作
-        }
-    }
 
     // 开始一关
     public void StartLevel(int index)
     {
         // 商店/奖励关：不摆棋盘不抽手牌，直接进面板
         if (GameProgress.IsNonBattleNode()
-            || GameProgress.currentNodeType == NodeType.Chest)
+            || GameProgress.currentNodeType == MapNodeType.Treasure)
         {
             EnterNonBattleNode();
-            return;
+            return; 
         }
 
         if (database == null)
@@ -189,34 +158,33 @@ public class MapManager : Singleton<MapManager>
     }
 
     // 过关给兽皮：小关(Extra) 33% 掉 1 / 大关(Battle必过关) 稳定 1 / Boss 3
-    void AwardHide()
-    {
-        NodeType t = GameProgress.currentNodeType;
-        if (t == NodeType.Boss)
-        {
-            GameProgress.hides += 3;
-        }
-        else if (t == NodeType.Extra)
-        {
-            if (Random.value < 0.33f) GameProgress.hides += 1;
-        }
-        else if (t == NodeType.Battle)
-        {
-            GameProgress.hides += 1;
-        }
-        Debug.Log("[兽皮] 现在共 " + GameProgress.hides + " 片");
-    }
+    // void AwardHide()
+    // {
+    //     MapNodeType t = GameProgress.currentNodeType;
+    //     if (t == MapNodeType.Boss)
+    //     {
+    //         GameProgress.hides += 3;
+    //     }
+    //     else if (t == MapNodeType.Elite)
+    //     {
+    //         if (Random.value < 0.33f) GameProgress.hides += 1;
+    //     }
+    //     else if (t == MapNodeType.Monster)
+    //     {
+    //         GameProgress.hides += 1;
+    //     }
+    //     Debug.Log("[兽皮] 现在共 " + GameProgress.hides + " 片");
+    // }
 
     // 商店/奖励关（非战斗节点）
     void EnterNonBattleNode()
     {
         Debug.Log("[节点] 进入 " + GameProgress.currentNodeType);
-        if (GameProgress.currentNodeType == NodeType.Chest
-            || GameProgress.currentNodeType == NodeType.Upgrade)
+        if (GameProgress.currentNodeType == MapNodeType.Treasure)
         {
             Chest();
         }
-        else if (GameProgress.currentNodeType == NodeType.Shop)
+        else if (GameProgress.currentNodeType == MapNodeType.Shop)
         {
             Shopping();
         }
@@ -271,7 +239,7 @@ public class MapManager : Singleton<MapManager>
     // 过关：K（章节 Boss）→ 解锁下一章 / 胜利；普通关 → 卷轴掉下来
     void OnLevelCleared(LevelClearedEvent e)
     {
-        AwardHide();   // 按刚打完的节点给兽皮
+        // AwardHide();   // 按刚打完的节点给兽皮
         SaveManager.Instance.Save();   // 打完一关存档一次
 
         int rank = GameProgress.currentLevel % 13;   // 0=A ... 12=K
@@ -296,15 +264,36 @@ public class MapManager : Singleton<MapManager>
         if (rolling != null)
         {
             // 先生成地图数据（复用 MapScrollUI 的生成逻辑）
-            var ui = FindObjectOfType<MapScrollUI>();
-            if (ui != null) ui.EnsureMapGenerated();
+            // var ui = FindObjectOfType<MapScrollUI>();
+            // if (ui != null) ui.EnsureMapGenerated();
             rolling.RollOut();
         }
         else
         {
-            var ui = FindObjectOfType<MapScrollUI>();
-            if (ui != null) ui.OpenMap();
-            else Debug.LogError("[MapManager] 场景里找不到 RollingMap3D 或 MapScrollUI");
+            // var ui = FindObjectOfType<MapScrollUI>();
+            // if (ui != null) ui.OpenMap();
+            // else Debug.LogError("[MapManager] 场景里找不到 RollingMap3D 或 MapScrollUI");
+        }
+    }
+    public void EnterNodeByType(MapNodeType type, int floor)
+    {
+        GameProgress.currentNodeType = type;
+        ClearSpawnedNonBattleObjects();
+
+        bool battleNode = type == MapNodeType.Monster
+                    || type == MapNodeType.Elite
+                    || type == MapNodeType.Boss;
+
+        if (battleNode)
+        {
+            // floor 映射到 LevelDatabase 索引，按你现有关卡结构算
+            GameProgress.currentLevel = GameProgress.currentSuit * 13 + floor;
+            StartLevel(GameProgress.currentLevel);
+        }
+        else
+        {
+            EnterNonBattleNode();
+            GameProgress.transitioning = false;
         }
     }
 }

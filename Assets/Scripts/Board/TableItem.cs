@@ -35,7 +35,7 @@ public class TableItem : MonoBehaviour
         // 非战斗节点（商店/升级/宝箱）没有回合阶段机，随时可点；
         // 战斗关（Battle/Boss/小关）只能在摸牌 Draw、出牌 Play 阶段点，战斗结算 Battle / 结束 End 不能点。
         bool nonBattleNode = GameProgress.IsNonBattleNode()
-                          || GameProgress.currentNodeType == NodeType.Chest;
+                          || GameProgress.currentNodeType == MapNodeType.Treasure;
         if (!nonBattleNode)
         {
             if (BattleManager.Instance == null) return;
