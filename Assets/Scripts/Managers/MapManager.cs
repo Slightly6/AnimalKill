@@ -242,9 +242,16 @@ public class MapManager : Singleton<MapManager>
         // AwardHide();   // 按刚打完的节点给兽皮
         SaveManager.Instance.Save();   // 打完一关存档一次
 
-        int rank = GameProgress.currentLevel % 13;   // 0=A ... 12=K
+        // 用配置里的 isBoss 判断章节 Boss，不再用 currentLevel % 13
+        LevelConfig clearedCfg = null;
+        if (database != null
+            && GameProgress.currentLevel >= 0
+            && GameProgress.currentLevel < database.levels.Count)
+        {
+            clearedCfg = database.levels[GameProgress.currentLevel];
+        }
 
-        if (rank == 12)   // 打的是 K = 章节 Boss
+        if (clearedCfg != null && clearedCfg.isBoss)
         {
             if (GameProgress.currentSuit >= 3)   // 最后一章（♣）→ 整局胜利
             {
@@ -275,25 +282,45 @@ public class MapManager : Singleton<MapManager>
             // else Debug.LogError("[MapManager] 场景里找不到 RollingMap3D 或 MapScrollUI");
         }
     }
-    public void EnterNodeByType(MapNodeType type, int floor)
+    // ===== 3D 地图节点进入：levelIndex = 本章第几个战斗节点（非战斗节点为 -1） =====
+
+    private const int LevelsPerSuit = 13;       // 每章在 LevelDatabase 占的关卡数
+    private const int MaxNormalBattleIndex = 11; // 普通/精英战斗序号上限（12 留给 Boss）
+
+    public void EnterNodeByType(MapNodeType type, int levelIndex)
     {
         GameProgress.currentNodeType = type;
         ClearSpawnedNonBattleObjects();
 
-        bool battleNode = type == MapNodeType.Monster
-                    || type == MapNodeType.Elite
-                    || type == MapNodeType.Boss;
+        switch (type)
+        {
+            case MapNodeType.Monster:
+            case MapNodeType.Elite:
+                GameProgress.currentLevel =
+                    GameProgress.currentSuit * LevelsPerSuit
+                    + Mathf.Clamp(levelIndex, 0, MaxNormalBattleIndex);
+                StartLevel(GameProgress.currentLevel);
+                break;
 
-        if (battleNode)
-        {
-            // floor 映射到 LevelDatabase 索引，按你现有关卡结构算
-            GameProgress.currentLevel = GameProgress.currentSuit * 13 + floor;
-            StartLevel(GameProgress.currentLevel);
-        }
-        else
-        {
-            EnterNonBattleNode();
-            GameProgress.transitioning = false;
+            case MapNodeType.Boss:
+                GameProgress.currentLevel =
+                    GameProgress.currentSuit * LevelsPerSuit + (LevelsPerSuit - 1);
+                StartLevel(GameProgress.currentLevel);
+                break;
+
+            case MapNodeType.Treasure:
+            case MapNodeType.Shop:
+                // 已有实体玩法（宝箱/觉醒商店）
+                EnterNonBattleNode();
+                GameProgress.transitioning = false;
+                break;
+
+            case MapNodeType.Event:
+            case MapNodeType.Rest:
+                // TODO：事件/休息玩法还没做，先直接回地图，保证整条流程能跑通
+                Debug.Log($"[节点] {type} 内容未实现，暂时直接返回地图。");
+                FinishNonBattleNode();
+                break;
         }
     }
 }
