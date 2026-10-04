@@ -161,6 +161,10 @@ public struct ItemActivatedEvent
 {
     public ShopItemDataSO item;   // 触发哪个道具
 }
+public struct EnemyDefeatedEvent
+{
+    public int goldReward;   // 本关主池兑换的金币数，帽子按这个播飞金币
+}
 
 // 过关（打光敌人筹码，非整局胜利）
 public struct LevelClearedEvent

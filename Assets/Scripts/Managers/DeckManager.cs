@@ -67,13 +67,19 @@ public class DeckManager : Singleton<DeckManager>
 
     // 同场景换关时调用：原来切场景会把 DeckManager 整个销毁重建（Start→InitDeck 重洗牌），
     // 现在不切场景，手动模拟——销毁所有手牌实体，从 GameProgress.playerDeck 重新洗一副。
-    public void ResetForNewLevel()
+    // 只销毁桌上的玩家手牌实体，不动牌堆
+    public void ClearHandObjects()
     {
         for (int i = HandCards.Count - 1; i >= 0; i--)
         {
             if (HandCards[i] != null) Destroy(HandCards[i].gameObject);
         }
         HandCards.Clear();
+    }
+
+    public void ResetForNewLevel()
+    {
+        ClearHandObjects();
         InitDeck();
     }
     // 抽 N 张（协程，一张张翻面）

@@ -270,9 +270,6 @@ public class MapManager : Singleton<MapManager>
         var rolling = FindObjectOfType<RollingMap3D>();
         if (rolling != null)
         {
-            // 先生成地图数据（复用 MapScrollUI 的生成逻辑）
-            // var ui = FindObjectOfType<MapScrollUI>();
-            // if (ui != null) ui.EnsureMapGenerated();
             rolling.RollOut();
         }
         else

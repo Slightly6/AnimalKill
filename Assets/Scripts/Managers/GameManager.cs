@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -37,6 +38,7 @@ public class GameManager : Singleton<GameManager>
     public int takeLimit = 200;           // 回血上限（超出留在 Pot）
     public int sidePotCap = 50;           // 边池上限
     public float discardPotRatio = 0.5f;  // 弃牌进 Pot 比例
+    private bool deathSequenceRunning = false;
 
     // 战利品区当前张数
     public int TrophyCount { get { return trophy.Count; } }
@@ -280,10 +282,19 @@ public class GameManager : Singleton<GameManager>
         if (EnemyChips <= 0)
         {
             EnemyChips = 0;
-            SettlePot();                                  // 关结束分账
-            GameProgress.playerChips = PlayerChips;       // 跨关继承玩家筹码
-            GameProgress.sidePotChips = SidePotChips;     // 跨关继承边池筹码
-            EventBus.Publish(new LevelClearedEvent());    // 过关（是否胜利由 MapManager 判）
+            if (deathSequenceRunning) return;   // 防止重复触发
+            deathSequenceRunning = true;
+            BattleQueue.Instance.Until(() => !GameProgress.chipFly, 15f);
+            // 死亡流程全部进命令队列，顺序由入队顺序保证
+            BattleQueue.Instance.Do(() =>
+            {
+                int gold = PotChips / 10;       // 先算，SettlePot 里会把 PotChips 清零
+                SettlePot();
+                GameProgress.playerChips = PlayerChips;
+                GameProgress.sidePotChips = SidePotChips;
+                EventBus.Publish(new EnemyDefeatedEvent { goldReward = gold });  // 帽子开始演出
+            });
+            BattleQueue.Instance.Until(() => TOPhat.Instance == null || !TOPhat.Instance.IsBusy, 10f);
         }
         else if (PlayerChips <= 0)
         {
@@ -294,6 +305,34 @@ public class GameManager : Singleton<GameManager>
         }
     }
 
+     
+
+    // private IEnumerator EnemyDeathSequence()
+    // {
+    //     if (deathSequenceRunning) yield break;   // 防止重复触发
+    //     deathSequenceRunning = true;
+
+    //     // 1. 先分账：主池换金币（SettlePot 内部会 PotChips=0）
+    //     int gold = PotChips / 10;
+    //     SettlePot();
+    //     GameProgress.playerChips = PlayerChips;
+    //     GameProgress.sidePotChips = SidePotChips;
+
+    //     // 2. 广播死亡事件，帽子开始接金币演出
+    //     EventBus.Publish(new EnemyDefeatedEvent { goldReward = gold });
+
+    //     // 3. 等帽子演出结束（帽子把 IsBusy 置 false）；5 秒超时兜底，防止帽子没挂卡死流程
+    //     float timer = 0f;
+    //     while (TOPhat.Instance != null && TOPhat.Instance.IsBusy && timer < 5f)
+    //     {
+    //         timer += Time.deltaTime;
+    //         yield return null;
+    //     }
+
+    //     // 4. 演出看完，正式过关（→ 清场 → 铺地图）
+    //     deathSequenceRunning = false;
+    //     EventBus.Publish(new LevelClearedEvent());
+    // }
     private void EndGame(bool playerWin)
     {
         IsGameOver = true;

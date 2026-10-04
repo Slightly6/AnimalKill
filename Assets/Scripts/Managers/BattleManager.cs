@@ -93,6 +93,16 @@ public class BattleManager : Singleton<BattleManager>
             if (levelEnded || GameManager.Instance.IsGameOver) yield break;
             yield return StartCoroutine(ResolveEnemyTurn());
         }
+         if (levelEnded && !GameManager.Instance.IsGameOver)
+        {
+            while (!BattleQueue.Instance.IsEmpty)
+                yield return null;
+
+            DeckManager.Instance.ClearHandObjects();   // 玩家手牌
+            BattleView.Instance.ClearGhosts();         // 虚影/阴影
+            BattleView.Instance.ClearEnemyHand();      // 敌人手牌
+            // EventBus.Publish(new LevelClearedEvent()); // MapManager 收到后存档+RollOut
+        }
         IsInBattle = false;
     }
 
@@ -147,8 +157,8 @@ public class BattleManager : Singleton<BattleManager>
 
         actionsLeft--;
 
-        // 5. 补手牌
-        if (DeckManager.Instance != null)
+        // 5. 补手牌（敌人已经死了就别补了，马上清场）
+        if (GameManager.Instance.EnemyChips > 0 && DeckManager.Instance != null)
         {
             int need = GameProgress.targetHandSize - DeckManager.Instance.HandCards.Count;
             if (need > 0)
