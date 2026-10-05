@@ -72,6 +72,18 @@ public class BattleView : Singleton<BattleView>
 
     private void OnEnemyIntentChanged(EnemyIntentChangedEvent e)
     {
+        if(e.intent == EnemyIntentType.Check)
+        {
+            Narrator.Say(SpeakTopic.Check);
+        }
+        else if(e.intent == EnemyIntentType.Call)
+        {
+            Narrator.Say(SpeakTopic.Call);
+        }
+        else if(e.intent == EnemyIntentType.Raise)
+        {
+            Narrator.Say(SpeakTopic.Raise);
+        }
         Debug.Log("[敌人意图显示] " + e.intent);
     }
 

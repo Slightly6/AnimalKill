@@ -196,9 +196,9 @@ public enum BattleActor
 
 public enum EnemyIntentType
 {
-    Check,
-    Call,
-    Raise
+    Check,//过牌加筹码
+    Call,//攻击
+    Raise//加强
 }
 
 public class EnemyPlayData

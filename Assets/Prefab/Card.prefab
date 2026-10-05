@@ -96,7 +96,6 @@ GameObject:
   - component: {fileID: 678577280254055433}
   - component: {fileID: 5339620174248007879}
   - component: {fileID: 1025336758752454130}
-  - component: {fileID: 3336427958416747365}
   m_Layer: 0
   m_Name: Card
   m_TagString: Untagged
@@ -171,7 +170,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   dragScale: 0.8
   dragPixels: 15
-  Table: {fileID: 9204990413418171625, guid: 4a3a59ecf6881bc449c6c0e758170635, type: 3}
 --- !u!65 &5339620174248007879
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -205,20 +203,6 @@ SortingGroup:
   m_SortingLayer: 0
   m_SortingOrder: 10
   m_SortAtRoot: 0
---- !u!114 &3336427958416747365
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1901183720400362659}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 13a0ac2163deb0d419ef4ef611eaef01, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  destroyWhenDone: 1
-  dissolveNoise: {fileID: 0}
 --- !u!1 &2000421894215644711
 GameObject:
   m_ObjectHideFlags: 0

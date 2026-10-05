@@ -19,7 +19,12 @@ public enum SpeakTopic
     ShopFull,
     ChestLocked,
     NodeLocked,
-    // ... 继续加
+
+    //战斗中敌人出牌操作显示
+    Check,//过牌加筹码
+    Call,//攻击
+    Raise//加强
+
 }
 
 public static class NarratorLines
@@ -39,6 +44,9 @@ public static class NarratorLines
         { SpeakTopic.ShopFull,         new[] { "桌子放不下了，四样够多了。" } },
         { SpeakTopic.ChestLocked,      new[] { "（箱子锁着，现在不是碰它的时候。）" } },
         { SpeakTopic.NodeLocked,       new[] { "那条路现在走不通。" } },
+        { SpeakTopic.Check,            new[] { "我选择过牌。" } },
+        { SpeakTopic.Call,             new[] { "我想要出牌。" } },
+        { SpeakTopic.Raise,            new[] { "我想要加强。" } },
     };
 
     public static string GetRandom(SpeakTopic topic)

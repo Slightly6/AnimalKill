@@ -220,12 +220,12 @@ public class Card : MonoBehaviour
     }
 
     // 点数文字只在正面显示（背面时被背图盖住，这里只控文字的显隐）
-    // void SetTextsVisible(bool showFront)
-    // {
-    //     for (int i = 0; i < rankTexts.Length; i++)
-    //         if (rankTexts[i] != null) rankTexts[i].gameObject.SetActive(showFront);
-    //     RefreshBonusText();   // 加/减的文字只在正面显示，且只有非 0 才显示
-    // }
+    void SetTextsVisible(bool showFront)
+    {
+        for (int i = 0; i < rankTexts.Length; i++)
+            if (rankTexts[i] != null) rankTexts[i].gameObject.SetActive(showFront);
+        RefreshBonusText();   // 加/减的文字只在正面显示，且只有非 0 才显示
+    }
 
     // 翻面动画：绕 Y 轴从当前面转到另一面（像翻真卡）
     public IEnumerator FlipAnim()
