@@ -38,7 +38,8 @@ public class GameManager : Singleton<GameManager>
     public int takeLimit = 200;           // 回血上限（超出留在 Pot）
     public int sidePotCap = 50;           // 边池上限
     public float discardPotRatio = 0.5f;  // 弃牌进 Pot 比例
-    private bool deathSequenceRunning = false;
+    private bool deathSequenceRunning = false;  // 玩家打光敌人筹码后，死亡流程正在进行中，防止重复触发
+    public int toGold;                    // 本关结算时主池换金币数
 
     // 战利品区当前张数
     public int TrophyCount { get { return trophy.Count; } }
@@ -108,7 +109,7 @@ public class GameManager : Singleton<GameManager>
         PotChips = 0;       // 主池每关重置
         trophy.Clear();
         HookLocked = false;
-
+        Coin.Instance.initialized=true;
         SendChipsChanged();
         EventBus.Publish(new TrophyChangedEvent { count = 0 });
         Debug.Log("[关卡] 进入 " + cfg.levelName + "，敌人筹码 " + EnemyChips + "，边池 " + SidePotChips);
@@ -267,7 +268,6 @@ public class GameManager : Singleton<GameManager>
     {
         if (PotChips <= 0) return;
 
-        int toGold = PotChips / 10;
         GameProgress.gold += toGold;
 
         Debug.Log("[关结束分账] 主池 " + PotChips + " → 金币+" + toGold + "，当前金币 " + GameProgress.gold);
@@ -288,13 +288,19 @@ public class GameManager : Singleton<GameManager>
             // 死亡流程全部进命令队列，顺序由入队顺序保证
             BattleQueue.Instance.Do(() =>
             {
-                int gold = PotChips / 10;       // 先算，SettlePot 里会把 PotChips 清零
+                
+                toGold = PotChips / 10;
                 SettlePot();
                 GameProgress.playerChips = PlayerChips;
                 GameProgress.sidePotChips = SidePotChips;
-                EventBus.Publish(new EnemyDefeatedEvent { goldReward = gold });  // 帽子开始演出
             });
-            BattleQueue.Instance.Until(() => TOPhat.Instance == null || !TOPhat.Instance.IsBusy, 10f);
+            BattleQueue.Instance.Run(TOPhat.Instance.PlayCollect(toGold));
+            BattleQueue.Instance.Until(() => TOPhat.Instance == null || !TOPhat.Instance.IsBusy, 50f);
+            BattleQueue.Instance.Do(() =>
+            {
+                deathSequenceRunning = false;
+                EventBus.Publish(new LevelClearedEvent());   // MapManager 收到后存档+RollOut
+            });
         }
         else if (PlayerChips <= 0)
         {

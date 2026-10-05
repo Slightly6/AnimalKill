@@ -10,17 +10,21 @@ using UnityEngine;
 /// </summary>
 public class BattleManager : Singleton<BattleManager>
 {
+    [Header("点数（杀戮尖塔式）")]
+    public int pointsPerTurn = 3;        // 每回合点数上限
+    public int PointsLeft { get; private set; }   // 剩余点数
+
+    [Header("回合抽牌动画预留（帧）")]
+    public int drawFrames = 10;       
+
     public TurnPhase CurrentPhase { get; private set; }   // 当前阶段
     public bool IsPlayerTurn { get; private set; } = true;// 只剩玩家回合，恒为 true
     public bool IsInBattle { get; private set; }          // 是否正在战斗
 
-    [Header("每关次数")]
-    public int playsPerLevel = 8;      // 出牌次数+弃牌次数
     [Header("不勾选为call")]
     public bool isPlayfold = false;        // false 打人，true 弃牌进主池
-    public int actionsLeft { get; private set; }
 
-    private bool playRequested = false;   // 玩家按了铃铛
+    private bool endTurnRequested = false;   // 玩家按了铃铛
     private bool levelEnded = false;      // 本关结束（过关或玩家输）
     private bool resolving = false;       // 结算/弃牌演出中，锁操作
     private Coroutine battleRoutine;
@@ -28,22 +32,13 @@ public class BattleManager : Singleton<BattleManager>
     private void Start()
     {
         BattleView.Instance.Init();   // 初始化演出层（相机+阴影保底）
-        EventBus.Subscribe<EndPlayPhaseEvent>(OnEndPlayPhase);
         EventBus.Subscribe<LevelClearedEvent>(OnLevelCleared);
     }
 
     private void OnDestroy()
     {
-        EventBus.Unsubscribe<EndPlayPhaseEvent>(OnEndPlayPhase);
         EventBus.Unsubscribe<LevelClearedEvent>(OnLevelCleared);
     }
-
-    private void OnEndPlayPhase(EndPlayPhaseEvent e)
-    {
-        playRequested = true;
-        isPlayfold = e.isPlay;
-    }
-
     private void OnLevelCleared(LevelClearedEvent e) { levelEnded = true; }
 
     // 道具占位：转发给 EnemyController（敌方回合后期接入）
@@ -58,8 +53,8 @@ public class BattleManager : Singleton<BattleManager>
         IsInBattle = true;
         levelEnded = false;
         resolving = false;
-        playRequested = false;
-        actionsLeft = playsPerLevel;
+        endTurnRequested = false;
+        PointsLeft = pointsPerTurn;
         BattleView.Instance.ClearGhosts();
         BattleView.Instance.ClearSelection();
         if (cfg.enemyConfig != null)
@@ -70,43 +65,94 @@ public class BattleManager : Singleton<BattleManager>
         if (battleRoutine != null) StopCoroutine(battleRoutine);
         battleRoutine = StartCoroutine(GameLoop());
     }
+    // 桌面点击统一入口
+    public void HandleTableAction(TableActionType type)
+    {
+        if (CurrentPhase != TurnPhase.Play || resolving) return;  // 只在出牌阶段、且没在结算时响应
 
+        switch (type)
+        {
+            case TableActionType.Play:
+                TryResolveOneHand(false);
+                break;
+            case TableActionType.Discard:
+                TryResolveOneHand(true);
+                break;
+            case TableActionType.EndTurn:
+                AudioManager.Instance.PlayBell();
+                endTurnRequested = true;
+                break;
+        }
+    }
+
+    // 尝试打出/弃掉当前选中的一手牌
+    private void TryResolveOneHand(bool fold)
+    {
+        List<Card> cards = BattleView.Instance.GetSortedSelectedCards();
+        if (cards.Count == 0)
+        {
+            Debug.Log(fold ? "[弃牌堆] 没选牌" : "[出牌堆] 没选牌");
+            // TODO: 以后这里播"请先选牌"的提示/抖动
+            return;
+        }
+
+        var dataList = cards.ConvertAll(c => c.Data);   // 1. 取出每张牌的数据
+        var hand = PokerResolver.Evaluate(dataList);     // 2. 判断是什么牌型
+        int cost = PokerResolver.GetPointCost(hand);     // 3. 算出点数消耗
+        if (PointsLeft < cost)
+        {
+            Debug.Log($"点数不足：需要 {cost}，剩余 {PointsLeft}");
+            // TODO: 以后这里让选中的牌抖动/变红，然后 ClearSelection
+            return;
+        }
+
+        PointsLeft -= cost;
+        isPlayfold = fold;
+        StartCoroutine(ResolvePlayerHand());   // 立即结算，不离开出牌阶段
+    }
     // 主循环
     private IEnumerator GameLoop()
     {
         while (!levelEnded && !GameManager.Instance.IsGameOver)
         {
-            // 出牌阶段：等玩家选牌 + 按铃铛（弃牌由事件单独处理，不走这个循环）
             SetPhase(TurnPhase.Draw);
             GameProgress.transitioning = false;
+            PointsLeft = pointsPerTurn;        // 每回合点数补满
+
+            int need = GameProgress.targetHandSize - DeckManager.Instance.HandCards.Count;
+            if (need > 0)
+                yield return DeckManager.Instance.DrawCards(need);
+
+            // 抽完再空等几帧，给飞牌动画留位置
+            for (int i = 0; i < drawFrames; i++)
+                yield return null;
+
             SetPhase(TurnPhase.Play);
-            playRequested = false;
-            while (!playRequested)
+            endTurnRequested = false;
+
+            // 出牌阶段：想出几手出几手（受点数限制），点铃铛才离开
+            while (!endTurnRequested)
             {
-                if (levelEnded || GameManager.Instance.IsGameOver) yield break;
+                if (levelEnded || GameManager.Instance.IsGameOver) break;
                 yield return null;
             }
+            if (levelEnded || GameManager.Instance.IsGameOver) break;
 
             SetPhase(TurnPhase.Battle);
-            yield return StartCoroutine(ResolvePlayerHand());
-            // 玩家出牌后接敌人回合
-            if (levelEnded || GameManager.Instance.IsGameOver) yield break;
             yield return StartCoroutine(ResolveEnemyTurn());
         }
-         if (levelEnded && !GameManager.Instance.IsGameOver)
+
+        if (levelEnded && !GameManager.Instance.IsGameOver)
         {
             while (!BattleQueue.Instance.IsEmpty)
                 yield return null;
+            EventBus.Publish(new LevelClearedEvent());
 
-            DeckManager.Instance.ClearHandObjects();   // 玩家手牌
-            BattleView.Instance.ClearGhosts();         // 虚影/阴影
-            BattleView.Instance.ClearEnemyHand();      // 敌人手牌
-            // EventBus.Publish(new LevelClearedEvent()); // MapManager 收到后存档+RollOut
         }
         IsInBattle = false;
     }
 
-    // 铃铛结算：编排选牌→计算→演出→游戏逻辑→补牌
+    // 编排选牌→计算→演出→游戏逻辑
     private IEnumerator ResolvePlayerHand()
     {
         List<Card> cards = BattleView.Instance.GetSortedSelectedCards();
@@ -116,12 +162,6 @@ public class BattleManager : Singleton<BattleManager>
             Debug.Log("[铃铛] 没选牌，先点选手牌");
             yield break;
         }
-        if (actionsLeft <= 0)
-        {
-            Debug.Log("[铃铛] 本关出牌次数用完了");
-            yield break;
-        }
-
         resolving = true;
         GameProgress.transitioning = true;   // 锁输入（InputLocked = mapOpen || transitioning）
 
@@ -155,15 +195,13 @@ public class BattleManager : Singleton<BattleManager>
             GameManager.Instance.DiscardToPot(damage);
         }
 
-        actionsLeft--;
-
-        // 5. 补手牌（敌人已经死了就别补了，马上清场）
-        if (GameManager.Instance.EnemyChips > 0 && DeckManager.Instance != null)
-        {
-            int need = GameProgress.targetHandSize - DeckManager.Instance.HandCards.Count;
-            if (need > 0)
-                yield return DeckManager.Instance.DrawCards(need);
-        }
+        // // 5. 补手牌（敌人已经死了就别补了，马上清场）
+        // if (GameManager.Instance.EnemyChips > 0 && DeckManager.Instance != null&&CurrentPhase==TurnPhase.Draw)
+        // {
+        //     int need = GameProgress.targetHandSize - DeckManager.Instance.HandCards.Count;
+        //     if (need > 0)
+        //         yield return DeckManager.Instance.DrawCards(need);
+        // }
         resolving = false;
         GameProgress.transitioning = false;
     }

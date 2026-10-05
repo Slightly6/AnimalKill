@@ -76,7 +76,23 @@ public static class PokerResolver
         }
         return bonus;
     }
+    static readonly Dictionary<HandType, int> pointCostTable = new Dictionary<HandType, int>
+    {
+        { HandType.HighCard, 1 }, 
+        { HandType.OnePair, 1 },
+        { HandType.TwoPair, 2 },
+        { HandType.ThreeOfAKind, 2 },
+        { HandType.Straight, 2 },
+        { HandType.Flush, 2 },
+        { HandType.FullHouse, 3 },
+        { HandType.FourOfAKind, 3 },
+        { HandType.StraightFlush, 3 },
+    };
 
+    public static int GetPointCost(HandType type)
+    {
+        return pointCostTable.TryGetValue(type, out int cost) ? cost : 1;
+    }
     // 最终伤害 = (底分 + 主牌加成) × 倍率
     public static int CalcDamage(int baseChips, int cardBonus, int mult)
         => (baseChips + cardBonus) * mult;

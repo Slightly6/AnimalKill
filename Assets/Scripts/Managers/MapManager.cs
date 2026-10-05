@@ -23,6 +23,11 @@ public class MapManager : Singleton<MapManager>
 
     // 非战斗节点刷出来的实体（商品/宝箱），离开该节点时统一清理
     private readonly List<GameObject> spawnedObjects = new List<GameObject>();
+    //筹码
+    public Chips playerChips;
+    public Chips enemyChips;
+    public PotArea potArea;
+    public SidePotArea playerSidePot;
 
     void Start()
     {
@@ -136,9 +141,8 @@ public class MapManager : Singleton<MapManager>
         DeckManager.Instance.ResetForNewLevel();    // 销毁手牌实体、重新洗牌
 
         GameManager.Instance.LoadLevel(cfg);       // 设敌人筹码、清战利品
-        DeckManager.Instance.SetupLevel(cfg);      // 补手牌
         EventBus.Publish(new LevelStartedEvent { levelIndex = index, isBoss = cfg.isBoss });
-        BattleManager.Instance.StartLevel(cfg);    // 开打
+        BattleManager.Instance.StartLevel(cfg);    // 开打（GameLoop 的 Draw 阶段负责抽牌）
     }
 
     // ========== 非战斗节点实体管理（商店商品/宝箱）==========
@@ -239,6 +243,20 @@ public class MapManager : Singleton<MapManager>
     // 过关：K（章节 Boss）→ 解锁下一章 / 胜利；普通关 → 卷轴掉下来
     void OnLevelCleared(LevelClearedEvent e)
     {
+        
+        //筹码区
+        if(playerChips!=null) playerChips.ClearLedger();
+        else foreach (Chips stack in FindObjectsOfType<Chips>())stack.ClearLedger();
+        if(enemyChips!=null) enemyChips.ClearLedger();
+        if(potArea!=null) potArea.ClearCoins();
+        else FindObjectOfType<PotArea>().ClearCoins();
+        if(playerSidePot!=null) playerSidePot.ClearLedger();
+        else FindObjectOfType<SidePotArea>().ClearLedger();
+        
+        //手牌区
+        DeckManager.Instance.ClearHandObjects();  // 删玩家手牌
+        BattleView.Instance.ClearGhosts();        // 删虚影
+        BattleView.Instance.ClearEnemyHand();
         // AwardHide();   // 按刚打完的节点给兽皮
         SaveManager.Instance.Save();   // 打完一关存档一次
 

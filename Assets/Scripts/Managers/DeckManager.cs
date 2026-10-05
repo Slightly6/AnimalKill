@@ -55,16 +55,6 @@ public class DeckManager : Singleton<DeckManager>
       Debug.Log("牌组初始化完成，共 " + drawPile.Count + " 张");
     }
 
-    // 每关配置：更新每回合抽牌数，手牌补到开局数（MapManager 调用）
-    public void SetupLevel(LevelConfig cfg)
-    {
-
-        if (HandCards.Count < cfg.initialHandSize)
-        {
-            StartCoroutine(DrawCards(cfg.initialHandSize - HandCards.Count));
-        }
-    }
-
     // 同场景换关时调用：原来切场景会把 DeckManager 整个销毁重建（Start→InitDeck 重洗牌），
     // 现在不切场景，手动模拟——销毁所有手牌实体，从 GameProgress.playerDeck 重新洗一副。
     // 只销毁桌上的玩家手牌实体，不动牌堆
