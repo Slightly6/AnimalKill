@@ -29,8 +29,6 @@ public static class AbilityDebugMenu
         if (data == null) { WarnSelectCard(); return; }
 
         GameProgress.AwakenCard(data);
-        Debug.Log("[测试] 已觉醒：" + data.animalName +
-                  "（已在手牌/场上的旧牌不会补技能，用③重新塞一张）");
     }
 
     [MenuItem(MENU + "② 觉醒牌组全部  _F6", priority = 2)]
@@ -54,8 +52,6 @@ public static class AbilityDebugMenu
         if (DeckManager.Instance == null) { Debug.LogWarning("[测试] 场景里没有 DeckManager"); return; }
 
         DeckManager.Instance.DebugAddToHand(data);
-        Debug.Log("[测试] 塞入手牌：" + data.animalName +
-                  (GameProgress.IsCardAwakened(data) ? "（已觉醒，带技能）" : "（未觉醒，白板）"));
     }
 
     [MenuItem(MENU + "④ 清空全部觉醒（模拟重开）  _F8", priority = 4)]

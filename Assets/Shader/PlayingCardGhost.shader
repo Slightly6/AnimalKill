@@ -139,7 +139,7 @@ Shader "Custom/PlayingCardGhost"
 
             float4 shadowFrag(shadowV2f i) : SV_Target
             {
-                SHADOW_CASTER_PRIVILEGED;
+                return 0;
             }
             ENDCG
         }

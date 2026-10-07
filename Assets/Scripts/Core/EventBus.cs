@@ -176,7 +176,7 @@ public enum TurnPhase
 {
     Draw,    // 抽牌
     Play,    // 出牌
-    Battle,  // 战斗
+    EnemyBattle,  // 敌人战斗
     End      // 回合结束
 }
 

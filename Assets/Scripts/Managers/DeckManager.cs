@@ -13,7 +13,6 @@ public class DeckManager : Singleton<DeckManager>
 
     [Header("手牌设置")]
     public int maxHandSize = 100;     // 手牌上限
-    public int drawPerTurn = 1;      // 每回合抽几张（每关 SetupLevel 更新）
 
     [Header("卡牌预制体")]
     public GameObject cardPrefab;
@@ -54,7 +53,12 @@ public class DeckManager : Singleton<DeckManager>
       Shuffle(drawPile);
       Debug.Log("牌组初始化完成，共 " + drawPile.Count + " 张");
     }
-
+    // 回合结束：手牌全部进弃牌堆（销毁实体，数据留着抽干后洗回）
+    public void DiscardAllHand()
+    {
+        for (int i = HandCards.Count - 1; i >= 0; i--)
+            DiscardToPile(HandCards[i]);
+    }
     // 同场景换关时调用：原来切场景会把 DeckManager 整个销毁重建（Start→InitDeck 重洗牌），
     // 现在不切场景，手动模拟——销毁所有手牌实体，从 GameProgress.playerDeck 重新洗一副。
     // 只销毁桌上的玩家手牌实体，不动牌堆
@@ -142,6 +146,8 @@ public class DeckManager : Singleton<DeckManager>
         }
 
         GameObject go = Instantiate(cardPrefab);
+        go.GetComponent<ShopCard>().enabled=false; // 禁用 ShopCard 脚本
+        go.GetComponent<CardDisplay>().enabled=true; // 启用 CardDisplay 脚本
         if (deckPile != null)
             go.transform.position = deckPile.position + Vector3.up * 0.1f;   // 略高于牌堆顶，别叠穿
 
@@ -153,11 +159,15 @@ public class DeckManager : Singleton<DeckManager>
             yield break;
         }
 
+        Debug.Log("[发牌] Instantiate 完成，准备 Init：" + data.name);
         card.Init(data, true);   // Init 里默认扣着（背面朝上）
+        Debug.Log("[发牌] Init 完成：" + data.name);
         go.transform.rotation = Quaternion.Euler(90, 0, 0);   // 平放在牌堆上，面朝下（不竖着穿模）
-        AudioManager.Instance.PlayDraw();   // 抽牌音效
+        // AudioManager.Instance.PlayDraw();   // 抽牌音效  （排查卡死：暂时关闭）
 
+        Debug.Log("[发牌] 开始翻面：" + data.name);
         yield return StartCoroutine(card.FlatFlipAnim());   // 平着翻到正面
+        Debug.Log("[发牌] 翻面完成：" + data.name);
 
         card.transform.SetParent(handPanel);
         HandCards.Add(card);
@@ -165,6 +175,7 @@ public class DeckManager : Singleton<DeckManager>
 
         // 抽到时触发的技能（OnDraw，后期自己配）
         card.TriggerAbility(AbilityTrigger.OnDraw, null);
+        Debug.Log("[发牌] 已入手牌：" + data.name);
     }
 
     // 从手牌移除
@@ -213,5 +224,10 @@ public class DeckManager : Singleton<DeckManager>
             list[i] = list[j];
             list[j] = temp;
         }
+    }
+    public void AddToDeck(CardDataSO data)
+    {
+        drawPile.Add(data);  
+        GameProgress.playerDeck.Add(data); 
     }
 }

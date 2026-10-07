@@ -25,29 +25,11 @@ public class CardDataSO : ScriptableObject
     public CardSuit suit;// 花色
     public CardRank rank;// 点数 1~13
 
-    // 动物
-    public string animalName = "新动物";
-    public string description = "";
-    [Header("技能数据以及发生时机")]
-    // 技能
     public string abilityName = "";
-    public Sprite abilityIcon;   // 技能图标（显示在卡牌正面，以后图鉴也用）
-
-    [Header("觉醒技能（商店觉醒后生效；未觉醒时卡是白板）")]
-    public AbilitySO awakenedAbility;
-
-    [Header("外观")]
-
-    public Sprite artwork;
-
-    // ---- 数值 ----
-
-    // 基础战力（攻=血 同一个值）= 点数（觉醒/额外加成在出牌时由 Card 算）
-    public int GetPower()
-    {
-        return (int)rank;
-    }
-
+    public string description; // 描述
+    public HookEffectType effectType; // 效果类型枚举
+    public Rarity rarity;      // 稀有度
+    public int price;          // 价格  
     // ---- 文字 ----
 
     public string GetSuitSymbol()

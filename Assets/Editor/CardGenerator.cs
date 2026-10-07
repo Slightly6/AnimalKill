@@ -91,11 +91,9 @@ public class CardGenerator
 
                 card.suit = suit;
                 card.rank = rank;
-                card.animalName = animal;
-                card.description = "战力 " + card.GetPower();
                 card.abilityName = ability;
                 // card.abilityDesc = GetDesc(suit, ability);
-                card.artwork = null;
+  
 
                 string fileName = suit + "_" + card.GetRankText() + "_" + animal + ".asset";
                 AssetDatabase.CreateAsset(card, path + "/" + fileName);

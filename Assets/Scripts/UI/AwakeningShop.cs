@@ -59,7 +59,6 @@ public class AwakeningShop : MonoBehaviour
             {
                 if (d == null || seen.Contains(d)) continue;
                 if (GameProgress.IsCardAwakened(d)) continue;   // 已觉醒不刷
-                if (d.awakenedAbility == null) continue;        // 没配觉醒技能也不刷
                 seen.Add(d);
                 pool.Add(d);
             }
@@ -146,21 +145,7 @@ public class AwakeningShop : MonoBehaviour
         rt.anchoredPosition = new Vector2(x, -8);
 
         CardDataSO d = offers[index];
-        string skillName = d.awakenedAbility != null ? d.awakenedAbility.abilityName : "？";
-        string desc = d.awakenedAbility != null ? d.awakenedAbility.description : "";
 
-        var nameText = MakeText(col.transform, "♠♥♦♣"[((int)d.suit) % 4] + " " + d.animalName, 24,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -22), new Vector2(180, 36));
-        nameText.color = new Color(0.95f, 0.88f, 0.7f);
-
-        var skillText = MakeText(col.transform, "【" + skillName + "】", 19,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -64), new Vector2(180, 30));
-        skillText.color = new Color(0.75f, 0.85f, 1f);
-
-        var descText = MakeText(col.transform, desc, 16,
-            new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0, -100), new Vector2(180, 120));
-        descText.alignment = TextAlignmentOptions.Top;
-        descText.color = new Color(0.8f, 0.78f, 0.72f);
 
         var btn = MakeButton(col.transform, "觉醒",
             new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0, 20), new Vector2(160, 46));
@@ -195,7 +180,6 @@ public class AwakeningShop : MonoBehaviour
         gm.LoseChips(price);
         GameProgress.AwakenCard(d);
         if (SaveManager.Instance != null) SaveManager.Instance.Save();
-        Debug.Log("[觉醒] " + d.animalName + " 觉醒了：" + d.abilityName);
 
         RefreshAll();
     }

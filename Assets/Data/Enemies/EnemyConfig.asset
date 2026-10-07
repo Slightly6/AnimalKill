@@ -13,13 +13,14 @@ MonoBehaviour:
   m_Name: EnemyConfig
   m_EditorClassIdentifier: 
   enemyName: "\u5C0F\u602A"
-  maxHealth: 300
+  Chips: 100
   deck:
   - {fileID: 11400000, guid: b06d2d080bfe79549a776b26fe4b5c3c, type: 2}
   - {fileID: 11400000, guid: 862239c2eafa6e34bb28534cbfd31ccd, type: 2}
   - {fileID: 11400000, guid: d08f884b2334c2740b3d35c1d813dbf3, type: 2}
   - {fileID: 11400000, guid: a0280d0f8d83ec24c86f852cbd55ae1f, type: 2}
   - {fileID: 11400000, guid: aecbe8d14134b3e4fa085b6f324852b9, type: 2}
+  - {fileID: 11400000, guid: 57d47a5065838a043b211c6189c8a786, type: 2}
   - {fileID: 11400000, guid: 57d47a5065838a043b211c6189c8a786, type: 2}
   handSize: 7
   checkChance: 0.2

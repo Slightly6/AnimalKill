@@ -30,13 +30,11 @@ public class Card : MonoBehaviour
     [System.NonSerialized] public bool IsStaged;   // 已拖上桌集结（还没结算）
     [System.NonSerialized] public AbilitySO runtimeAbility;
 
-    public isHoleCard isHoleCard = isHoleCard.HandCard;//默认是手牌，底牌在 EnemyController 里生成
     private Renderer[] cardRenderers;
-    private MaterialPropertyBlock propBlock;
+    private MaterialPropertyBlock propBlock;// 材质属性块
     private float selectGlow;      // 选中扫光 平滑到 0/1
     private const string SHADER_NAME = "Custom/PlayingCard";
 
-    public string CardName { get { return Data.animalName; } }
 
     void Awake()
     {
@@ -60,8 +58,8 @@ public class Card : MonoBehaviour
     void Update()
     {
         if (cardRenderers == null || cardRenderers.Length == 0) return;
+        if (propBlock == null) propBlock = new MaterialPropertyBlock();
 
-        // 旧动物战斗的红闪/技能闪已注释，只留选中扫光
         float target = IsSelected ? 1f : 0f;
         selectGlow = Mathf.MoveTowards(selectGlow, target, Time.deltaTime / 0.12f);
 
@@ -69,31 +67,12 @@ public class Card : MonoBehaviour
 
         for (int i = 0; i < cardRenderers.Length; i++)
         {
-            cardRenderers[i].GetPropertyBlock(propBlock);
-            //propBlock.SetFloat("_HitFlash", hitFlash);      // 旧动物战斗用
-            //propBlock.SetFloat("_SkillFlash", skillFlash);  // 旧动物战斗用
+            // cardRenderers[i].GetPropertyBlock(propBlock);
             propBlock.SetFloat("_SelectGlow", selectGlow);
             cardRenderers[i].SetPropertyBlock(propBlock);
         }
     }
 
-    // 旧动物战斗的红闪/技能闪+抖动已注释（当前点数扑克逻辑用不到）
-    /*
-    // 被打中时整牌红闪一下（受击动画/死亡时调用）
-    public void FlashHit()
-    {
-        hitFlash = 1f;
-    }
-
-    // 技能发动时整牌青绿闪 + 轻微抖动（让玩家明确知道效果发生了）
-    public void FlashSkill()
-    {
-        skillFlash = 1f;
-        // 避免多次触发叠加协程：已在抖就先停掉旧的
-        if (skillJitterRoutine != null) StopCoroutine(skillJitterRoutine);
-        skillJitterRoutine = StartCoroutine(SkillJitterRoutine());
-    }
-    */
     public IEnumerator StandUp(float duration = 0.15f)
     {
         Quaternion from = transform.rotation;
@@ -111,32 +90,6 @@ public class Card : MonoBehaviour
     //private Coroutine skillJitterRoutine;   // 旧动物战斗抖动协程（已注释）
     internal Vector3 position;
 
-    // 旧动物战斗的技能抖动协程（当前用不到）
-    /*
-    // 技能发动抖动：用 localScale 做"鼓一下+高频小抖"，不动 position/rotation，
-    // 避免和攻击/受击/翻面等动画的 transform 写入冲突（之前改 position 会瞬移走卡牌导致特效跟着消失）。
-    IEnumerator SkillJitterRoutine()
-    {
-        Vector3 baseScale = transform.localScale;
-        float duration = 0.25f;
-        float t = 0;
-        while (t < duration)
-        {
-            t += Time.deltaTime;
-            float p = Mathf.Clamp01(t / duration);
-            // 主脉冲：0→0.4 涨到 +12%，0.4→1 落回 1（"被弹一下"）
-            float pulse = p < 0.4f
-                ? (p / 0.4f) * 0.12f
-                : (1f - (p - 0.4f) / 0.6f) * 0.12f;
-            // 高频小抖：随时间衰减，模拟"颤"
-            float jitter = Mathf.Sin(t * 55f) * 0.04f * (1f - p);
-            transform.localScale = baseScale * (1f + pulse + jitter);
-            yield return null;
-        }
-        transform.localScale = baseScale;
-        skillJitterRoutine = null;
-    }
-    */
 
     public void Init(CardDataSO data, bool isPlayer, int bonusPower = 0, bool forceAwakened = false)
     {
@@ -147,7 +100,6 @@ public class Card : MonoBehaviour
         }
         Data = data;
         IsPlayer = isPlayer;
-        CurrentPower = Data.GetPower() + bonusPower;   // 基础战力 + 运行时加成（觉醒/额外）
         PowerBonus = 0;   // 技能加的战力，每张牌从 0 开始
         IsDead = false;
 
@@ -156,25 +108,19 @@ public class Card : MonoBehaviour
 
         // 玩家牌按觉醒名单判定；敌方牌由关卡配置（enemyAwakened）决定
         bool awakened = isPlayer ? GameProgress.IsCardAwakened(data) : forceAwakened;
-        if (awakened && data.awakenedAbility != null)
+        if (awakened)
         {
-            runtimeAbility = data.awakenedAbility;
             if (runtimeAbility.icon != null && stackedSkillIcon == null)
                 stackedSkillIcon = runtimeAbility.icon;
         }
 
         RefreshDisplay();
-
-        // 换正面动物图（材质贴图，运行时替换）
-        if (frontRenderer != null && Data.artwork != null)
-        {
-            frontRenderer.material.mainTexture = Data.artwork.texture;
-        }
+    
 
         // 技能图标：有叠加技能显示叠加的，否则显示卡牌自带技能图标
         if (skillIconRenderer != null)
         {
-            Sprite icon = stackedSkillIcon != null ? stackedSkillIcon : Data.abilityIcon;
+            Sprite icon = stackedSkillIcon;
             if (icon != null) skillIconRenderer.material.mainTexture = icon.texture;
         }
 
@@ -220,7 +166,8 @@ public class Card : MonoBehaviour
 
     public IEnumerator FlatFlipAnim()
     {
-        AudioManager.Instance.PlayFlip();   // 翻面音效
+        // AudioManager.Instance.PlayFlip();   // 翻面音效  （排查卡死：暂时关闭）
+        Debug.Log("[翻面] FlatFlipAnim 开始");
         Quaternion flatDown = Quaternion.Euler(90, 0, 0);   // 平放、面朝下
         float from = IsFaceDown ? 0f : 180f;
         float to = IsFaceDown ? 180f : 0f;
@@ -243,7 +190,7 @@ public class Card : MonoBehaviour
     public void RefreshDisplay()
     {
         // 正面显示当前战力点数
-        string rankStr = PowerToRankString(CurrentPower);
+        string rankStr = Data.GetRankText();
         string suitStr = Data.GetSuitSymbol();
 
         for (int i = 0; i < rankTexts.Length; i++)
@@ -253,16 +200,6 @@ public class Card : MonoBehaviour
         }
     }
 
-    // 加/减战力（技能用）。delta 正数加、负数减，并在 bonusText 上显示 +N / -N。
-    public void AddPower(int delta)
-    {
-        if (delta == 0) return;
-        CurrentPower += delta;
-        if (CurrentPower < 1) CurrentPower = 1;   // 战力最低 1，别减成 0 或负数
-        PowerBonus += delta;
-        RefreshDisplay();
-        RefreshBonusText();
-    }
 
     // 把累计的战力加成显示到 bonusText（+1 / -1），没有加成或没拖文字就不显示
     void RefreshBonusText()
@@ -273,15 +210,6 @@ public class Card : MonoBehaviour
         if (show) bonusText.text = PowerBonus > 0 ? "+" + PowerBonus : PowerBonus.ToString();
     }
 
-    // 战力数值 → 点数文字  例: 1→A  13→K  8→8
-    string PowerToRankString(int power)
-    {
-        if (power <= 1) return "A";
-        if (power >= 13) return "K";
-        if (power >= 12) return "Q";
-        if (power >= 11) return "J";
-        return power.ToString();   // 2~10
-    }
     public void TriggerAbility(AbilityTrigger trigger, Card target)
     {
         if (IsDead) return;
@@ -311,7 +239,6 @@ public class Card : MonoBehaviour
 
         TriggerAbility(AbilityTrigger.OnDeath, null);
 
-        Debug.Log("[死亡] " + CardName + " 被消灭");
         StartCoroutine(DeathAnim());
     }
 

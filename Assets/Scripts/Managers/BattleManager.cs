@@ -50,6 +50,7 @@ public class BattleManager : Singleton<BattleManager>
     // 开始一关（MapManager 调用）
     public void StartLevel(LevelConfig cfg)
     {
+        Time.timeScale = 1f;
         IsInBattle = true;
         levelEnded = false;
         resolving = false;
@@ -137,8 +138,10 @@ public class BattleManager : Singleton<BattleManager>
                 yield return null;
             }
             if (levelEnded || GameManager.Instance.IsGameOver) break;
-
-            SetPhase(TurnPhase.Battle);
+            BattleView.Instance.ClearSelection();    // 清残留选中（引用的是即将销毁的牌）
+            BattleView.Instance.ClearGhosts();       // 清桌上虚影+阴影
+            DeckManager.Instance.DiscardAllHand();   // 回合结束，手牌全弃
+            SetPhase(TurnPhase.EnemyBattle);
             yield return StartCoroutine(ResolveEnemyTurn());
         }
 
@@ -195,13 +198,13 @@ public class BattleManager : Singleton<BattleManager>
             GameManager.Instance.DiscardToPot(damage);
         }
 
-        // // 5. 补手牌（敌人已经死了就别补了，马上清场）
-        // if (GameManager.Instance.EnemyChips > 0 && DeckManager.Instance != null&&CurrentPhase==TurnPhase.Draw)
-        // {
-        //     int need = GameProgress.targetHandSize - DeckManager.Instance.HandCards.Count;
-        //     if (need > 0)
-        //         yield return DeckManager.Instance.DrawCards(need);
-        // }
+        // 5. 补手牌
+        if (GameManager.Instance.EnemyChips > 0)
+        {
+            int need = GameProgress.targetHandSize - DeckManager.Instance.HandCards.Count;
+            if (need > 0)
+                yield return DeckManager.Instance.DrawCards(need);
+        }
         resolving = false;
         GameProgress.transitioning = false;
     }
