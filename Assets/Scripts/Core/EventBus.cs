@@ -188,17 +188,18 @@ public struct SayEvent
 }
 
 
-public enum BattleActor
-{
-    Player,
-    Enemy
-}
 
 public enum EnemyIntentType
 {
     Check,//过牌加筹码
     Call,//攻击
     Raise//加强
+}
+
+public enum isHoleCard
+{
+    HandCard,//手牌
+    HoleCard//底牌
 }
 
 public class EnemyPlayData
