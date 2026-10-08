@@ -115,7 +115,7 @@ public class DeckManager : Singleton<DeckManager>
             Debug.Log("手牌满了");
             yield break;
         }
-
+         
         if (drawPile.Count == 0)
         {
             if (discardPile.Count == 0)
@@ -124,6 +124,7 @@ public class DeckManager : Singleton<DeckManager>
                 yield break;
             }
             drawPile = new List<CardDataSO>(discardPile);
+            Debug.Log("[牌堆] 抽牌堆已空，弃牌堆洗回（" + drawPile.Count + " 张）");
             discardPile.Clear();
             Shuffle(drawPile);
             Debug.Log("[牌堆] 抽牌堆已空，弃牌堆洗回（" + drawPile.Count + " 张）");
@@ -145,9 +146,11 @@ public class DeckManager : Singleton<DeckManager>
             yield break;
         }
 
+        Debug.Log("[发牌] 准备 Instantiate cardPrefab");
         GameObject go = Instantiate(cardPrefab);
-        go.GetComponent<ShopCard>().enabled=false; // 禁用 ShopCard 脚本
-        go.GetComponent<CardDisplay>().enabled=true; // 启用 CardDisplay 脚本
+        Debug.Log("[发牌] Instantiate 完成");
+        // go.GetComponent<ShopCard>().enabled=false; // 禁用 ShopCard 脚本
+        // go.GetComponent<CardDisplay>().enabled=true; // 启用 CardDisplay 脚本
         if (deckPile != null)
             go.transform.position = deckPile.position + Vector3.up * 0.1f;   // 略高于牌堆顶，别叠穿
 
@@ -159,15 +162,11 @@ public class DeckManager : Singleton<DeckManager>
             yield break;
         }
 
-        Debug.Log("[发牌] Instantiate 完成，准备 Init：" + data.name);
         card.Init(data, true);   // Init 里默认扣着（背面朝上）
-        Debug.Log("[发牌] Init 完成：" + data.name);
         go.transform.rotation = Quaternion.Euler(90, 0, 0);   // 平放在牌堆上，面朝下（不竖着穿模）
         // AudioManager.Instance.PlayDraw();   // 抽牌音效  （排查卡死：暂时关闭）
 
-        Debug.Log("[发牌] 开始翻面：" + data.name);
         yield return StartCoroutine(card.FlatFlipAnim());   // 平着翻到正面
-        Debug.Log("[发牌] 翻面完成：" + data.name);
 
         card.transform.SetParent(handPanel);
         HandCards.Add(card);
@@ -181,6 +180,8 @@ public class DeckManager : Singleton<DeckManager>
     // 从手牌移除
     public void RemoveFromHand(Card card)
     {
+        if (card == null) return;
+        discardPile.Add(card.Data);
         HandCards.Remove(card);
         EventBus.Publish(new HandChangedEvent());
     }

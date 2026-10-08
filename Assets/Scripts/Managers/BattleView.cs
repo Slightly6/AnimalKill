@@ -628,7 +628,7 @@ public class BattleView : Singleton<BattleView>
         foreach (Card c in cards)
         {
             if (c == null) continue;
-            DeckManager.Instance.RemoveFromHand(c);
+            // DeckManager.Instance.RemoveFromHand(c);
             Destroy(c.gameObject);
         }
     }

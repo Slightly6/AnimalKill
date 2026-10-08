@@ -3,13 +3,11 @@ using UnityEngine.Rendering;
 using System.Collections;
 using System.Collections.Generic;
 
-/// <summary>
-/// 卡牌交互（2.5D 俯视桌面版）。
-/// 短按（点一下）＝选中/取消选中（牌浮起高亮，桌面出现虚影）；
-/// 长按拖拽＝只在手牌扇面里换位，不会打上桌。打出/弃牌统一走铃铛和弃牌按钮。
-/// </summary>
+
 [RequireComponent(typeof(Card))]
 [RequireComponent(typeof(BoxCollider))]
+
+
 public class CardDisplay : MonoBehaviour
 {
     private Card card;
@@ -71,18 +69,11 @@ public class CardDisplay : MonoBehaviour
         return true;
     }
 
-    void OnMouseDown()
+    public void OnClick()
     {
-        if (GameProgress.InputLocked)   // 卷轴地图打开时不能拖牌/选牌
-        {
-            Narrator.Say(SpeakTopic.ActionDuringMap);
-            return;
-        }
-
         if (!CanPlay()) { down = false; return; }
         down = true;
         pressMousePos = Input.mousePosition;
-
         originalScale = transform.localScale;
     }
 

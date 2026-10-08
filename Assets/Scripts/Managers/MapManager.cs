@@ -46,6 +46,9 @@ public class MapManager : Singleton<MapManager>
     IEnumerator BeginRun()
     {
         yield return null;
+        // 预加载音频：提前触发 AudioManager.Awake 同步加载所有 AudioClip，
+        // 避免首次进战斗节点时 Resources.Load 卡顿（重启项目第一次必现）
+        var _ = AudioManager.Instance;
         RestoreItemsFromSave();
         OpenMapUI();
     }
@@ -197,33 +200,8 @@ public class MapManager : Singleton<MapManager>
     // 商店刷 2 个互不相同的道具（本次两个不能重复；桌上已有同款不影响，照样会刷）
     void Shopping()
     {
-        // 候选池：所有配了 itemData 的商品 prefab
-        var pool = new List<GameObject>();
-        for (int i = 0; i < Goods.Count; i++)
-        {
-            if (Goods[i] == null) continue;
-            Goods g = Goods[i].GetComponent<Goods>();
-            if (g != null && g.itemData != null) pool.Add(Goods[i]);
-        }
-
-        // Fisher-Yates 洗牌，取前 2 个（天然互不相同）
-        for (int i = pool.Count - 1; i > 0; i--)
-        {
-            int j = Random.Range(0, i + 1);
-            GameObject tmp = pool[i]; pool[i] = pool[j]; pool[j] = tmp;
-        }
-
-        int count = Mathf.Min(3, pool.Count);
-        for (int i = 0; i < count; i++)
-        {
-            GameObject obj = Instantiate(pool[i], new Vector3(i * 2f-2, 7, -1), Quaternion.identity);
-            spawnedObjects.Add(obj);
-        }
-
-        // 觉醒祭坛面板（商店独有）：离开时随 spawnedObjects 一起销毁
-        var shopGo = new GameObject("AwakeningShop");
-        shopGo.AddComponent<AwakeningShop>().Open();
-        spawnedObjects.Add(shopGo);
+        ShopManager.Instance.CardPoolInit();
+        
     }
 
     void Chest()
@@ -325,7 +303,6 @@ public class MapManager : Singleton<MapManager>
 
             case MapNodeType.Treasure:
             case MapNodeType.Shop:
-                // 已有实体玩法（宝箱/觉醒商店）
                 EnterNonBattleNode();
                 GameProgress.transitioning = false;
                 break;

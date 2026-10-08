@@ -7,7 +7,8 @@ using TMPro;
 /// 字体一键配置：
 /// 默认字体用 卡通跳跳体（动态 SDF，卡通风），
 /// 回退链用霞鹜文楷动态字体兜底生僻汉字，LiberationSans 兜底符号/拉丁。
-/// 编译后自动执行；也可手动点 Tools → 字体 切换。
+/// 启动时不再自动执行（避免首次导入资产时与 Unity 导入流程死锁卡死）；
+/// 需要时手动点 Tools → 字体 切换。
 /// </summary>
 public static class ChineseFontSetup
 {
@@ -22,19 +23,6 @@ public static class ChineseFontSetup
     const string Pixel12Path = "Assets/Font/ark-pixel-12px-monospaced-zh_cn RASTER.asset";
     const string LiberationPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
     const string LiberationFallbackPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF - Fallback.asset";
-
-    [InitializeOnLoadMethod]
-    static void AutoRun()
-    {
-        EditorApplication.delayCall += () =>
-        {
-            // 默认字体已经是卡通跳跳体就不重复处理
-            var cartoon = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(CartoonAssetPath);
-            if (cartoon != null && TMP_Settings.defaultFontAsset == cartoon)
-                return;
-            ApplyCartoon(false);
-        };
-    }
 
     [MenuItem("Tools/字体/应用卡通跳跳体（当前推荐）")]
     public static void MenuCartoon()

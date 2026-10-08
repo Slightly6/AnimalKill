@@ -60,11 +60,15 @@ public class BattleManager : Singleton<BattleManager>
         BattleView.Instance.ClearSelection();
         if (cfg.enemyConfig != null)
         {
-            EnemyController.Instance.Initialize(cfg.enemyConfig);  
-            EnemyController.Instance.PrepareIntent();            
+            Debug.Log("[Battle] PrepareIntent 前");
+            EnemyController.Instance.Initialize(cfg.enemyConfig);
+            EnemyController.Instance.PrepareIntent();
+            Debug.Log("[Battle] PrepareIntent 完成");
         }
         if (battleRoutine != null) StopCoroutine(battleRoutine);
+        Debug.Log("[Battle] 启动 GameLoop");
         battleRoutine = StartCoroutine(GameLoop());
+        Debug.Log("[Battle] GameLoop 已启动");
     }
     // 桌面点击统一入口
     public void HandleTableAction(TableActionType type)

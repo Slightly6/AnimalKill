@@ -6,6 +6,7 @@ TagManager:
   tags:
   - Slot
   - Card
+  - Dice
   layers:
   - Default
   - TransparentFX

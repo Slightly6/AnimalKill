@@ -39,6 +39,13 @@ using UnityEngine;
           trauma = Mathf.Clamp01(trauma + amount);
       }
 
+      /// <summary>外部调：直接跳到第 index 个机位（不滚轮）</summary>
+      public void JumpToIndex(int index)
+      {
+          if (positions == null || positions.Length == 0) return;
+          currentIndex = Mathf.Clamp(index, 0, positions.Length - 1);
+      }
+
       void Start()
       {
           cam = GetComponent<Camera>();
@@ -83,9 +90,9 @@ using UnityEngine;
 
           if (GameProgress.mapOpen)
           {
-              // 卷轴地图打开：强制降到玩家第一视角机位（positions[0]：低位、靠后、坐在桌前），
+              // 卷轴地图打开：切到高俯瞰机位（positions[1]：高位、看全图），
               // currentIndex 不动 → 关图后镜头自然 lerp 回原机位
-              targetPos = positions[0] + Vector3.up * boardHeight;
+              targetPos = positions[1] + Vector3.up * boardHeight;
           }
           else
           {
