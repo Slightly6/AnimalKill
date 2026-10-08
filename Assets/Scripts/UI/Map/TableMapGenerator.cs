@@ -820,7 +820,6 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
         return go.AddComponent<MapNode3D>();
     }
 
-    // 占位贴图缓存：没配图片时所有类型共用一张白色圆片，靠节点状态染色区分
     private Sprite placeholderSprite;
 
     private Sprite GetPlaceholderSprite()
