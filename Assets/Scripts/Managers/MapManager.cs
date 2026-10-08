@@ -148,40 +148,65 @@ public class MapManager : Singleton<MapManager>
         BattleManager.Instance.StartLevel(cfg);    // 开打（GameLoop 的 Draw 阶段负责抽牌）
     }
 
-    // ========== 非战斗节点实体管理（商店商品/宝箱）==========
 
-    // 离开商店/宝箱节点：销毁刷出来的实体（已经变成 TableItem 的保留——
-    // 买下的道具是留在场景里的实体，不进任何持有列表，靠这个判断存活）
-    void ClearSpawnedNonBattleObjects()
+    public void ClearSpawnedNonBattleObjects()
     {
-        for (int i = spawnedObjects.Count - 1; i >= 0; i--)
+        MapNodeType type = GameProgress.currentNodeType;
+
+        switch (type)
         {
-            GameObject go = spawnedObjects[i];
-            if (go == null) { spawnedObjects.RemoveAt(i); continue; }
-            if (go.GetComponent<TableItem>() != null) { spawnedObjects.RemoveAt(i); continue; }  // 玩家道具保留
-            Destroy(go);
+            case MapNodeType.Monster:
+            case MapNodeType.Elite:
+            case MapNodeType.Boss:
+                // 战斗节点：不用清（牌/敌人由 BattleManager 管）
+                break;
+
+            case MapNodeType.Treasure:
+                
+                break;
+
+            case MapNodeType.Shop:
+                clearshopCards();
+                // 清商品
+                // DestroySpawned("Goods");
+                break;
+
+            case MapNodeType.Event:
+            case MapNodeType.Rest:
+                // 这两类当前没生成物，啥也不清
+                break;
         }
-        spawnedObjects.Clear();
+    }
+    //清理商品
+    void clearshopCards()
+    {
+        StartCoroutine(ClearShopCardsRoutine());
+
     }
 
-    // 过关给兽皮：小关(Extra) 33% 掉 1 / 大关(Battle必过关) 稳定 1 / Boss 3
-    // void AwardHide()
-    // {
-    //     MapNodeType t = GameProgress.currentNodeType;
-    //     if (t == MapNodeType.Boss)
-    //     {
-    //         GameProgress.hides += 3;
-    //     }
-    //     else if (t == MapNodeType.Elite)
-    //     {
-    //         if (Random.value < 0.33f) GameProgress.hides += 1;
-    //     }
-    //     else if (t == MapNodeType.Monster)
-    //     {
-    //         GameProgress.hides += 1;
-    //     }
-    //     Debug.Log("[兽皮] 现在共 " + GameProgress.hides + " 片");
-    // }
+    IEnumerator ClearShopCardsRoutine()
+    {
+        if (ShopManager.Instance == null) yield break;
+        var list = ShopManager.Instance.shopCards;
+        if (list == null || list.Count == 0) yield break;
+
+        Transform deckPos = DeckPile.Instance != null ? DeckPile.Instance.transform : null;
+        if (deckPos == null) yield break;
+
+        List<Coroutine> coroutines = new List<Coroutine>();
+        foreach (var t in list)
+        {
+            if (t == null) continue;
+            var sc = t.GetComponent<ShopCard>();
+            if (sc != null) coroutines.Add(StartCoroutine(sc.FlyStraight(t, new(15,3,-1), 0.5f)));
+        }
+        list.Clear();
+
+        // 等所有卡飞完再返回
+        foreach (var c in coroutines) if (c != null) yield return c;
+        OpenMapUI();
+    }
+
 
     // 商店/奖励关（非战斗节点）
     void EnterNonBattleNode()
@@ -201,7 +226,7 @@ public class MapManager : Singleton<MapManager>
     void Shopping()
     {
         ShopManager.Instance.CardPoolInit();
-        
+        if (CameraRig.Instance != null) CameraRig.Instance.JumpToIndex(1);
     }
 
     void Chest()
@@ -238,7 +263,6 @@ public class MapManager : Singleton<MapManager>
         // AwardHide();   // 按刚打完的节点给兽皮
         SaveManager.Instance.Save();   // 打完一关存档一次
 
-        // 用配置里的 isBoss 判断章节 Boss，不再用 currentLevel % 13
         LevelConfig clearedCfg = null;
         if (database != null
             && GameProgress.currentLevel >= 0
@@ -283,7 +307,7 @@ public class MapManager : Singleton<MapManager>
     public void EnterNodeByType(MapNodeType type, int levelIndex)
     {
         GameProgress.currentNodeType = type;
-        ClearSpawnedNonBattleObjects();
+        // ClearSpawnedNonBattleObjects();
 
         switch (type)
         {

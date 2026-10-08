@@ -14,7 +14,7 @@ public class Card : MonoBehaviour
     public MeshRenderer frontRenderer;       // 正面动物图
     public MeshRenderer skillIconRenderer;   // 正面技能图标（小）
     public float frontArtScale = 0.12f;      // 正面动物图大小
-    public Sprite stackedSkillIcon;          // 叠加得到的技能图标（献祭来的，没叠是 null）
+    // public Sprite stackedSkillIcon;          // 叠加得到的技能图标（献祭来的，没叠是 null）
     // ---- 运行时状态 ----
     public CardDataSO Data;
     public int CurrentPower;// 当前力量
@@ -34,12 +34,12 @@ public class Card : MonoBehaviour
     private MaterialPropertyBlock propBlock;// 材质属性块
     private float selectGlow;      // 选中扫光 平滑到 0/1
     private const string SHADER_NAME = "Custom/PlayingCard";
-
+    [Header("悬浮提示")]
+    public GameObject tooltip; 
 
     void Awake()
     {
         sortingGroup = GetComponent<SortingGroup>();
-
         // 只收集挂着 PlayingCard shader 的 MeshRenderer（自动排除 TextMeshPro 文字渲染器）
         var all = GetComponentsInChildren<Renderer>(true);
         var list = new List<Renderer>(all.Length);
@@ -67,7 +67,7 @@ public class Card : MonoBehaviour
 
         for (int i = 0; i < cardRenderers.Length; i++)
         {
-            // cardRenderers[i].GetPropertyBlock(propBlock);
+            cardRenderers[i].GetPropertyBlock(propBlock);   // 先读出已有属性（含牌面 _MainTex），否则下面 Set 会把纹理冲掉
             propBlock.SetFloat("_SelectGlow", selectGlow);
             cardRenderers[i].SetPropertyBlock(propBlock);
         }
@@ -106,23 +106,10 @@ public class Card : MonoBehaviour
         // 技能状态全部清零（对象池/复用时也安全）
         runtimeAbility = null;
 
-        // 玩家牌按觉醒名单判定；敌方牌由关卡配置（enemyAwakened）决定
-        bool awakened = isPlayer ? GameProgress.IsCardAwakened(data) : forceAwakened;
-        if (awakened)
-        {
-            if (runtimeAbility.icon != null && stackedSkillIcon == null)
-                stackedSkillIcon = runtimeAbility.icon;
-        }
-
         RefreshDisplay();
     
 
-        // 技能图标：有叠加技能显示叠加的，否则显示卡牌自带技能图标
-        if (skillIconRenderer != null)
-        {
-            Sprite icon = stackedSkillIcon;
-            if (icon != null) skillIconRenderer.material.mainTexture = icon.texture;
-        }
+      
 
         SetFaceDown(IsFaceDown);
     }
@@ -175,6 +162,7 @@ public class Card : MonoBehaviour
         float t = 0;
         while (t < flipDuration)
         {
+            if (this == null) yield break;  
             t += Time.deltaTime;
             float p = t / flipDuration;
             float angle = Mathf.Lerp(from, to, p);
@@ -189,7 +177,20 @@ public class Card : MonoBehaviour
 
     public void RefreshDisplay()
     {
-        // 正面显示当前战力点数
+        // 有整张牌面贴图：直接换掉正面 _MainTex，隐藏点数文字
+        if (Data.faceTexture != null && frontRenderer != null)
+        {
+            MaterialPropertyBlock faceBlock = new MaterialPropertyBlock();
+            frontRenderer.GetPropertyBlock(faceBlock);
+            faceBlock.SetTexture("_MainTex", Data.faceTexture);
+            frontRenderer.SetPropertyBlock(faceBlock);
+
+            for (int i = 0; i < rankTexts.Length; i++)
+                if (rankTexts[i] != null) rankTexts[i].gameObject.SetActive(false);
+            return;
+        }
+
+        // 没贴图：回退到花色+点数文字
         string rankStr = Data.GetRankText();
         string suitStr = Data.GetSuitSymbol();
 
@@ -218,12 +219,16 @@ public class Card : MonoBehaviour
 
     bool FireOne(AbilitySO ab, AbilityTrigger trigger, Card target)
     {
-        if (ab == null || ab.trigger != trigger || ab.effect == null) return false;
-        // 只有 Apply 真正执行了效果（没被免疫/条件满足）才算技能发动，才会触发 FlashSkill
-        return ab.effect.Apply(this, target);
+        if (ab == null || ab.trigger != trigger) return false;
+        
+        bool anyFired = false;
+        foreach (var effect in ab.effects)
+        {
+            if (effect != null && effect.Apply(this, target))
+                anyFired = true;
+        }
+        return anyFired;
     }
-
-
     void Die()
     {
         if (IsDead) return;
@@ -274,5 +279,22 @@ public class Card : MonoBehaviour
         }
 
         Destroy(gameObject);
+    }
+
+    void OnMouseOver()
+    {
+        if (Input.GetMouseButtonDown(1))   // 右键
+        {
+            Card card = GetComponent<Card>();
+            if (card == null || card.Data == null || tooltip == null) return;
+
+            string desc = string.IsNullOrEmpty(card.Data.description) ? "" : "\n<size=80%>" + card.Data.description;
+            tooltip.GetComponentInChildren<TextMeshPro>().text = "<b>" + card.Data.abilityName + "</b>" + desc;
+            tooltip.SetActive(true);
+        }
+    }
+    void OnMouseExit()
+    {
+        if (tooltip != null) tooltip.SetActive(false);
     }
 }

@@ -21,16 +21,22 @@ public class TableClickTarget : MonoBehaviour
         Collider col = GetComponent<Collider>();
         if (col != null) col.isTrigger = true;
 
-        // 商店/奖励关没有战斗，三个目标全藏
-        if (GameProgress.IsNonBattleNode())
-            gameObject.SetActive(false);
+        // // 商店/奖励关没有战斗，三个目标全藏
+        // if (GameProgress.IsNonBattleNode())
+        //     gameObject.SetActive(false);
     }
 
     void OnMouseDown()
     {
+        
         if (GameProgress.InputLocked) return;
-        if (BattleManager.Instance == null || !BattleManager.Instance.IsInBattle) return;
+        if (GameProgress.IsNonBattleNode() && actionType == TableActionType.EndTurn)
+        {
+            if (MapManager.Instance != null) MapManager.Instance.ClearSpawnedNonBattleObjects();
+            return;
+        }
 
+        if (BattleManager.Instance == null || !BattleManager.Instance.IsInBattle) return;
         BattleManager.Instance.HandleTableAction(actionType);
     }
 }

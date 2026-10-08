@@ -25,6 +25,9 @@ public class CardDataSO : ScriptableObject
     public CardSuit suit;// 花色
     public CardRank rank;// 点数 1~13
 
+    [Header("牌面贴图")]
+    public Texture2D faceTexture;   // 整张牌面图（画好的黑桃1~7拖这里）；没拖则回退到花色+点数文字
+    public AbilitySO ability;   // 这张卡的能力（可空：普通牌没能力）
     public string abilityName = "";
     public string description; // 描述
     public HookEffectType effectType; // 效果类型枚举

@@ -195,7 +195,15 @@ public class BattleManager : Singleton<BattleManager>
         // 4. 游戏逻辑：isPlayfold=false 出牌扣敌人筹码；isPlayfold=true 弃牌进主池
         if (!isPlayfold)
         {
-            GameManager.Instance.EnemyLoseChips(damage);
+            if (GameManager.Instance.EnemyChips < damage)
+            {
+                GameManager.Instance.EnemyLoseChips(GameManager.Instance.EnemyChips);
+            }
+            else
+            {
+                GameManager.Instance.EnemyLoseChips(damage);
+            }
+            
         }
         else
         {
@@ -249,11 +257,14 @@ public class BattleManager : Singleton<BattleManager>
         HashSet<int> coreIndices = PokerResolver.GetCoreCardIndices(datas, type);
         int cardBonus = PokerResolver.CalcCardBonus(datas, coreIndices);
         int rawDamage = PokerResolver.CalcDamage(baseChips, cardBonus, mult);
-        int damage = Mathf.RoundToInt(rawDamage * playData.damageMultiplier);
+        float atkMult = EnemyController.Instance.ConsumeNextAttackMultiplier();
+        int preDamage = Mathf.RoundToInt(rawDamage * playData.damageMultiplier);   // 减半前
+        int damage = Mathf.RoundToInt(preDamage * atkMult);                         // 减半后
+
 
         // 演出
         // yield return BattleView.Instance.PlayEnemyResolveSequence(playData, damage);
-        yield return BattleView.Instance.PlayEnemyResolveSequence(playData, type, baseChips, mult, damage, coreIndices);
+        yield return BattleView.Instance.PlayEnemyResolveSequence(playData, type, baseChips, mult, damage, coreIndices, atkMult,preDamage);
 
         // 游戏逻辑：敌人直接扣玩家筹码（无护盾），扣掉的进主池
         Debug.Log("[敌人攻击] 伤害:" + damage);
@@ -274,4 +285,6 @@ public class BattleManager : Singleton<BattleManager>
         CurrentPhase = phase;
         EventBus.Publish(new PhaseChangedEvent { phase = phase, isPlayerTurn = true });
     }
+    //----------卡牌技能效果-----------------
+    
 }

@@ -19,7 +19,7 @@ public class Chips : MonoBehaviour
     public float groupSpacing = 1.8f;           //组横向间距
     public float groupRowSpacing = 1.8f;        //组纵向间距
 
-    public float interval=0.2f;
+    public float interval=0.1f;
     [Header("Fly to pot")]
     public float flyForce = 1.5f;
     public float flyUpForce = 0.5f;
@@ -279,7 +279,7 @@ public class Chips : MonoBehaviour
             
             yield return new WaitForSeconds(interval);
             interval*=0.85f;
-            if (interval < 0.05f) interval = 0.05f;
+            if (interval < 0.01f) interval = 0.01f;
         }
         GameProgress.chipFly=false;
         loseRoutine = null;

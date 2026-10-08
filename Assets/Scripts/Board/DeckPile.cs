@@ -1,10 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-public class DeckPile : MonoBehaviour
+public class DeckPile : Singleton<DeckPile>
 {
-    void Awake()
+    protected override void Awake() 
     {
+        base.Awake(); 
         BoxCollider collider = GetComponent<BoxCollider>();
         collider.isTrigger = true;
     }

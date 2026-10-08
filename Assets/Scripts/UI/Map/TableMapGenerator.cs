@@ -1047,8 +1047,6 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
 
         if (value < 0.99f) return MapNodeType.Shop;        // 12%
         return MapNodeType.Treasure;                        // 8%
-
-        return MapNodeType.Treasure;
     }
 
     private List<MapNodeData> GetFloor(int floor)

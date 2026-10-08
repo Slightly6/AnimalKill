@@ -713,7 +713,7 @@ public class BattleView : Singleton<BattleView>
     // 不复用 PlayResolveSequence（那个调 DeckManager.RemoveFromHand，玩家专用）
         // 敌人出牌演出：复用玩家计分链路（飞牌→逐张飘字→牌型+底分→×倍率）+ Score飞撞玩家
     public IEnumerator PlayEnemyResolveSequence(EnemyPlayData playData,HandType type, int baseChips, int mult, int damage,
-        HashSet<int> coreIndices)
+        HashSet<int> coreIndices, float attackMult = 1f,int preDamage = 0)
     {
         // 1. 取选中的敌人手牌视图
         List<Card> selectedViews = new List<Card>();
@@ -736,6 +736,25 @@ public class BattleView : Singleton<BattleView>
 
         // 3. 计分演出（和玩家完全一致）—— isPlay=false 走"直接显示伤害"分支
         yield return ShowHandBoard(type, baseChips, mult, damage, positions, selectedViews, coreIndices, isPlay: false);
+        // 3.5 减半分步演出：先显示减半前伤害 → 弹红×0.5 → 数字当场变一半
+        if (attackMult < 1f)
+        {
+            Score.text = preDamage.ToString();        // 减半前的数
+            yield return PunchScore();
+            yield return new WaitForSeconds(0.4f);
+
+            GameObject debuff = CreateBoardText("×" + attackMult.ToString("0.##"), new Color(1f, 0.4f, 0.4f));
+            yield return PopIn(debuff.transform, 0.2f);
+            yield return new WaitForSeconds(0.5f);
+
+            Score.text = damage.ToString();           // 当场变成一半
+            StartCoroutine(PunchScore());
+            yield return new WaitForSeconds(0.4f);
+            yield return PopOut(debuff.transform, 0.15f);
+            Destroy(debuff);
+        }
+
+        
         // 4. Score 显示伤害 + 飞撞玩家（敌人是打玩家，方向是 PlayerPos）
         Score.text = damage.ToString();
         yield return PunchScore();

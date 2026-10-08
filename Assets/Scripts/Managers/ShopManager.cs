@@ -11,6 +11,7 @@ public class ShopManager : Singleton<ShopManager>
     public int maxShopSize = 3;
     public float spacing = 1.5f;
     public Transform Anchor; 
+    public List<Transform> shopCards=new List<Transform>();
     void Start()
     {
     //   CardPoolInit();
@@ -35,7 +36,6 @@ public class ShopManager : Singleton<ShopManager>
     }
     private void GetPlayPositions(int count)
     {
-        List<Vector3> list = new List<Vector3>();
         Vector3 anchorPos = Vector3.zero;
         if (Anchor != null) anchorPos = Anchor.position;
         else if (BoardManager.Instance != null) anchorPos = BoardManager.Instance.transform.position;
@@ -46,7 +46,9 @@ public class ShopManager : Singleton<ShopManager>
             float x = (i - (count - 1) / 2f) * spacing;
             GameObject cardObj = Instantiate(cardPrefab, center + new Vector3(x, 2f, 0f), rotation);
             Card card = cardObj.GetComponent<Card>();
-            card.Init(Cards[i], true);  
+            card.Init(Cards[i], true); 
+            card.transform.rotation = Quaternion.Euler(90f, 90f, -90f);
+            shopCards.Add(cardObj.transform); 
         }
         
     }

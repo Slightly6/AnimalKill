@@ -125,8 +125,8 @@ public static class PokerHandEvaluator
         if (type == HandType.Flush)          return 3;
         if (type == HandType.Straight)       return 3;
         if (type == HandType.ThreeOfAKind)   return 2;
-        if (type == HandType.TwoPair)        return 100;
-        if (type == HandType.OnePair)        return 100;
+        if (type == HandType.TwoPair)        return 2;
+        if (type == HandType.OnePair)        return 1;
         return 100; // 高牌
     }
 

@@ -282,25 +282,10 @@ public class GameManager : Singleton<GameManager>
         if (EnemyChips <= 0)
         {
             EnemyChips = 0;
-            if (deathSequenceRunning) return;   // 防止重复触发
+            if (deathSequenceRunning) return;
             deathSequenceRunning = true;
             BattleQueue.Instance.Until(() => !GameProgress.chipFly, 15f);
-            // 死亡流程全部进命令队列，顺序由入队顺序保证
-            BattleQueue.Instance.Do(() =>
-            {
-                
-                toGold = PotChips / 10;
-                SettlePot();
-                GameProgress.playerChips = PlayerChips;
-                GameProgress.sidePotChips = SidePotChips;
-            });
-            BattleQueue.Instance.Run(TOPhat.Instance.PlayCollect(toGold));
-            BattleQueue.Instance.Until(() => TOPhat.Instance == null || !TOPhat.Instance.IsBusy, 50f);
-            BattleQueue.Instance.Do(() =>
-            {
-                deathSequenceRunning = false;
-                EventBus.Publish(new LevelClearedEvent());   // MapManager 收到后存档+RollOut
-            });
+            BattleQueue.Instance.Run(DeathSequenceRoutine());   // 一个协程搞定后面所有
         }
         else if (PlayerChips <= 0)
         {
@@ -310,7 +295,32 @@ public class GameManager : Singleton<GameManager>
             EndGame(false);
         }
     }
+    private IEnumerator DeathSequenceRoutine()
+    {
+        // 1. 算金币、结算（此时前面的队列项都完成了，toGold 是新值）
+        toGold = PotChips / 10;
+        SettlePot();
+        GameProgress.playerChips = PlayerChips;
+        GameProgress.sidePotChips = SidePotChips;
+        Debug.Log("[死亡流程] toGold = " + toGold);
 
+        // 2. 启动 PlayCollect，等它真正跑完（嵌套 StartCoroutine）
+        if (TOPhat.Instance != null)
+            yield return TOPhat.Instance.StartCoroutine(TOPhat.Instance.PlayCollect(toGold));
+            //传入队列瞬间是原来的数，只有一帧，变的时候我还是传进来原来的数，我进来的时候就已经进队列了
+
+        // 3. 额外保险：等所有筛子销毁
+        float timeout = 0f;
+        while (GameObject.FindGameObjectsWithTag("Dice").Length > 0 && timeout < 5f)
+        {
+            timeout += Time.deltaTime;
+            yield return null;
+        }
+
+        // 4. 发过关事件，进地图
+        deathSequenceRunning = false;
+        EventBus.Publish(new LevelClearedEvent());
+    }
      
 
     // private IEnumerator EnemyDeathSequence()

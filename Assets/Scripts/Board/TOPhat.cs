@@ -43,7 +43,7 @@ public class TOPhat : Singleton<TOPhat>
             Rigidbody rb = dice.GetComponent<Rigidbody>();
             if (rb != null) rb.velocity = Vector3.down * 17f;
             gold--;
-            while (GameObject.FindGameObjectsWithTag("Dice").Length > 0) yield return null;
+            yield return new WaitForSeconds(0.1f);
         }
         yield return new WaitForSeconds(1f);
 

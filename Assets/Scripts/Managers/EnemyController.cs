@@ -14,6 +14,9 @@ public class EnemyController : Singleton<EnemyController>
 
     private EnemyIntentType currentIntent =  EnemyIntentType.Check;
 
+    [Header("下次攻击伤害倍率")]
+    public float nextAttackMultiplier = 1f;
+
 
     public IReadOnlyList<CardDataSO> Hand
     {
@@ -310,5 +313,21 @@ public class EnemyController : Singleton<EnemyController>
             value = 14;
 
         return value;
+    }
+
+    
+    //-------------特殊效果卡牌----------------
+
+    // 效果：乘上倍率
+    public void MultiplyNextAttack(float m)
+    {
+        nextAttackMultiplier *= m;
+    }
+
+    public float ConsumeNextAttackMultiplier()
+    {
+        float m = nextAttackMultiplier;
+        nextAttackMultiplier = 1f;
+        return m;
     }
 }

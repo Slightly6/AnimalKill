@@ -167,7 +167,7 @@ public class DeckManager : Singleton<DeckManager>
         // AudioManager.Instance.PlayDraw();   // 抽牌音效  （排查卡死：暂时关闭）
 
         yield return StartCoroutine(card.FlatFlipAnim());   // 平着翻到正面
-
+        if (card == null) yield break;   
         card.transform.SetParent(handPanel);
         HandCards.Add(card);
         EventBus.Publish(new HandChangedEvent());

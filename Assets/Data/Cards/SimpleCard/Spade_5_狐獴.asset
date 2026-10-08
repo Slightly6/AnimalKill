@@ -14,9 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   suit: 0
   rank: 5
-  animalName: "\u72D0\u7374"
-  description: "\u6218\u529B 5"
+  faceTexture: {fileID: -8328923581568760697, guid: 4ea57001ec88f344fab618aef094b11a, type: 3}
   abilityName: "\u56E2\u5C45"
-  abilityIcon: {fileID: 0}
-  awakenedAbility: {fileID: 0}
-  artwork: {fileID: 0}
+  description: "\u6218\u529B 5"
+  effectType: 0
+  rarity: 0
+  price: 0

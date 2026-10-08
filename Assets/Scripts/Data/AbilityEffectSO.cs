@@ -13,24 +13,11 @@ public enum HoleCard
 }
 
 
-/// <summary>
-/// 通用参数化技能效果。所有技能共用这一个类：
-/// 选 Kind（做什么）+ amount/amount2（数值），触发时机在外层 AbilitySO.trigger 上配。
-/// 六个战斗技能全是"登场挂标记，战斗流程读标记"，这里的 case 只负责挂标记。
-/// </summary>
 [CreateAssetMenu(fileName = "New Ability Effect", menuName = "Data/Ability Effect")]
-public class AbilityEffectSO : ScriptableObject
+public abstract class AbilityEffectSO : ScriptableObject
 {
-    [Tooltip("技能种类（决定做什么）")]
-    public HoleCard kind = HoleCard.None;
-    [Tooltip("副数值（备用）")]
-    public int amount2 = 0;
-
-    // 返回 true = 技能真的发动了（用于触发闪光特效）；false = 条件不满足/被免疫，没发动
-    public bool Apply(Card self, Card target)
-    {
-        if (self == null || self.IsDead) return false;
-
-        return true;
-    }
+    public string description;   // 这个效果是干啥的（鼠标悬停时显示）
+    
+    // 子类实现：抽牌、伤害、加筹码……
+    public abstract bool Apply(Card self, Card target);
 }

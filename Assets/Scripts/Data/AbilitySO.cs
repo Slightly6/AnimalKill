@@ -19,6 +19,6 @@ public class AbilitySO : ScriptableObject
     public string abilityName;
     [TextArea] public string description;
     public Sprite icon;
-    public AbilityTrigger trigger;      // 什么时候触发
-    public AbilityEffectSO effect;      // 触发后做什么
+    public AbilityTrigger trigger;
+    public List<AbilityEffectSO> effects = new();   // ← 一组原子效果
 }
