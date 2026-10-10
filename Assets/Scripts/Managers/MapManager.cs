@@ -172,8 +172,11 @@ public class MapManager : Singleton<MapManager>
                 break;
 
             case MapNodeType.Event:
-            case MapNodeType.Rest:
                 // 这两类当前没生成物，啥也不清
+                break;
+            case MapNodeType.Rest:
+                if (RestManager.Instance != null)
+                    RestManager.Instance.Despawn();
                 break;
         }
     }
@@ -197,18 +200,18 @@ public class MapManager : Singleton<MapManager>
         foreach (var t in list)
         {
             if (t == null) continue;
-            var sc = t.GetComponent<ShopCard>();
-            if (sc != null) coroutines.Add(StartCoroutine(sc.FlyStraight(t, new(15,3,-1), 0.5f)));
+            var flyable = t.GetComponent<IShopFlyable>();
+            if (flyable != null)
+                coroutines.Add(StartCoroutine(flyable.FlyStraight(t, new Vector3(15, 3, -1), 0.5f)));
         }
         list.Clear();
 
-        // 等所有卡飞完再返回
         foreach (var c in coroutines) if (c != null) yield return c;
         OpenMapUI();
     }
 
 
-    // 商店/奖励关（非战斗节点）
+    // 商店/奖励关/休息（非战斗节点）
     void EnterNonBattleNode()
     {
         Debug.Log("[节点] 进入 " + GameProgress.currentNodeType);
@@ -220,12 +223,17 @@ public class MapManager : Singleton<MapManager>
         {
             Shopping();
         }
+        else if (GameProgress.currentNodeType == MapNodeType.Rest)
+        {
+            Resting();
+        }
     }
 
     // 商店刷 2 个互不相同的道具（本次两个不能重复；桌上已有同款不影响，照样会刷）
     void Shopping()
     {
         ShopManager.Instance.CardPoolInit();
+        ShopManager.Instance.JokerPoolInit();
         if (CameraRig.Instance != null) CameraRig.Instance.JumpToIndex(1);
     }
 
@@ -233,6 +241,13 @@ public class MapManager : Singleton<MapManager>
     {
         GameObject chestObj = Instantiate(chest, new Vector3(0, 7, -1), Quaternion.identity);
         spawnedObjects.Add(chestObj);
+    }
+
+    // 休息节点：左右放两个选项，点完由 RestManager 自己回地图
+    void Resting()
+    {
+        if (RestManager.Instance != null)
+            RestManager.Instance.SpawnRestOptions();
     }
 
     // ========== 商店买完 / 宝箱选完：不切场景，卷轴重新掉下来选下一关 ==========
@@ -328,12 +343,14 @@ public class MapManager : Singleton<MapManager>
             case MapNodeType.Treasure:
             case MapNodeType.Shop:
                 EnterNonBattleNode();
-                GameProgress.transitioning = false;
+                break;
+            case MapNodeType.Rest:
+                EnterNonBattleNode();
+                //
                 break;
 
             case MapNodeType.Event:
-            case MapNodeType.Rest:
-                // TODO：事件/休息玩法还没做，先直接回地图，保证整条流程能跑通
+                // TODO：事件玩法还没做，先直接回地图，保证整条流程能跑通
                 Debug.Log($"[节点] {type} 内容未实现，暂时直接返回地图。");
                 FinishNonBattleNode();
                 break;

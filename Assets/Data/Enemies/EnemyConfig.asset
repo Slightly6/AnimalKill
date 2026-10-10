@@ -15,13 +15,13 @@ MonoBehaviour:
   enemyName: "\u5C0F\u602A"
   Chips: 100
   deck:
-  - {fileID: 11400000, guid: b06d2d080bfe79549a776b26fe4b5c3c, type: 2}
-  - {fileID: 11400000, guid: 862239c2eafa6e34bb28534cbfd31ccd, type: 2}
-  - {fileID: 11400000, guid: d08f884b2334c2740b3d35c1d813dbf3, type: 2}
-  - {fileID: 11400000, guid: a0280d0f8d83ec24c86f852cbd55ae1f, type: 2}
-  - {fileID: 11400000, guid: aecbe8d14134b3e4fa085b6f324852b9, type: 2}
-  - {fileID: 11400000, guid: 57d47a5065838a043b211c6189c8a786, type: 2}
-  - {fileID: 11400000, guid: 57d47a5065838a043b211c6189c8a786, type: 2}
+  - {fileID: 11400000, guid: 009daee8d67736a4e8a42b64e206cee2, type: 2}
+  - {fileID: 11400000, guid: 61aabc5ead0bb7c49857dee561dcb41c, type: 2}
+  - {fileID: 11400000, guid: 2aedbb342a35601408c0338eeb53103d, type: 2}
+  - {fileID: 11400000, guid: 347f81d69d47e0d4db54a1ddbed2d8f6, type: 2}
+  - {fileID: 11400000, guid: 7e4fc0635242abb4c9a094c9754cc6f8, type: 2}
+  - {fileID: 11400000, guid: 41cbb69ca70952340bba1a50e172d82d, type: 2}
+  - {fileID: 11400000, guid: 430a72d0994fa20448d25f13f3f6efc0, type: 2}
   handSize: 7
   checkChance: 0.2
   raiseChance: 0.25

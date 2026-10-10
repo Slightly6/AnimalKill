@@ -14,10 +14,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   suit: 0
   rank: 7
-  faceTexture: {fileID: -8328923581568760697, guid: 23d5f30b44bf18d439cffda6867d668c, type: 3}
+  faceTexture: {fileID: -8328923581568760697, guid: 7ce943a203df85042b626814ac316fe6, type: 3}
   ability: {fileID: 0}
-  abilityName: "\u6DF1\u6D77\u730E\u624B"
-  description: "\u6218\u529B 7"
+  abilityName: 7
+  description: 
   effectType: 0
   rarity: 0
   price: 0

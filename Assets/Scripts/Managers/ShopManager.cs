@@ -4,37 +4,38 @@ using UnityEngine;
 
 public class ShopManager : Singleton<ShopManager>
 {
-    public List<HookCardDataSO> HookCards = new List<HookCardDataSO>();
-    public List<CardDataSO> Cards = new List<CardDataSO>();
+    public List<JokerSO> jokerPool = new List<JokerSO>();
+    public List<CardDataSO> CardsPool = new List<CardDataSO>();
     public GameObject cardPrefab;
+    public GameObject hookCardPrefab; 
     // public GameObject hookCardPrefab;
     public int maxShopSize = 3;
     public float spacing = 1.5f;
     public Transform Anchor; 
     public List<Transform> shopCards=new List<Transform>();
-    void Start()
-    {
-    //   CardPoolInit();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
-    void OnDestroy()
-    {
-        
-    }
     public void CardPoolInit()
     {
         
-        Shuffle(Cards);
-        int shopSize = Mathf.Min(maxShopSize, Cards.Count);
+        Shuffle(CardsPool);
+        int shopSize = Mathf.Min(maxShopSize, CardsPool.Count);
         
-        GetPlayPositions(shopSize);
+        GetPlayPositions(cardPrefab,shopSize,0);
     }
-    private void GetPlayPositions(int count)
+    public void JokerPoolInit()
+    {
+        Shuffle(jokerPool);
+        int count = Mathf.Min(maxShopSize, jokerPool.Count);
+        GetPlayPositions(hookCardPrefab,count,2.5f);
+    }
+
+    // 买小丑：成功（栏没满）返回 true，并把实体移出商店列表（不再被结算飞走）
+    public bool BuyJoker(HookCard card)
+    {
+        bool ok = JokerManager.Instance.Add(card.Data, card.transform);   // 飞行/挂载动画由 HookDisplay 接管
+        if (ok) shopCards.Remove(card.transform);
+        return ok;
+    }
+    private void GetPlayPositions(GameObject cardPrefabrd, int count,float yPos=0f)
     {
         Vector3 anchorPos = Vector3.zero;
         if (Anchor != null) anchorPos = Anchor.position;
@@ -44,10 +45,19 @@ public class ShopManager : Singleton<ShopManager>
         for (int i = 0; i < count; i++)
         {
             float x = (i - (count - 1) / 2f) * spacing;
-            GameObject cardObj = Instantiate(cardPrefab, center + new Vector3(x, 2f, 0f), rotation);
-            Card card = cardObj.GetComponent<Card>();
-            card.Init(Cards[i], true); 
-            card.transform.rotation = Quaternion.Euler(90f, 90f, -90f);
+            GameObject cardObj = Instantiate(cardPrefabrd, center + new Vector3(x, 2f, yPos), rotation);
+            if(cardPrefabrd==cardPrefab)
+            {
+                Card card = cardObj.GetComponent<Card>();
+                card.Init(CardsPool[i], true); 
+                card.transform.rotation = Quaternion.Euler(90f, 90f, -90f);
+            }else
+            {
+                HookCard card = cardObj.GetComponent<HookCard>();
+                card.Init(jokerPool[i]); 
+                card.transform.rotation = Quaternion.Euler(90f, 90f, -90f);
+            }
+            
             shopCards.Add(cardObj.transform); 
         }
         

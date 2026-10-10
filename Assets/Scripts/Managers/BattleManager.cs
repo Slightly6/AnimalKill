@@ -180,6 +180,12 @@ public class BattleManager : Singleton<BattleManager>
         }
             
 
+        // 1.5 触发"打出时"技能（如：敌人下次伤害减半）——必须在算伤害前，否则效果不生效
+        foreach (Card c in cards)
+        {
+            if (c != null) c.TriggerAbility(AbilityTrigger.OnPlay, null);
+        }
+
         // 2. 纯计算（PokerResolver）
         List<CardDataSO> datas = cards.ConvertAll(c => c.Data);
         HandType type = PokerResolver.Evaluate(datas);
@@ -187,10 +193,13 @@ public class BattleManager : Singleton<BattleManager>
         int mult = PokerResolver.GetMultiplier(type);
         HashSet<int> coreIndices = PokerResolver.GetCoreCardIndices(datas, type);
         int cardBonus = PokerResolver.CalcCardBonus(cards, coreIndices);
-        int damage = PokerResolver.CalcDamage(baseChips, cardBonus, mult);
+        float damage = PokerResolver.CalcDamage(baseChips, cardBonus, mult);
+        float damageBefore = damage;
+        damage=JokerManager.Instance.ApplyDamageModifiers(damage);
+        float jokerBonus = damage - damageBefore;
 
-        // 3. 纯演出（BattleView）：飞牌+计分+飞撞+销毁牌
-        yield return BattleView.Instance.PlayResolveSequence(cards, type, baseChips, mult, damage, coreIndices, isPlayfold);
+        // 3. 纯演出（BattleView）：飞牌+计分+小丑乘率+飞撞+销毁牌
+        yield return BattleView.Instance.PlayResolveSequence(cards, type, baseChips, mult, Mathf.RoundToInt(damage),  coreIndices, isPlayfold, Mathf.RoundToInt(damageBefore));
 
         // 4. 游戏逻辑：isPlayfold=false 出牌扣敌人筹码；isPlayfold=true 弃牌进主池
         if (!isPlayfold)
@@ -198,16 +207,18 @@ public class BattleManager : Singleton<BattleManager>
             if (GameManager.Instance.EnemyChips < damage)
             {
                 GameManager.Instance.EnemyLoseChips(GameManager.Instance.EnemyChips);
+                
             }
             else
             {
-                GameManager.Instance.EnemyLoseChips(damage);
+                GameManager.Instance.EnemyLoseChips(Mathf.RoundToInt(damage));
             }
             
         }
         else
         {
-            GameManager.Instance.DiscardToPot(damage);
+                JokerManager.Instance.NotifyCardsDiscarded(cards.Count);
+                GameManager.Instance.DiscardToPot(Mathf.RoundToInt(damage));
         }
 
         // 5. 补手牌

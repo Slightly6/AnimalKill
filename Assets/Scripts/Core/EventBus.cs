@@ -128,12 +128,6 @@ public struct ChipTransferEvent
     public bool toPlayer;    // true = 敌→我（我赢）；false = 我→敌（我输）
 }
 
-// 战利品变化（打脸收牌）
-public struct TrophyChangedEvent
-{
-    public int count;
-}
-
 // 结束出牌阶段（玩家点铃铛：把选中的牌打出结算）
 public struct EndPlayPhaseEvent
 {

@@ -11,12 +11,22 @@ public class ChipPool : MonoBehaviour
 
     void Start()
     {
-        // 预热
-        for (int i = 0; i < initialSize; i++)
+        // 分帧预热，避免一帧内生成太多导致卡顿
+        StartCoroutine(WarmupRoutine());
+    }
+
+    private System.Collections.IEnumerator WarmupRoutine()
+    {
+        int perFrame = 2;   // 每帧生成数量，越小越平滑
+        for (int i = 0; i < initialSize; i += perFrame)
         {
-            GameObject coin = Instantiate(coinPrefab, transform);
-            coin.SetActive(false);
-            pool.Enqueue(coin);
+            for (int j = 0; j < perFrame && i + j < initialSize; j++)
+            {
+                GameObject coin = Instantiate(coinPrefab, transform);
+                coin.SetActive(false);
+                pool.Enqueue(coin);
+            }
+            yield return null;   // 等下一帧再继续
         }
     }
 

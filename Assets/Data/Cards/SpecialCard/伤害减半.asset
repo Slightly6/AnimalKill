@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   suit: 0
   rank: 7
-  faceTexture: {fileID: -8328923581568760697, guid: f456e1524b4dd314c94a6336bb69b1a8, type: 3}
+  faceTexture: {fileID: -8328923581568760697, guid: ab3fcc340608b1447b4f10f624a9b543, type: 3}
   ability: {fileID: 11400000, guid: 678a29bbb4e49bb459bf0af329259b63, type: 2}
   abilityName: "\u51CF\u534A"
   description: "\u654C\u65B9\u4E0B\u6B21\u4F24\u5BB3\u51CF\u534A"

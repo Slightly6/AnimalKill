@@ -20,6 +20,8 @@ public class Chips : MonoBehaviour
     public float groupRowSpacing = 1.8f;        //组纵向间距
 
     public float interval=0.1f;
+    public float dropHeight = 1.5f;   // 掉落演出高度
+    public float dropDuration = 0.25f; // 掉落到目标位的时间
     [Header("Fly to pot")]
     public float flyForce = 1.5f;
     public float flyUpForce = 0.5f;
@@ -108,6 +110,13 @@ public class Chips : MonoBehaviour
             return;
 
         coinsPerStack = Mathf.Max(1, coinsPerStack);
+        StartCoroutine(AddCoinsRoutine(amount));
+    }
+
+    // 所有筹码从统一出生位置排队掉落：上一枚离开起点后下一枚才出发
+    private IEnumerator AddCoinsRoutine(int amount)
+    {
+        Vector3 spawnPos = stackRoot.position + Vector3.up * dropHeight;
 
         for (int i = 0; i < amount; i++)
         {
@@ -124,9 +133,25 @@ public class Chips : MonoBehaviour
             coins.Add(coin);
 
             coin.transform.SetParent(stackRoot, true);
-            PlaceCoin(coin, groupIndex, slotIndex, level);
-
             BindCoinClick(coin);
+
+            // 目标位
+            Vector3 localPos = GetLocalPosition(groupIndex, slotIndex, level);
+            Vector3 targetPos = stackRoot.TransformPoint(localPos);
+            Quaternion targetRot = stackRoot.rotation;
+
+            Rigidbody rb = coin.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+                rb.detectCollisions = true;
+                rb.position = spawnPos;
+                rb.rotation = targetRot;
+                StartCoroutine(DropAnim(rb, targetPos, targetRot));
+            }
+
+            // 等上一枚离开出生位置再放下一枚
+            yield return new WaitForSeconds(dropDuration * 0.3f);
         }
     }
 
@@ -210,14 +235,54 @@ public class Chips : MonoBehaviour
         if (rb != null)
         {
             rb.isKinematic = true;
-            rb.position = worldPosition;
+            rb.detectCollisions = true;
+            rb.position = worldPosition + Vector3.up * dropHeight;
             rb.rotation = worldRotation;
+            StartCoroutine(DropAnim(rb, worldPosition, worldRotation));
         }
         else
         {
-            coin.transform.position = worldPosition;
+            coin.transform.position = worldPosition + Vector3.up * dropHeight;
             coin.transform.rotation = worldRotation;
+            StartCoroutine(DropAnimNoRb(coin.transform, worldPosition, worldRotation));
         }
+    }
+
+    // 从上方插值滑到目标位，落地后锁死——不依赖物理引擎，位置永远精确
+    IEnumerator DropAnim(Rigidbody rb, Vector3 targetPos, Quaternion targetRot)
+    {
+        Vector3 startPos = rb.position;
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / dropDuration;
+            float p = Mathf.Clamp01(t);
+            // 竖直方向用 ease-in（越掉越快），模拟重力加速
+            float eased = p * p;
+            rb.position = Vector3.Lerp(startPos, targetPos, eased);
+            rb.rotation = Quaternion.Slerp(rb.rotation, targetRot, p);
+            yield return null;
+        }
+        rb.position = targetPos;
+        rb.rotation = targetRot;
+        rb.isKinematic = true;   // 锁死，纹丝不动
+    }
+
+    // 无刚体版本（理论上筹码都有 rb，留个兜底）
+    IEnumerator DropAnimNoRb(Transform tr, Vector3 targetPos, Quaternion targetRot)
+    {
+        Vector3 startPos = tr.position;
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / dropDuration;
+            float p = Mathf.Clamp01(t);
+            tr.position = Vector3.Lerp(startPos, targetPos, p * p);
+            tr.rotation = Quaternion.Slerp(tr.rotation, targetRot, p);
+            yield return null;
+        }
+        tr.position = targetPos;
+        tr.rotation = targetRot;
     }
 
     private IEnumerator LoseCoinsRoutine()
@@ -252,6 +317,7 @@ public class Chips : MonoBehaviour
             if (rb != null)
             {
                 rb.isKinematic = false;
+                rb.constraints = RigidbodyConstraints.None;   // 飞出要解锁，水平冲量才有效
                 rb.velocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
 
@@ -281,6 +347,7 @@ public class Chips : MonoBehaviour
             interval*=0.85f;
             if (interval < 0.01f) interval = 0.01f;
         }
+        interval=0.1f;
         GameProgress.chipFly=false;
         loseRoutine = null;
     }

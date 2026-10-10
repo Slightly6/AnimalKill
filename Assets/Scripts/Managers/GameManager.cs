@@ -3,14 +3,11 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 总管理。管筹码、钩子挂牌、胜负。
-/// 玩家从手牌选 1~5 张挂上钩子 → 按牌型获得本关增益（每关限一次）→ 打光敌人筹码过关。
+/// 总管理。管筹码、胜负。
 /// 敌人筹码归零 = 过关（非整局胜利），玩家筹码归零 = 整局失败。
 /// </summary>
 public class GameManager : Singleton<GameManager>
 {
-    private const int TROPHY_SIZE = 5;   // 战利品区容量
-
     [Header("开局筹码")]
     public int startingPlayerChips = 100;   // 玩家开局筹码数（在 Inspector 里填）
     public int startingSidePot = 50;        // 边池开局筹码数（在 Inspector 里填）
@@ -41,29 +38,7 @@ public class GameManager : Singleton<GameManager>
     private bool deathSequenceRunning = false;  // 玩家打光敌人筹码后，死亡流程正在进行中，防止重复触发
     public int toGold;                    // 本关结算时主池换金币数
 
-    // 战利品区当前张数
-    public int TrophyCount { get { return trophy.Count; } }
-
-    // 取战利品区第 index 张牌（0~4，空位返回 null，给 UI 显示用）
-    public CardDataSO GetTrophyCard(int index)
-    {
-        if (index < 0 || index >= trophy.Count) return null;
-        return trophy[index];
-    }
-
-    // 钩子上全部牌的拷贝（技能判定牌型用）
-    public List<CardDataSO> GetTrophyCards()
-    {
-        return new List<CardDataSO>(trophy);
-    }
-
     public bool IsGameOver { get; private set; }
-
-    // 本关钩子是否已用过：挂牌一次后锁到过关，下一关 LoadLevel 重置
-    public bool HookLocked { get; private set; }
-
-    // 钩子上当前挂的牌：玩家从手牌里选 1~5 张挂上来，挂一次后本关锁定，过关清空
-    private List<CardDataSO> trophy = new List<CardDataSO>();
 
     protected override void Awake()
     {
@@ -95,7 +70,7 @@ public class GameManager : Singleton<GameManager>
 
     // ========== 关卡 ==========
 
-    // 进入一关：设敌人筹码、清空钩子、解锁挂牌（MapManager 调用）
+    // 进入一关：设敌人筹码（MapManager 调用）
     public void LoadLevel(LevelConfig cfg)
     {
         EnemyChips = cfg.enemyStartingChips;
@@ -107,11 +82,8 @@ public class GameManager : Singleton<GameManager>
         if (SidePotChips <= 0)
             SidePotChips = startingSidePot;
         PotChips = 0;       // 主池每关重置
-        trophy.Clear();
-        HookLocked = false;
         Coin.Instance.initialized=true;
         SendChipsChanged();
-        EventBus.Publish(new TrophyChangedEvent { count = 0 });
         Debug.Log("[关卡] 进入 " + cfg.levelName + "，敌人筹码 " + EnemyChips + "，边池 " + SidePotChips);
     }
 
@@ -119,50 +91,6 @@ public class GameManager : Singleton<GameManager>
     public void WinGame()
     {
         EndGame(true);
-    }
-
-    // ========== 钩子挂牌 ==========
-
-    // 玩家把选中的手牌挂到钩子上：1~5 张，判定牌型 → 应用本关增益 → 锁定。
-    // 返回牌型；未挂成（已锁定/张数非法）返回 null。
-    public HandType? HangCards(List<CardDataSO> cards)
-    {
-        if (IsGameOver) return null;
-        if (HookLocked)
-        {
-            Debug.Log("[钩子] 本关已经挂过牌了");
-            return null;
-        }
-        if (cards == null || cards.Count == 0 || cards.Count > TROPHY_SIZE)
-        {
-            Debug.Log("[钩子] 只能挂 1~" + TROPHY_SIZE + " 张牌");
-            return null;
-        }
-
-        trophy = new List<CardDataSO>(cards);
-        HookLocked = true;
-
-        HandType type = PokerHandEvaluator.Evaluate(trophy);
-        ApplyHandSkill(type);
-
-        EventBus.Publish(new TrophyChangedEvent { count = trophy.Count });
-        Debug.Log("[钩子] 挂上 " + trophy.Count + " 张，牌型=" + type + "，本关增益已生效");
-        return type;
-    }
-
-    // 按牌型给本关增益（效果以后再调，先留入口）
-    void ApplyHandSkill(HandType type)
-    {
-        // if (type == HandType.HighCard)            AddChips(2);
-        // else if (type == HandType.OnePair)        AddChips(5);
-        // else if (type == HandType.TwoPair)        GameProgress.hides += 1;
-        // else if (type == HandType.ThreeOfAKind)   BuffPlayerCards(1);
-        // else if (type == HandType.Straight)       BuffEnemyCards(-1);
-        // else if (type == HandType.Flush)          AddChips(12);
-        // else if (type == HandType.FullHouse)      { AddChips(20); GameProgress.hides += 1; }
-        // else if (type == HandType.FourOfAKind)    BuffPlayerCards(2);
-        // else if (type == HandType.StraightFlush)  { AddChips(30); BuffPlayerCards(1); 
-        // TODO: 后期在这里改各牌型的本关持续增益
     }
 
     // 本关我方所有牌 +delta 战力（槽位机制删除后场上无持续牌，暂不生效；
@@ -217,6 +145,18 @@ public class GameManager : Singleton<GameManager>
         EnemyChips -= amount;
         PotChips += amount;                   // 敌人流出的筹码进主池
         SendChipsChanged();
+        CheckWin();
+    }
+
+    // 休息节点：按上限比例回复玩家筹码和边池（RestManager 点击筹码时调）
+    public void RestHeal(float ratio = 0.3f)
+    {
+        if (IsGameOver) return;
+        int healChips = Mathf.RoundToInt(startingPlayerChips * ratio);
+        int healSide = Mathf.RoundToInt(sidePotCap * ratio);
+        PlayerChips = Mathf.Min(PlayerChips + healChips, startingPlayerChips);
+        SidePotChips = Mathf.Min(SidePotChips + healSide, sidePotCap);
+        SendChipsChanged();   // 事件一发出，玩家堆/边池实体自己跟着长
         CheckWin();
     }
 

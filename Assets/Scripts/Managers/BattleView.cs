@@ -317,7 +317,7 @@ public class BattleView : Singleton<BattleView>
 
     // 完整演出流程：飞牌→计分→飞撞→销毁牌
     // BattleManager 先用 PokerResolver 算好 type/damage 等，传进来
-    public IEnumerator PlayResolveSequence( List<Card> cards, HandType type, int baseChips, int mult,int damage, HashSet<int> coreIndices, bool isPlayfold)
+    public IEnumerator PlayResolveSequence( List<Card> cards, HandType type, int baseChips, int mult,int damage, HashSet<int> coreIndices, bool isPlayfold, int damageBeforeJoker = -1)
     {
         // 1. 牌依次飞到虚影位，立着面向玩家
         List<Vector3> positions = GetPlayPositions(cards.Count);
@@ -346,6 +346,10 @@ public class BattleView : Singleton<BattleView>
         }
         else
         {
+            // 小丑乘率演出：先显示无小丑的分数 → 触发的小丑头上弹 ×倍率 → Score 当场变最终伤害
+            if (damageBeforeJoker >= 0 && damageBeforeJoker != damage)
+                yield return ShowJokerMultipliers(damageBeforeJoker, damage);
+
             // 出牌打人：直接显示伤害，Score 飞向敌人
             Score.text = damage.ToString();
             yield return PunchScore();
@@ -364,6 +368,9 @@ public class BattleView : Singleton<BattleView>
 
     // ========== 飞牌 ==========
 
+    // 结算演出时得分牌一起抬起的高度（想更高就调这个）
+    const float PlayLift = 0.3f;
+
     // 牌从当前位置飞到桌面结算位（同时放平）
     private IEnumerator FlyToTable(Card card, Vector3 toPos, Quaternion toRot, float duration)
     {
@@ -381,6 +388,47 @@ public class BattleView : Singleton<BattleView>
         }
         card.transform.position = toPos;
         card.transform.rotation = toRot;
+    }
+
+    // 牌被计分时弹一下：扩大再缩回（配合飘字，和 PunchScore 同款手感）
+    IEnumerator PunchCard(Card card, float mult = 1.25f, float dur = 0.25f)
+    {
+        if (card == null) yield break;
+        Vector3 baseScale = card.transform.localScale;
+        float t = 0f;
+        while (t < dur)
+        {
+            t += Time.deltaTime;
+            float p = Mathf.Clamp01(t / dur);
+            float s = p < 0.5f ? Mathf.Lerp(1f, mult, p * 2f) : Mathf.Lerp(mult, 1f, (p - 0.5f) * 2f);
+            card.transform.localScale = baseScale * s;
+            yield return null;
+        }
+        card.transform.localScale = baseScale;
+    }
+
+    // 结算演出开始：所有得分的牌一起平滑抬起一点
+    IEnumerator LiftCards(List<Card> liftCards, float lift, float dur = 0.15f)
+    {
+        List<Vector3> froms = new List<Vector3>();
+        List<Vector3> tos = new List<Vector3>();
+        foreach (Card c in liftCards)
+        {
+            if (c == null) continue;
+            froms.Add(c.transform.position);
+            tos.Add(c.transform.position + Vector3.up * lift);
+        }
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / dur;
+            float p = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t));
+            for (int k = 0; k < liftCards.Count; k++)
+                if (liftCards[k] != null) liftCards[k].transform.position = Vector3.Lerp(froms[k], tos[k], p);
+            yield return null;
+        }
+        for (int k = 0; k < liftCards.Count; k++)
+            if (liftCards[k] != null) liftCards[k].transform.position = tos[k];
     }
 
     // ========== 飘字 ==========
@@ -425,11 +473,18 @@ public class BattleView : Singleton<BattleView>
     {
         int running = 0;
 
-        // 阶段1：逐张飘字 + Score 实时上涨
+        // 结算开始：所有得分的牌先一起抬起来一点（非得分牌原地不动）
+        List<Card> liftCards = new List<Card>();
+        for (int i = 0; i < cards.Count; i++)
+            if (coreIndices.Contains(i) && cards[i] != null) liftCards.Add(cards[i]);
+        if (liftCards.Count > 0) yield return LiftCards(liftCards, PlayLift);
+
+        // 阶段1：逐张飘字 + Score 实时上涨（计到哪张，哪张牌弹一下）
         for (int i = 0; i < cards.Count; i++)
         {
             if (coreIndices.Contains(i))
             {
+                StartCoroutine(PunchCard(cards[i]));
                 yield return FloatingText(positions[i], PokerResolver.RankDisplay(cards[i].Data.rank), Color.blue);
                 running += int.Parse(PokerResolver.RankDisplay(cards[i].Data.rank).TrimStart('+'));
                 Score.text = running.ToString();
@@ -468,6 +523,33 @@ public class BattleView : Singleton<BattleView>
         Destroy(board);
 
         
+    }
+
+    // 小丑乘率演出：触发的小丑头上依次弹 ×倍率，Score 从修正前的数当场变最终数
+    // 时序和敌人减半演出一致：先旧数 → 弹 ×倍率 → 变新数
+    public IEnumerator ShowJokerMultipliers(int damageBefore, int damageAfter)
+    {
+        var list = JokerManager.Instance.lastTriggered;
+        if (list == null || list.Count == 0) yield break;
+
+        Score.text = damageBefore.ToString();     // 无小丑时的分数
+        yield return new WaitForSeconds(0.4f);
+
+        // 每个触发的小丑，在自己实体头上弹 ×倍率（金色），多个小丑依次弹
+        foreach (var (joker, mult) in list)
+        {
+            if (joker.view == null) continue;
+            StartCoroutine(FloatingText(
+                joker.view.position + Vector3.up * 1.2f,
+                "×" + mult.ToString("0.##"),
+                new Color(1f, 0.75f, 0.2f)));
+            yield return new WaitForSeconds(0.25f);
+        }
+        yield return new WaitForSeconds(0.5f);
+
+        Score.text = damageAfter.ToString();      // 当场变成小丑加成后的数
+        StartCoroutine(PunchScore());
+        yield return new WaitForSeconds(0.4f);
     }
 
     // Score 加分反馈
@@ -744,6 +826,8 @@ public class BattleView : Singleton<BattleView>
             yield return new WaitForSeconds(0.4f);
 
             GameObject debuff = CreateBoardText("×" + attackMult.ToString("0.##"), new Color(1f, 0.4f, 0.4f));
+            if (EnemyPos != null)
+                debuff.transform.position = EnemyPos.position + Vector3.left * 2f+Vector3.forward * 3f;  
             yield return PopIn(debuff.transform, 0.2f);
             yield return new WaitForSeconds(0.5f);
 

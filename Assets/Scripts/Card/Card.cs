@@ -11,7 +11,7 @@ public class Card : MonoBehaviour
     [Header("渲染（拖入）")]
     public TextMeshPro[] rankTexts;          // 正面花色点数文字
     public TextMeshPro bonusText;            // 战力加/减的浮动文字（+1 / -1，没拖就空着不显示）
-    public MeshRenderer frontRenderer;       // 正面动物图
+    public MeshRenderer frontRenderer;       
     public MeshRenderer skillIconRenderer;   // 正面技能图标（小）
     public float frontArtScale = 0.12f;      // 正面动物图大小
     // public Sprite stackedSkillIcon;          // 叠加得到的技能图标（献祭来的，没叠是 null）
@@ -104,7 +104,7 @@ public class Card : MonoBehaviour
         IsDead = false;
 
         // 技能状态全部清零（对象池/复用时也安全）
-        runtimeAbility = null;
+        runtimeAbility = data.ability;   // 从卡牌数据读能力（普通牌为 null）
 
         RefreshDisplay();
     
@@ -283,7 +283,7 @@ public class Card : MonoBehaviour
 
     void OnMouseOver()
     {
-        if (Input.GetMouseButtonDown(1))   // 右键
+        if (Input.GetMouseButtonDown(1)) 
         {
             Card card = GetComponent<Card>();
             if (card == null || card.Data == null || tooltip == null) return;

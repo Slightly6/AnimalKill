@@ -12,8 +12,6 @@ public enum HoleCard
     Spade7 = 6,      // ♠7
 }
 
-
-[CreateAssetMenu(fileName = "New Ability Effect", menuName = "Data/Ability Effect")]
 public abstract class AbilityEffectSO : ScriptableObject
 {
     public string description;   // 这个效果是干啥的（鼠标悬停时显示）

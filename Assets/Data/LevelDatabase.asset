@@ -18,21 +18,21 @@ MonoBehaviour:
     enemyConfig: {fileID: 11400000, guid: 1b86f7bb9c700784c8aa398401c72654, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
-    enemyStartingChips: 300
+    enemyStartingChips: 50
     initialHandSize: 7
   - levelName: 2
     isBoss: 0
     enemyConfig: {fileID: 11400000, guid: 1b86f7bb9c700784c8aa398401c72654, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
-    enemyStartingChips: 300
+    enemyStartingChips: 50
     initialHandSize: 7
   - levelName: 3
     isBoss: 0
     enemyConfig: {fileID: 11400000, guid: 1b86f7bb9c700784c8aa398401c72654, type: 2}
     enemyBonusPower: 0
     enemyAwakened: 0
-    enemyStartingChips: 300
+    enemyStartingChips: 50
     initialHandSize: 7
   - levelName: 4
     isBoss: 0

@@ -1043,7 +1043,7 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
         float value = RandomValue();
 
         if (value < 0.20f) return MapNodeType.Monster;
-
+        if (value<0.66f) return MapNodeType.Rest;
         if (value < 0.99f) return MapNodeType.Shop;        // 12%
         return MapNodeType.Treasure;                        // 8%
     }

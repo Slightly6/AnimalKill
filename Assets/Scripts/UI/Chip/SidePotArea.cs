@@ -22,6 +22,8 @@ public class SidePotArea : MonoBehaviour
     [Header("Fly to pot")]
     public float flyForce = 1.5f;
     public float flyUpForce = 0.5f;
+    public float dropHeight = 1.5f;
+    public float dropDuration = 0.25f;
 
     private readonly List<GameObject> coins = new List<GameObject>();
 
@@ -91,6 +93,13 @@ public class SidePotArea : MonoBehaviour
             return;
 
         coinsPerStack = Mathf.Max(1, coinsPerStack);
+        StartCoroutine(AddCoinsRoutine(amount));
+    }
+
+    // 所有筹码从统一出生位置排队掉落：上一枚离开起点后下一枚才出发
+    private IEnumerator AddCoinsRoutine(int amount)
+    {
+        Vector3 spawnPos = stackRoot.position + Vector3.up * dropHeight;
 
         for (int i = 0; i < amount; i++)
         {
@@ -107,7 +116,22 @@ public class SidePotArea : MonoBehaviour
             coins.Add(coin);
 
             coin.transform.SetParent(stackRoot, true);
-            PlaceCoin(coin, groupIndex, slotIndex, level);
+
+            Vector3 localPos = GetLocalPosition(groupIndex, slotIndex, level);
+            Vector3 targetPos = stackRoot.TransformPoint(localPos);
+            Quaternion targetRot = stackRoot.rotation;
+
+            Rigidbody rb = coin.GetComponent<Rigidbody>();
+            if (rb != null)
+            {
+                rb.isKinematic = true;
+                rb.detectCollisions = true;
+                rb.position = spawnPos;
+                rb.rotation = targetRot;
+                StartCoroutine(DropAnim(rb, targetPos, targetRot));
+            }
+
+            yield return new WaitForSeconds(dropDuration * 0.3f);
         }
         GameProgress.chipFly=false;
     }
@@ -192,14 +216,35 @@ public class SidePotArea : MonoBehaviour
         if (rb != null)
         {
             rb.isKinematic = true;
-            rb.position = worldPosition;
+            rb.detectCollisions = true;
+            rb.position = worldPosition + Vector3.up * dropHeight;
             rb.rotation = worldRotation;
+            StartCoroutine(DropAnim(rb, worldPosition, worldRotation));
         }
         else
         {
-            coin.transform.position = worldPosition;
+            coin.transform.position = worldPosition + Vector3.up * dropHeight;
             coin.transform.rotation = worldRotation;
         }
+    }
+
+    // 从上方插值滑到目标位，落地后锁死——不依赖物理引擎，位置永远精确
+    IEnumerator DropAnim(Rigidbody rb, Vector3 targetPos, Quaternion targetRot)
+    {
+        Vector3 startPos = rb.position;
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / dropDuration;
+            float p = Mathf.Clamp01(t);
+            float eased = p * p;   // ease-in 模拟重力加速
+            rb.position = Vector3.Lerp(startPos, targetPos, eased);
+            rb.rotation = Quaternion.Slerp(rb.rotation, targetRot, p);
+            yield return null;
+        }
+        rb.position = targetPos;
+        rb.rotation = targetRot;
+        rb.isKinematic = true;
     }
 
     private IEnumerator LoseCoinsRoutine()
@@ -234,6 +279,7 @@ public class SidePotArea : MonoBehaviour
             if (rb != null)
             {
                 rb.isKinematic = false;
+                rb.constraints = RigidbodyConstraints.None;   // 飞出要解锁，水平冲量才有效
                 rb.velocity = Vector3.zero;
                 rb.angularVelocity = Vector3.zero;
 
@@ -261,8 +307,9 @@ public class SidePotArea : MonoBehaviour
 
             yield return new WaitForSeconds(interval);
             interval*=0.85f;
-            if (interval < 0.05f) interval = 0.05f;
+            if (interval < 0.1f) interval = 0.1f;
         }
+        interval=0.1f;
         GameProgress.chipFly=false;
         loseRoutine = null;
     }

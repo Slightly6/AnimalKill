@@ -127,7 +127,7 @@ public static class PokerHandEvaluator
         if (type == HandType.ThreeOfAKind)   return 2;
         if (type == HandType.TwoPair)        return 2;
         if (type == HandType.OnePair)        return 1;
-        return 100; // 高牌
+        return 1; // 高牌
     }
 
     // 最终伤害 = 底分 × 倍率（未加成时的纯牌型伤害）
