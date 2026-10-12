@@ -157,7 +157,7 @@ public struct ItemActivatedEvent
 }
 public struct EnemyDefeatedEvent
 {
-    public int goldReward;   // 本关主池兑换的金币数，帽子按这个播飞金币
+    public int diceReward;   // 本关主池兑换的骰子数，帽子按这个播飞骰子
 }
 
 // 过关（打光敌人筹码，非整局胜利）
@@ -201,7 +201,6 @@ public class EnemyPlayData
     public EnemyIntentType intent;
     public List<int> handIndices = new List<int>();
     public List<CardDataSO> cards = new List<CardDataSO>();
-    public float damageMultiplier = 1f;
 }
 //敌人事件
 public struct EnemyHandChangedEvent

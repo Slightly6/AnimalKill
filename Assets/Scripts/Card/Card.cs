@@ -12,7 +12,6 @@ public class Card : MonoBehaviour
     public TextMeshPro[] rankTexts;          // 正面花色点数文字
     public TextMeshPro bonusText;            // 战力加/减的浮动文字（+1 / -1，没拖就空着不显示）
     public MeshRenderer frontRenderer;       
-    public MeshRenderer skillIconRenderer;   // 正面技能图标（小）
     public float frontArtScale = 0.12f;      // 正面动物图大小
     // public Sprite stackedSkillIcon;          // 叠加得到的技能图标（献祭来的，没叠是 null）
     // ---- 运行时状态 ----
@@ -122,6 +121,21 @@ public class Card : MonoBehaviour
         // SetTextsVisible(!faceDown);
     }
 
+    // 把这张牌（含所有子物体）切到指定 Layer。
+    // 入手牌 → 切到手牌层（HandCamera 只渲染这层，永远在最上层）；
+    // 出手牌 → 切回 Default，恢复正常遮挡。
+    public void SetLayerRecursively(int layer)
+    {
+        SetLayerRecursive(transform, layer);
+    }
+
+    void SetLayerRecursive(Transform t, int layer)
+    {
+        t.gameObject.layer = layer;
+        for (int i = 0; i < t.childCount; i++)
+            SetLayerRecursive(t.GetChild(i), layer);
+    }
+
     // 点数文字只在正面显示（背面时被背图盖住，这里只控文字的显隐）
     void SetTextsVisible(bool showFront)
     {
@@ -220,7 +234,8 @@ public class Card : MonoBehaviour
     bool FireOne(AbilitySO ab, AbilityTrigger trigger, Card target)
     {
         if (ab == null || ab.trigger != trigger) return false;
-        
+        Debug.Log($"[技能触发] {ab.abilityName} trigger={ab.trigger} 效果数={ab.effects.Count}");
+
         bool anyFired = false;
         foreach (var effect in ab.effects)
         {

@@ -11,6 +11,7 @@ public enum AbilityTrigger
     OnTurnStart,    // 回合开始
     OnTurnEnd,      // 回合结束
     OnPlay,         // 打出时
+    OnScore,        // 计分计到这张牌时（出牌结算演出）
     OnDraw,         // 抽到时
 }
 [CreateAssetMenu(fileName = "New Ability", menuName = "Data/Ability")]

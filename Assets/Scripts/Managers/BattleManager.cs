@@ -13,6 +13,13 @@ public class BattleManager : Singleton<BattleManager>
     [Header("点数（杀戮尖塔式）")]
     public int pointsPerTurn = 3;        // 每回合点数上限
     public int PointsLeft { get; private set; }   // 剩余点数
+    private int pointBonusNextTurn = 0;  // 下回合额外点数挂账（AddCoin 手牌效果）
+
+    // 手牌效果：下回合多 1 点（AddCoin 效果调）
+    public void AddPointsNextTurn(int n)
+    {
+        pointBonusNextTurn += n;
+    }
 
     [Header("回合抽牌动画预留（帧）")]
     public int drawFrames = 10;       
@@ -122,7 +129,9 @@ public class BattleManager : Singleton<BattleManager>
         {
             SetPhase(TurnPhase.Draw);
             GameProgress.transitioning = false;
-            PointsLeft = pointsPerTurn;        // 每回合点数补满
+            PointsLeft = pointsPerTurn + pointBonusNextTurn;   // 每回合点数补满（含手牌挂账的额外点数）
+            Debug.Log($"[回合开始] 点数补满 {pointsPerTurn} + 挂账{pointBonusNextTurn} = {PointsLeft}");
+            pointBonusNextTurn = 0;
 
             int need = GameProgress.targetHandSize - DeckManager.Instance.HandCards.Count;
             if (need > 0)
@@ -180,45 +189,32 @@ public class BattleManager : Singleton<BattleManager>
         }
             
 
-        // 1.5 触发"打出时"技能（如：敌人下次伤害减半）——必须在算伤害前，否则效果不生效
-        foreach (Card c in cards)
+        // 1.5 触发"打出时"技能——只有出牌计分才触发，弃牌不触发
+        if (!isPlayfold)
         {
-            if (c != null) c.TriggerAbility(AbilityTrigger.OnPlay, null);
+            foreach (Card c in cards)
+            {
+                if (c != null) c.TriggerAbility(AbilityTrigger.OnPlay, null);
+            }
         }
 
-        // 2. 纯计算（PokerResolver）
+        // 2. 纯计算（PokerResolver）：牌型 → 固定伤害（含掷骰永久加成）
         List<CardDataSO> datas = cards.ConvertAll(c => c.Data);
         HandType type = PokerResolver.Evaluate(datas);
-        int baseChips = PokerResolver.GetBaseChips(type);
-        int mult = PokerResolver.GetMultiplier(type);
         HashSet<int> coreIndices = PokerResolver.GetCoreCardIndices(datas, type);
-        int cardBonus = PokerResolver.CalcCardBonus(cards, coreIndices);
-        float damage = PokerResolver.CalcDamage(baseChips, cardBonus, mult);
-        float damageBefore = damage;
-        damage=JokerManager.Instance.ApplyDamageModifiers(damage);
-        float jokerBonus = damage - damageBefore;
+        int damage = PokerResolver.GetHandDamage(type);
 
-        // 3. 纯演出（BattleView）：飞牌+计分+小丑乘率+飞撞+销毁牌
-        yield return BattleView.Instance.PlayResolveSequence(cards, type, baseChips, mult, Mathf.RoundToInt(damage),  coreIndices, isPlayfold, Mathf.RoundToInt(damageBefore));
+        // 3. 纯演出（BattleView）：飞牌+牌型板子+飞撞+销毁牌
+        yield return BattleView.Instance.PlayResolveSequence(cards, type, damage, coreIndices, isPlayfold);
 
         // 4. 游戏逻辑：isPlayfold=false 出牌扣敌人筹码；isPlayfold=true 弃牌进主池
         if (!isPlayfold)
         {
-            if (GameManager.Instance.EnemyChips < damage)
-            {
-                GameManager.Instance.EnemyLoseChips(GameManager.Instance.EnemyChips);
-                
-            }
-            else
-            {
-                GameManager.Instance.EnemyLoseChips(Mathf.RoundToInt(damage));
-            }
-            
+            GameManager.Instance.EnemyLoseChips(Mathf.Min(damage, GameManager.Instance.EnemyChips));
         }
         else
         {
-                JokerManager.Instance.NotifyCardsDiscarded(cards.Count);
-                GameManager.Instance.DiscardToPot(Mathf.RoundToInt(damage));
+            GameManager.Instance.DiscardToPot(damage);
         }
 
         // 5. 补手牌
@@ -260,22 +256,16 @@ public class BattleManager : Singleton<BattleManager>
         resolving = true;
         GameProgress.transitioning = true;   // 锁输入（InputLocked = mapOpen || transitioning）
 
-        // Call/Raise：算伤害（纯牌型伤害 × 意图倍率）
+        // Call/Raise：算伤害（牌型固定伤害 × 敌人技能倍率）
         List<CardDataSO> datas = playData.cards;
         HandType type = PokerResolver.Evaluate(datas);
-        int baseChips = PokerResolver.GetBaseChips(type);
-        int mult = PokerResolver.GetMultiplier(type);
         HashSet<int> coreIndices = PokerResolver.GetCoreCardIndices(datas, type);
-        int cardBonus = PokerResolver.CalcCardBonus(datas, coreIndices);
-        int rawDamage = PokerResolver.CalcDamage(baseChips, cardBonus, mult);
         float atkMult = EnemyController.Instance.ConsumeNextAttackMultiplier();
-        int preDamage = Mathf.RoundToInt(rawDamage * playData.damageMultiplier);   // 减半前
-        int damage = Mathf.RoundToInt(preDamage * atkMult);                         // 减半后
-
+        int preDamage = PokerResolver.GetHandDamage(type);                        // 减半前
+        int damage = Mathf.Max(1, Mathf.RoundToInt(preDamage * atkMult));         // 减半后
 
         // 演出
-        // yield return BattleView.Instance.PlayEnemyResolveSequence(playData, damage);
-        yield return BattleView.Instance.PlayEnemyResolveSequence(playData, type, baseChips, mult, damage, coreIndices, atkMult,preDamage);
+        yield return BattleView.Instance.PlayEnemyResolveSequence(playData, type, damage, coreIndices, atkMult, preDamage);
 
         // 游戏逻辑：敌人直接扣玩家筹码（无护盾），扣掉的进主池
         Debug.Log("[敌人攻击] 伤害:" + damage);

@@ -315,9 +315,9 @@ public class BattleView : Singleton<BattleView>
 
     // ========== 完整演出入口（BattleManager 调用） ==========
 
-    // 完整演出流程：飞牌→计分→飞撞→销毁牌
+    // 完整演出流程：飞牌→牌型板子→显示伤害→飞撞→销毁牌
     // BattleManager 先用 PokerResolver 算好 type/damage 等，传进来
-    public IEnumerator PlayResolveSequence( List<Card> cards, HandType type, int baseChips, int mult,int damage, HashSet<int> coreIndices, bool isPlayfold, int damageBeforeJoker = -1)
+    public IEnumerator PlayResolveSequence(List<Card> cards, HandType type, int damage, HashSet<int> coreIndices, bool isPlayfold)
     {
         // 1. 牌依次飞到虚影位，立着面向玩家
         List<Vector3> positions = GetPlayPositions(cards.Count);
@@ -331,35 +331,10 @@ public class BattleView : Singleton<BattleView>
             RemoveGhostAt(i);
         }
 
-        // 2. 计分演出（阶段1-3 + 最终伤害 + 飞撞 + Score归位）
-        yield return ShowHandBoard(type, baseChips, mult, damage, positions, cards, coreIndices, isPlayfold);
+        // 2. 抬牌 + 弹牌型名板子
+        yield return ShowHandBoard(type, cards, coreIndices, isPlayfold);
 
-        if (isPlayfold)
-        {
-            // 弃牌加盾：先显示 ×0.8，再显示 Check 值，Score 飞向玩家
-            Score.text = damage.ToString() + "x0.8";
-            yield return PunchScore();
-            yield return new WaitForSeconds(0.5f);
-            Score.text = Mathf.RoundToInt(damage * 0.8f).ToString();
-            yield return PunchScore();
-            yield return ScoreSlamEnemy(damage, true,false);
-        }
-        else
-        {
-            // 小丑乘率演出：先显示无小丑的分数 → 触发的小丑头上弹 ×倍率 → Score 当场变最终伤害
-            if (damageBeforeJoker >= 0 && damageBeforeJoker != damage)
-                yield return ShowJokerMultipliers(damageBeforeJoker, damage);
-
-            // 出牌打人：直接显示伤害，Score 飞向敌人
-            Score.text = damage.ToString();
-            yield return PunchScore();
-            yield return ScoreSlamEnemy(damage, false,false);
-        }
-
-        Score.text = "";
-        Score.transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
-        Score.transform.position = scoreHomePos;
-        // 3. 间隔
+        // 3. 不出数字，筹码由 Chips 自动飞进主池
         yield return new WaitForSeconds(0.2f);
 
         // 4. 结算完了牌才离场：缩小消失
@@ -466,90 +441,37 @@ public class BattleView : Singleton<BattleView>
 
     // ========== 计分演出 ==========
 
-    // 结算全流程演出（含阶段1-3 + 最终伤害 + 飞撞 + Score归位）
-    // isPlay: true=弃牌加盾(显示×0.8,飞向玩家)；false=出牌打人(显示伤害,飞向敌人)
-    private IEnumerator ShowHandBoard(HandType type, int baseChips, int mult,
-                                       int damage, List<Vector3> positions, List<Card> cards, HashSet<int> coreIndices, bool isPlay)
+    // 结算演出：抬牌 + 得分牌逐张弹一下 + 中间弹牌型名板子
+    // isPlay: true=弃牌(不触发"计分时"技能)；false=出牌(触发)
+    private IEnumerator ShowHandBoard(HandType type, List<Card> cards, HashSet<int> coreIndices, bool isPlay)
     {
-        int running = 0;
-
         // 结算开始：所有得分的牌先一起抬起来一点（非得分牌原地不动）
         List<Card> liftCards = new List<Card>();
         for (int i = 0; i < cards.Count; i++)
             if (coreIndices.Contains(i) && cards[i] != null) liftCards.Add(cards[i]);
         if (liftCards.Count > 0) yield return LiftCards(liftCards, PlayLift);
 
-        // 阶段1：逐张飘字 + Score 实时上涨（计到哪张，哪张牌弹一下）
+        // 得分牌逐张弹一下（出牌时触发"计分时"技能，弃牌不算计分不触发）
         for (int i = 0; i < cards.Count; i++)
         {
-            if (coreIndices.Contains(i))
+            if (coreIndices.Contains(i) && cards[i] != null)
             {
-                StartCoroutine(PunchCard(cards[i]));
-                yield return FloatingText(positions[i], PokerResolver.RankDisplay(cards[i].Data.rank), Color.blue);
-                running += int.Parse(PokerResolver.RankDisplay(cards[i].Data.rank).TrimStart('+'));
-                Score.text = running.ToString();
-                StartCoroutine(PunchScore());
+                if (!isPlay)
+                    cards[i].TriggerAbility(AbilityTrigger.OnScore, null);
+                yield return PunchCard(cards[i]);
             }
         }
 
-        yield return new WaitForSeconds(0.5f);
-
-        // 阶段2：中间弹"牌型 +底分"，Score 加上底分
-        GameObject board = CreateBoardText(PokerResolver.HandName(type) + " +" + baseChips, new Color(0.4f, 0.7f, 1f));
+        // 中间弹牌型名板子
+        GameObject board = CreateBoardText(PokerResolver.HandName(type), new Color(0.4f, 0.7f, 1f));
         float jitterY = Random.Range(-0.1f, 0.1f);
         float RotationZ = Random.Range(0, 9);
         board.transform.rotation = Quaternion.Euler(0, 180, RotationZ);
-        Vector3 basePos = GetPlayCenter() + new Vector3(0, jitterY, 0.8f);
-
-        board.transform.position = basePos;
+        board.transform.position = GetPlayCenter() + new Vector3(0, jitterY, 0.8f);
         yield return PopIn(board.transform, 0.2f);
-        running += baseChips;
-        yield return new WaitForSeconds(0.2f);
-        Score.text = running.ToString();
-        yield return PunchScore();
-        yield return new WaitForSeconds(0.5f);
-
-        // "+底分"缩掉，只留牌型名
-        TextMeshPro tmp = board.GetComponent<TextMeshPro>();
-        tmp.text = PokerResolver.HandName(type);
-        yield return new WaitForSeconds(0.2f);
-
-        // 阶段3：弹"×倍率"
-        tmp.text = PokerResolver.HandName(type) + " ×" + mult;
-        tmp.color = new Color(1f, 0.85f, 0.3f);
-        yield return PopIn(board.transform, 0.2f);
-        yield return new WaitForSeconds(0.5f);
+        yield return new WaitForSeconds(0.6f);
         yield return PopOut(board.transform, 0.15f);
         Destroy(board);
-
-        
-    }
-
-    // 小丑乘率演出：触发的小丑头上依次弹 ×倍率，Score 从修正前的数当场变最终数
-    // 时序和敌人减半演出一致：先旧数 → 弹 ×倍率 → 变新数
-    public IEnumerator ShowJokerMultipliers(int damageBefore, int damageAfter)
-    {
-        var list = JokerManager.Instance.lastTriggered;
-        if (list == null || list.Count == 0) yield break;
-
-        Score.text = damageBefore.ToString();     // 无小丑时的分数
-        yield return new WaitForSeconds(0.4f);
-
-        // 每个触发的小丑，在自己实体头上弹 ×倍率（金色），多个小丑依次弹
-        foreach (var (joker, mult) in list)
-        {
-            if (joker.view == null) continue;
-            StartCoroutine(FloatingText(
-                joker.view.position + Vector3.up * 1.2f,
-                "×" + mult.ToString("0.##"),
-                new Color(1f, 0.75f, 0.2f)));
-            yield return new WaitForSeconds(0.25f);
-        }
-        yield return new WaitForSeconds(0.5f);
-
-        Score.text = damageAfter.ToString();      // 当场变成小丑加成后的数
-        StartCoroutine(PunchScore());
-        yield return new WaitForSeconds(0.4f);
     }
 
     // Score 加分反馈
@@ -684,25 +606,43 @@ public class BattleView : Singleton<BattleView>
     // ========== 销毁牌 ==========
 
     // 结算完的牌整体缩小到 0 再销毁（有过渡，不再瞬间消失）
+    // 结算完牌飞到弃牌堆位置后销毁
     private IEnumerator ShrinkOutCards(List<Card> cards)
     {
-        List<Transform> ts = new List<Transform>();
-        foreach (Card c in cards)
-            if (c != null) ts.Add(c.transform);
+        Transform discardPos = DeckManager.Instance.discardPilePos;
+        if (discardPos == null) discardPos = DeckManager.Instance.deckPile;
+        if (discardPos == null)
+        {
+            foreach (Card c in cards)
+                if (c != null) Destroy(c.gameObject);
+            yield break;
+        }
 
-        List<Vector3> baseScales = new List<Vector3>();
-        foreach (Transform tr in ts) baseScales.Add(tr.localScale);
+        Vector3 target = discardPos.position + Vector3.up * 0.1f;
+        Quaternion flatRot = Quaternion.Euler(-90f, 0f, 0f);
+        float dur = 0.4f;
+
+        List<Vector3> froms = new List<Vector3>();
+        List<Quaternion> fromRots = new List<Quaternion>();
+        foreach (Card c in cards)
+        {
+            if (c == null) { froms.Add(target); fromRots.Add(flatRot); continue; }
+            froms.Add(c.transform.position);
+            fromRots.Add(c.transform.rotation);
+        }
 
         float t = 0f;
-        float dur = 0.25f;
         while (t < dur)
         {
             t += Time.deltaTime;
             float p = Mathf.Clamp01(t / dur);
-            for (int i = 0; i < ts.Count; i++)
+            for (int i = 0; i < cards.Count; i++)
             {
-                if (ts[i] == null) continue;
-                ts[i].localScale = baseScales[i] * (1f - p);   // 整体匀速缩小
+                if (cards[i] == null) continue;
+                Vector3 pos = Vector3.Lerp(froms[i], target, p);
+                pos.y += Mathf.Sin(p * Mathf.PI) * 1.5f;   // 弧线：先升高再落下
+                cards[i].transform.position = pos;
+                cards[i].transform.rotation = Quaternion.Slerp(fromRots[i], flatRot, p);
             }
             yield return null;
         }
@@ -710,7 +650,6 @@ public class BattleView : Singleton<BattleView>
         foreach (Card c in cards)
         {
             if (c == null) continue;
-            // DeckManager.Instance.RemoveFromHand(c);
             Destroy(c.gameObject);
         }
     }
@@ -793,9 +732,9 @@ public class BattleView : Singleton<BattleView>
 
     // 敌人飞牌到桌面中心 + 显示伤害 + Score飞撞玩家 + 牌销毁
     // 不复用 PlayResolveSequence（那个调 DeckManager.RemoveFromHand，玩家专用）
-        // 敌人出牌演出：复用玩家计分链路（飞牌→逐张飘字→牌型+底分→×倍率）+ Score飞撞玩家
-    public IEnumerator PlayEnemyResolveSequence(EnemyPlayData playData,HandType type, int baseChips, int mult, int damage,
-        HashSet<int> coreIndices, float attackMult = 1f,int preDamage = 0)
+    // 敌人出牌演出：飞牌→牌型板子→(减半演出)→显示伤害→Score飞撞玩家→销毁
+    public IEnumerator PlayEnemyResolveSequence(EnemyPlayData playData, HandType type, int damage,
+        HashSet<int> coreIndices, float attackMult = 1f, int preDamage = 0)
     {
         // 1. 取选中的敌人手牌视图
         List<Card> selectedViews = new List<Card>();
@@ -816,38 +755,19 @@ public class BattleView : Singleton<BattleView>
             yield return FlyToTable(selectedViews[i], positions[i], facePlayer, 0.18f);
         }
 
-        // 3. 计分演出（和玩家完全一致）—— isPlay=false 走"直接显示伤害"分支
-        yield return ShowHandBoard(type, baseChips, mult, damage, positions, selectedViews, coreIndices, isPlay: false);
-        // 3.5 减半分步演出：先显示减半前伤害 → 弹红×0.5 → 数字当场变一半
+        // 3. 抬牌 + 弹牌型名板子（和玩家一致）
+        yield return ShowHandBoard(type, selectedViews, coreIndices, isPlay: false);
+        // 3.5 减半演出：只弹红×0.5 板子，不出数字
         if (attackMult < 1f)
         {
-            Score.text = preDamage.ToString();        // 减半前的数
-            yield return PunchScore();
-            yield return new WaitForSeconds(0.4f);
-
             GameObject debuff = CreateBoardText("×" + attackMult.ToString("0.##"), new Color(1f, 0.4f, 0.4f));
             if (EnemyPos != null)
-                debuff.transform.position = EnemyPos.position + Vector3.left * 2f+Vector3.forward * 3f;  
+                debuff.transform.position = EnemyPos.position + Vector3.left * 2f + Vector3.forward * 3f;
             yield return PopIn(debuff.transform, 0.2f);
             yield return new WaitForSeconds(0.5f);
-
-            Score.text = damage.ToString();           // 当场变成一半
-            StartCoroutine(PunchScore());
-            yield return new WaitForSeconds(0.4f);
             yield return PopOut(debuff.transform, 0.15f);
             Destroy(debuff);
         }
-
-        
-        // 4. Score 显示伤害 + 飞撞玩家（敌人是打玩家，方向是 PlayerPos）
-        Score.text = damage.ToString();
-        yield return PunchScore();
-        yield return ScoreSlamEnemy(damage, false,true);   // true=飞向 PlayerflodPos ，false=飞向 PlayerPos
-
-        // 5. Score 归位
-        Score.text = "";
-        Score.transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
-        Score.transform.position = scoreHomePos;
 
         yield return new WaitForSeconds(0.2f);
 

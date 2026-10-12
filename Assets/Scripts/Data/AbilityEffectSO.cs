@@ -14,6 +14,7 @@ public enum HoleCard
 
 public abstract class AbilityEffectSO : ScriptableObject
 {
+    public string abilityName;
     public string description;   // 这个效果是干啥的（鼠标悬停时显示）
     
     // 子类实现：抽牌、伤害、加筹码……

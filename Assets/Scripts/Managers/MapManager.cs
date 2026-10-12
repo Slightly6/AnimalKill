@@ -144,6 +144,7 @@ public class MapManager : Singleton<MapManager>
         DeckManager.Instance.ResetForNewLevel();    // 销毁手牌实体、重新洗牌
 
         GameManager.Instance.LoadLevel(cfg);       // 设敌人筹码、清战利品
+        JokerManager.Instance.NotifyNewLevel();     // 通知小丑换关（清战斗内状态）
         EventBus.Publish(new LevelStartedEvent { levelIndex = index, isBoss = cfg.isBoss });
         BattleManager.Instance.StartLevel(cfg);    // 开打（GameLoop 的 Draw 阶段负责抽牌）
     }

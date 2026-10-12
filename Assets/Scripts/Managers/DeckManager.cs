@@ -20,6 +20,9 @@ public class DeckManager : Singleton<DeckManager>
     [Header("牌堆位置（卡从这里出生）")]
     public Transform deckPile;
 
+    [Header("弃牌堆位置（结算后卡飞到这）")]
+    public Transform discardPilePos;
+
     [Header("手牌父节点")]
     public Transform handPanel;
 
@@ -170,6 +173,8 @@ public class DeckManager : Singleton<DeckManager>
         if (card == null) yield break;   
         card.transform.SetParent(handPanel);
         HandCards.Add(card);
+        if (HandCamera.HandLayerIndex >= 0)
+            card.SetLayerRecursively(HandCamera.HandLayerIndex);   // 切到手牌层 → HandCamera 渲染 → 永远在最上层
         EventBus.Publish(new HandChangedEvent());
 
         // 抽到时触发的技能（OnDraw，后期自己配）
@@ -183,6 +188,7 @@ public class DeckManager : Singleton<DeckManager>
         if (card == null) return;
         discardPile.Add(card.Data);
         HandCards.Remove(card);
+        card.SetLayerRecursively(0);   // 切回 Default 层 → 恢复正常遮挡
         EventBus.Publish(new HandChangedEvent());
     }
 

@@ -131,7 +131,7 @@ public class SidePotArea : MonoBehaviour
                 StartCoroutine(DropAnim(rb, targetPos, targetRot));
             }
 
-            yield return new WaitForSeconds(dropDuration * 0.3f);
+            yield return new WaitForSeconds(dropDuration * 0.1f);
         }
         GameProgress.chipFly=false;
     }

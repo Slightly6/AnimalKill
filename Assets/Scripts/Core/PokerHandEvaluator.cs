@@ -102,41 +102,6 @@ public static class PokerHandEvaluator
         return true;
     }
 
-        // 牌型 → 底分（Balatro 式：基础分，还没乘倍率）
-    public static int GetBaseChips(HandType type)
-    {
-        if (type == HandType.StraightFlush) return 50;
-        if (type == HandType.FourOfAKind)   return 35;
-        if (type == HandType.FullHouse)      return 28;
-        if (type == HandType.Flush)          return 24;
-        if (type == HandType.Straight)       return 20;
-        if (type == HandType.ThreeOfAKind)   return 16;
-        if (type == HandType.TwoPair)        return 12;
-        if (type == HandType.OnePair)        return 8;
-        return 4; // 高牌
-    }
-
-    // 牌型 → 倍率
-    public static int GetMultiplier(HandType type)
-    {
-        if (type == HandType.StraightFlush) return 5;
-        if (type == HandType.FourOfAKind)   return 4;
-        if (type == HandType.FullHouse)      return 3;
-        if (type == HandType.Flush)          return 3;
-        if (type == HandType.Straight)       return 3;
-        if (type == HandType.ThreeOfAKind)   return 2;
-        if (type == HandType.TwoPair)        return 2;
-        if (type == HandType.OnePair)        return 1;
-        return 1; // 高牌
-    }
-
-    // 最终伤害 = 底分 × 倍率（未加成时的纯牌型伤害）
-    public static int GetDamage(HandType type, int extraChips, float extraMult)
-    {
-        int chips = GetBaseChips(type) + extraChips;
-        float mult = GetMultiplier(type) + extraMult;
-        return (int)(chips * mult);
-    }
     //判断计分的牌
     public static HashSet<int> GetCoreCardIndices(List<CardDataSO> cards, HandType type)
     {

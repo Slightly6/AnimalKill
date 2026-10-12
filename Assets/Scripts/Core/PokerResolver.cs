@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 
 /// <summary>
 /// 纯牌型/分数/伤害计算工具类。不碰 Unity 对象，方便单独测试和复用。
@@ -6,26 +7,74 @@ using System.Collections.Generic;
 /// </summary>
 public static class PokerResolver
 {
-    // 转发 PokerHandEvaluator（牌型升级时在这里覆盖底分/倍率即可，调用方不用改）
+    // 按牌型的永久伤害加成（掷骰子时累加：掷到几，对应牌型伤害+1）
+    private static readonly Dictionary<HandType, int> chipAdd = new Dictionary<HandType, int>();
+
+    /// <summary>某个牌型永久伤害加成（掷骰子时累加）</summary>
+    public static void AddBonus(HandType type, int chip)
+    {
+        if (!chipAdd.ContainsKey(type)) chipAdd[type] = 0;
+        chipAdd[type] += chip;
+    }
+
+    /// <summary>所有牌型永久伤害加成（掷到10点时调）</summary>
+    public static void AddBonusToAll(int chip)
+    {
+        foreach (HandType ht in System.Enum.GetValues(typeof(HandType)))
+            AddBonus(ht, chip);
+    }
+
+    // 1-9 → 对应牌型
+    private static readonly HandType[] diceToHandType = new HandType[]
+    {
+        HandType.HighCard,      // 1
+        HandType.OnePair,       // 2
+        HandType.TwoPair,       // 3
+        HandType.ThreeOfAKind,  // 4
+        HandType.Straight,      // 5
+        HandType.Flush,         // 6
+        HandType.FullHouse,     // 7
+        HandType.FourOfAKind,   // 8
+        HandType.StraightFlush, // 9
+    };
+
+    public static HandType DiceToHandType(int faceValue)
+    {
+        if (faceValue >= 1 && faceValue <= 9)
+            return diceToHandType[faceValue - 1];
+        return HandType.HighCard;
+    }
+
+    // ===== 新体系：牌型直接对应固定伤害（高牌1 ~ 同花顺9），不要底分/倍率 =====
+    static readonly Dictionary<HandType, int> handDamageTable = new Dictionary<HandType, int>
+    {
+        { HandType.HighCard, 1 },
+        { HandType.OnePair, 2 },
+        { HandType.TwoPair, 3 },
+        { HandType.ThreeOfAKind, 4 },
+        { HandType.Straight, 5 },
+        { HandType.Flush, 6 },
+        { HandType.FullHouse, 7 },
+        { HandType.FourOfAKind, 8 },
+        { HandType.StraightFlush, 9 },
+    };
+
+    // 牌型 → 最终伤害 = 固定值 + 掷骰永久加成（掷到几，对应牌型伤害+1；掷到10全加）
+    public static int GetHandDamage(HandType type)
+    {
+        int dmg = handDamageTable.TryGetValue(type, out int v) ? v : 1;
+        if (chipAdd.TryGetValue(type, out int bonus)) dmg += bonus;
+        return dmg;
+    }
+
+    // 转发 PokerHandEvaluator
     public static HandType Evaluate(List<CardDataSO> cards)
         => PokerHandEvaluator.Evaluate(cards);
 
-    public static int GetBaseChips(HandType type)
-        => PokerHandEvaluator.GetBaseChips(type);
 
-    public static int GetMultiplier(HandType type)
-        => PokerHandEvaluator.GetMultiplier(type);
 
     public static HashSet<int> GetCoreCardIndices(List<CardDataSO> cards, HandType type)
         => PokerHandEvaluator.GetCoreCardIndices(cards, type);
-
-    // 点数→显示文本（A 当 14，其余按点数；返回 "+14" 形式，飘字用）
-    public static string RankDisplay(CardRank r)
-    {
-        int v = (int)r;
-        if (v == 1) v = 14;
-        return "+" + v.ToString();
-    }
 
     // 牌型→中文名（计分板用）
     public static string HandName(HandType t)
@@ -44,38 +93,6 @@ public static class PokerResolver
         }
     }
 
-    // 主牌加成总和：遍历 coreIndices 中的牌，累加点数（A=14）
-    // 等价于原代码 RankDisplay+TrimStart+Parse，用数值更干净
-    public static int CalcCardBonus(List<Card> cards, HashSet<int> coreIndices)
-    {
-        int bonus = 0;
-        for (int i = 0; i < cards.Count; i++)
-        {
-            if (coreIndices.Contains(i))
-            {
-                int v = (int)cards[i].Data.rank;
-                if (v == 1) v = 14;   // A 当 14，和 RankDisplay 一致
-                bonus += v;
-            }
-        }
-        return bonus;
-    }
-
-        // 主牌加成总和（敌人回合用：只有 CardDataSO 数据，没有 Card 对象）
-    public static int CalcCardBonus(List<CardDataSO> cards, HashSet<int> coreIndices)
-    {
-        int bonus = 0;
-        for (int i = 0; i < cards.Count; i++)
-        {
-            if (coreIndices.Contains(i))
-            {
-                int v = (int)cards[i].rank;
-                if (v == 1) v = 14;   // A 当 14
-                bonus += v;
-            }
-        }
-        return bonus;
-    }
     static readonly Dictionary<HandType, int> pointCostTable = new Dictionary<HandType, int>
     {
         { HandType.HighCard, 1 }, 
@@ -93,7 +110,4 @@ public static class PokerResolver
     {
         return pointCostTable.TryGetValue(type, out int cost) ? cost : 1;
     }
-    // 最终伤害 = (底分 + 主牌加成) × 倍率
-    public static int CalcDamage(int baseChips, int cardBonus, int mult)
-        => (baseChips + cardBonus) * mult;
 }

@@ -36,6 +36,10 @@ public class DarkGrasslandSceneSetup
         SetupGround();
         SetupTreeSilhouettes();
         SetupFireflies();
+        SetupAmbientFog();
+        SetupDustMotes();
+        SetupGodRays();
+        SetupGroundDecorations();
 
         Debug.Log("[Setup] 黑暗草原场景配置完成！运行游戏看看效果。");
     }
@@ -272,7 +276,7 @@ public class DarkGrasslandSceneSetup
     //     Debug.Log("[Setup] 禁用了 " + walls.Length + " 个墙对象");
     // }
 
-    // 7. 地面（用素材里的 forest_ground_06 PBR 贴图）
+    // 7. 地面（程序化草地 shader + 法线贴图）
     static void SetupGround()
     {
         var existing = GameObject.Find("Ground_DarkGrass");
@@ -290,42 +294,52 @@ public class DarkGrasslandSceneSetup
         ground.transform.localScale = new Vector3(15f, 1f, 15f);   // 150x150
 
         string texFolder = "Assets/素材/textures/";
-        string diffPath  = texFolder + "forest_ground_06_diff_4k.jpg";
         string norPath   = texFolder + "forest_ground_06_nor_gl_4k.exr";
-        string roughPath = texFolder + "forest_ground_06_rough_4k.exr";
 
-        // 把法线贴图导入类型设为 Normal Map（否则不生效）
+        // 法线贴图导入类型设为 Normal Map
         SetNormalMapImport(norPath);
-        // 4K 太大，限制最大尺寸 2048 省内存
-        SetTextureMaxSize(diffPath, 2048);
         SetTextureMaxSize(norPath, 2048);
-        SetTextureMaxSize(roughPath, 2048);
 
-        var diffuse = AssetDatabase.LoadAssetAtPath<Texture>(diffPath);
-        var normal  = AssetDatabase.LoadAssetAtPath<Texture>(norPath);
+        var normal = AssetDatabase.LoadAssetAtPath<Texture>(norPath);
 
-        var groundMat = new Material(Shader.Find("Standard"));
-        groundMat.name = "DarkGrassGround";
-
-        if (diffuse != null)
+        // 用程序化草地 shader：没有 diffuse 贴图，用噪声生成草地颜色
+        var grassShader = Shader.Find("Custom/GrassGround");
+        Material groundMat;
+        if (grassShader != null)
         {
-            groundMat.SetTexture("_MainTex", diffuse);
-            groundMat.SetTextureScale("_MainTex", new Vector2(8f, 8f));   // 平铺 8 次
+            groundMat = new Material(grassShader);
+            groundMat.name = "DarkGrassGround";
+            groundMat.SetColor("_GrassDark", new Color(0.05f, 0.12f, 0.05f, 1f));
+            groundMat.SetColor("_GrassLight", new Color(0.10f, 0.22f, 0.09f, 1f));
+            groundMat.SetColor("_GrassDry", new Color(0.16f, 0.14f, 0.07f, 1f));
+            groundMat.SetFloat("_NoiseScale", 15f);
+            groundMat.SetFloat("_NoiseAmp", 0.5f);
+            groundMat.SetFloat("_DryAmount", 0.2f);
+            groundMat.SetFloat("_NormalTiling", 10f);
+            groundMat.SetFloat("_BumpScale", 4f);
+            groundMat.SetFloat("_Glossiness", 0.25f);
+            groundMat.SetFloat("_Metallic", 0f);
+            if (normal != null) groundMat.SetTexture("_BumpMap", normal);
         }
-        if (normal != null)
+        else
         {
-            groundMat.SetTexture("_BumpMap", normal);
-            groundMat.SetFloat("_BumpScale", 6.0f);
+            // 兜底 Standard
+            groundMat = new Material(Shader.Find("Standard"));
+            groundMat.name = "DarkGrassGround";
+            groundMat.color = new Color(0.06f, 0.14f, 0.06f, 1f);
+            groundMat.SetFloat("_Glossiness", 0.3f);
+            if (normal != null)
+            {
+                groundMat.SetTexture("_BumpMap", normal);
+                groundMat.SetFloat("_BumpScale", 4f);
+            }
         }
-        groundMat.color = Color.white;
-        groundMat.SetFloat("_Glossiness", 0.35f);   // 地表偏粗糙
-        groundMat.SetFloat("_Metallic", 0f);
 
         var renderer = ground.GetComponent<Renderer>();
         Undo.RecordObject(renderer, "Setup Ground");
         renderer.sharedMaterial = groundMat;
 
-        Debug.Log("[Setup] 地面贴图：diffuse=" + (diffuse != null) + ", normal=" + (normal != null));
+        Debug.Log("[Setup] 地面材质：GrassGround shader=" + (grassShader != null) + ", normal=" + (normal != null));
     }
 
     // 把贴图导入类型设为 Normal Map
@@ -352,7 +366,7 @@ public class DarkGrasslandSceneSetup
         }
     }
 
-    // 8. 远景树影剪影（一圈圆锥+圆柱拼的简单树）
+    // 8. 远景树（针叶松+阔叶树，多层堆叠+颜色层次）
     static void SetupTreeSilhouettes()
     {
         var parent = GameObject.Find("TreeSilhouettes");
@@ -368,44 +382,170 @@ public class DarkGrasslandSceneSetup
             Object.DestroyImmediate(parent.transform.GetChild(i).gameObject);
         }
 
-        // 树影材质：近黑绿
-        var treeMat = new Material(Shader.Find("Standard"));
-        treeMat.name = "TreeSilhouette";
-        treeMat.color = new Color(0.03f, 0.07f, 0.03f, 1f);   // #0a120a 近黑绿
-        treeMat.SetFloat("_Glossiness", 0f);
-        treeMat.SetFloat("_Metallic", 0f);
+        // 材质：树干深棕，树冠深绿（层次）
+        var trunkMat = new Material(Shader.Find("Standard"));
+        trunkMat.name = "TreeTrunk";
+        trunkMat.color = new Color(0.08f, 0.05f, 0.03f, 1f);
+        trunkMat.SetFloat("_Glossiness", 0.2f);
+        trunkMat.SetFloat("_Metallic", 0f);
 
-        int treeCount = 16;
+        var crownDarkMat = new Material(Shader.Find("Standard"));
+        crownDarkMat.name = "TreeCrownDark";
+        crownDarkMat.color = new Color(0.03f, 0.07f, 0.03f, 1f);
+        crownDarkMat.SetFloat("_Glossiness", 0.1f);
+        crownDarkMat.SetFloat("_Metallic", 0f);
+
+        var crownMidMat = new Material(Shader.Find("Standard"));
+        crownMidMat.name = "TreeCrownMid";
+        crownMidMat.color = new Color(0.05f, 0.10f, 0.04f, 1f);
+        crownMidMat.SetFloat("_Glossiness", 0.15f);
+        crownMidMat.SetFloat("_Metallic", 0f);
+
+        int treeCount = 20;
         float radius = 18f;
         for (int i = 0; i < treeCount; i++)
         {
             float angle = (i / (float)treeCount) * Mathf.PI * 2f;
-            float r = radius + Random.Range(-2f, 3f);
+            float r = radius + Random.Range(-2.5f, 3.5f);
             Vector3 pos = new Vector3(Mathf.Cos(angle) * r, 0f, Mathf.Sin(angle) * r);
 
             var tree = new GameObject("Tree_" + i);
             tree.transform.SetParent(parent.transform);
             tree.transform.position = pos;
+            tree.transform.rotation = Quaternion.Euler(0, Random.Range(0f, 360f), 0);
             Undo.RegisterCreatedObjectUndo(tree, "Create Tree");
 
-            // 树干（圆柱）
-            var trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            trunk.name = "Trunk";
-            trunk.transform.SetParent(tree.transform);
-            trunk.transform.localPosition = new Vector3(0, 1.5f, 0);
-            trunk.transform.localScale = new Vector3(0.3f, 1.5f, 0.3f);
-            trunk.GetComponent<Renderer>().sharedMaterial = treeMat;
-            Object.DestroyImmediate(trunk.GetComponent<Collider>());
+            bool isPine = Random.value > 0.4f;   // 60% 松树，40% 阔叶树
+            if (isPine)
+                CreatePineTree(tree.transform, trunkMat, crownDarkMat, crownMidMat);
+            else
+                CreateBroadleafTree(tree.transform, trunkMat, crownDarkMat, crownMidMat);
+        }
+    }
 
-            // 树冠（用球拉长成椭圆，远看是树顶剪影）
-            var crown = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            crown.name = "Crown";
-            crown.transform.SetParent(tree.transform);
-            float h = Random.Range(2.5f, 4.5f);
-            crown.transform.localPosition = new Vector3(0, 3f + h * 0.3f, 0);
-            crown.transform.localScale = new Vector3(Random.Range(1.5f, 2.5f), h, Random.Range(1.5f, 2.5f));
-            crown.GetComponent<Renderer>().sharedMaterial = treeMat;
-            Object.DestroyImmediate(crown.GetComponent<Collider>());
+    // 程序化生成圆锥网格（Unity 没有 PrimitiveType.Cone）
+    static GameObject CreateCone(string name, int segments = 12)
+    {
+        var go = new GameObject(name);
+        var mf = go.AddComponent<MeshFilter>();
+        var mr = go.AddComponent<MeshRenderer>();
+
+        var mesh = new Mesh();
+        var verts = new List<Vector3>();
+        var tris = new List<int>();
+
+        // 顶点：底面中心 + 底面圆周 + 顶点
+        verts.Add(Vector3.zero);   // 底面中心 (index 0)
+        for (int i = 0; i < segments; i++)
+        {
+            float a = (i / (float)segments) * Mathf.PI * 2f;
+            verts.Add(new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)));
+        }
+        verts.Add(new Vector3(0f, 1f, 0f));   // 顶点 (index segments+1)
+
+        // 底面三角形
+        for (int i = 0; i < segments; i++)
+        {
+            int next = (i + 1) % segments;
+            tris.Add(0);
+            tris.Add(next + 1);
+            tris.Add(i + 1);
+        }
+        // 侧面三角形
+        int tip = segments + 1;
+        for (int i = 0; i < segments; i++)
+        {
+            int next = (i + 1) % segments;
+            tris.Add(i + 1);
+            tris.Add(tip);
+            tris.Add(next + 1);
+        }
+
+        mesh.SetVertices(verts);
+        mesh.SetTriangles(tris, 0);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        mf.sharedMesh = mesh;
+
+        return go;
+    }
+
+    // 针叶松：多层圆锥从下到上堆叠，越往上越小越密
+    static void CreatePineTree(Transform parent, Material trunkMat, Material crownDark, Material crownMid)
+    {
+        float totalH = Random.Range(6f, 9f);
+        float trunkH = totalH * 0.3f;
+
+        // 树干
+        var trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trunk.name = "Trunk";
+        trunk.transform.SetParent(parent, false);
+        trunk.transform.localPosition = new Vector3(0, trunkH * 0.5f, 0);
+        trunk.transform.localScale = new Vector3(0.25f, trunkH * 0.5f, 0.25f);
+        trunk.GetComponent<Renderer>().sharedMaterial = trunkMat;
+        Object.DestroyImmediate(trunk.GetComponent<Collider>());
+
+        // 树冠：4~6 层圆锥
+        int layers = Random.Range(4, 7);
+        float startY = trunkH;
+        float crownH = totalH - trunkH;
+        for (int i = 0; i < layers; i++)
+        {
+            float t = i / (float)(layers - 1);
+            float coneH = crownH / layers * 1.3f;
+            float y = startY + t * crownH * 0.7f;
+            float radius = Mathf.Lerp(2.2f, 0.6f, t);
+
+            var cone = CreateCone("CrownLayer_" + i);
+            cone.transform.SetParent(parent, false);
+            cone.transform.localPosition = new Vector3(
+                Random.Range(-0.15f, 0.15f),
+                y + coneH * 0.5f,
+                Random.Range(-0.15f, 0.15f));
+            cone.transform.localScale = new Vector3(radius, coneH, radius);
+            cone.transform.rotation = Quaternion.Euler(
+                Random.Range(-3f, 3f),
+                Random.Range(0f, 360f),
+                Random.Range(-3f, 3f));
+            cone.GetComponent<Renderer>().sharedMaterial = (i % 2 == 0) ? crownDark : crownMid;
+        }
+    }
+
+    // 阔叶树：多个球体/椭球体堆叠成不规则树冠
+    static void CreateBroadleafTree(Transform parent, Material trunkMat, Material crownDark, Material crownMid)
+    {
+        float totalH = Random.Range(5f, 7f);
+        float trunkH = totalH * 0.4f;
+
+        // 树干
+        var trunk = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        trunk.name = "Trunk";
+        trunk.transform.SetParent(parent, false);
+        trunk.transform.localPosition = new Vector3(0, trunkH * 0.5f, 0);
+        trunk.transform.localScale = new Vector3(0.3f, trunkH * 0.5f, 0.3f);
+        trunk.GetComponent<Renderer>().sharedMaterial = trunkMat;
+        Object.DestroyImmediate(trunk.GetComponent<Collider>());
+
+        // 树冠：5~8 个球体随机堆叠
+        int blobs = Random.Range(5, 9);
+        for (int i = 0; i < blobs; i++)
+        {
+            var blob = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            blob.name = "CrownBlob_" + i;
+            blob.transform.SetParent(parent, false);
+
+            float angle = Random.Range(0f, Mathf.PI * 2f);
+            float dist = Random.Range(0f, 1.2f);
+            float y = trunkH + Random.Range(0.5f, 2.5f);
+            blob.transform.localPosition = new Vector3(
+                Mathf.Cos(angle) * dist,
+                y,
+                Mathf.Sin(angle) * dist);
+
+            float s = Random.Range(1.2f, 2.2f);
+            blob.transform.localScale = new Vector3(s, s * Random.Range(0.7f, 1.1f), s);
+            blob.GetComponent<Renderer>().sharedMaterial = (i % 2 == 0) ? crownMid : crownDark;
+            Object.DestroyImmediate(blob.GetComponent<Collider>());
         }
     }
 
@@ -432,5 +572,87 @@ public class DarkGrasslandSceneSetup
         }
         swarm.count = 40;
         swarm.areaSize = new Vector3(14f, 5f, 10f);
+    }
+
+    // 10. 环境雾气（低空柔和雾团）
+    static void SetupAmbientFog()
+    {
+        var existing = GameObject.Find("AmbientFog");
+        GameObject fog = existing;
+        if (fog == null)
+        {
+            fog = new GameObject("AmbientFog");
+            Undo.RegisterCreatedObjectUndo(fog, "Create AmbientFog");
+        }
+        Undo.RecordObject(fog.transform, "Setup AmbientFog");
+        fog.transform.position = new Vector3(0, 1.5f, 0);
+
+        var comp = fog.GetComponent<AmbientFog>();
+        if (comp == null) comp = Undo.AddComponent<AmbientFog>(fog);
+        comp.count = 30;
+        comp.areaSize = new Vector3(24f, 3f, 24f);
+        comp.color = new Color(0.12f, 0.18f, 0.18f, 0.2f);
+    }
+
+    // 11. 空气灰尘微粒（增强丁达尔光柱可见度）
+    static void SetupDustMotes()
+    {
+        var existing = GameObject.Find("DustMotes");
+        GameObject dust = existing;
+        if (dust == null)
+        {
+            dust = new GameObject("DustMotes");
+            Undo.RegisterCreatedObjectUndo(dust, "Create DustMotes");
+        }
+        Undo.RecordObject(dust.transform, "Setup DustMotes");
+        dust.transform.position = new Vector3(0, 8f, 0);
+
+        var comp = dust.GetComponent<DustMotes>();
+        if (comp == null) comp = Undo.AddComponent<DustMotes>(dust);
+        comp.count = 80;
+        comp.areaSize = new Vector3(20f, 10f, 16f);
+        comp.color = new Color(0.65f, 0.78f, 0.88f, 0.5f);
+    }
+
+    // 12. 丁达尔光柱（月光穿过雾气）
+    static void SetupGodRays()
+    {
+        var existing = GameObject.Find("GodRays");
+        GameObject rays = existing;
+        if (rays == null)
+        {
+            rays = new GameObject("GodRays");
+            Undo.RegisterCreatedObjectUndo(rays, "Create GodRays");
+        }
+        Undo.RecordObject(rays.transform, "Setup GodRays");
+        // 放在场景上方偏左，光柱朝右下方打（与月光方向一致）
+        rays.transform.position = new Vector3(-8f, 18f, -4f);
+
+        var comp = rays.GetComponent<GodRays>();
+        if (comp == null) comp = Undo.AddComponent<GodRays>(rays);
+        comp.count = 60;
+        comp.lightDirection = new Vector3(0.5f, -0.7f, 0.3f);
+        comp.color = new Color(0.7f, 0.82f, 0.9f, 0.12f);
+    }
+
+    // 13. 地面装饰（草丛+蘑菇剪影）
+    static void SetupGroundDecorations()
+    {
+        var existing = GameObject.Find("GroundDecorations");
+        GameObject deco = existing;
+        if (deco == null)
+        {
+            deco = new GameObject("GroundDecorations");
+            Undo.RegisterCreatedObjectUndo(deco, "Create GroundDecorations");
+        }
+        Undo.RecordObject(deco.transform, "Setup GroundDecorations");
+        deco.transform.position = Vector3.zero;
+
+        var comp = deco.GetComponent<GroundDecorations>();
+        if (comp == null) comp = Undo.AddComponent<GroundDecorations>(deco);
+        comp.innerRadius = 7f;
+        comp.outerRadius = 16f;
+        comp.grassCount = 50;
+        comp.mushroomCount = 15;
     }
 }

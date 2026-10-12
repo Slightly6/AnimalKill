@@ -93,7 +93,6 @@ public class EnemyController : Singleton<EnemyController>
 
         if (currentIntent == EnemyIntentType.Check)
         {
-            result.damageMultiplier = 0f;
             return result;
         }
 
@@ -110,8 +109,6 @@ public class EnemyController : Singleton<EnemyController>
             result.handIndices.Add(index);
             result.cards.Add(hand[index]);
         }
-
-        result.damageMultiplier =currentIntent == EnemyIntentType.Raise? config.raiseDamageMultiplier: config.callDamageMultiplier;
 
         return result;
     }
@@ -231,37 +228,10 @@ public class EnemyController : Singleton<EnemyController>
         }
     }
 
-    private int CalculateRawDamage(
-        List<CardDataSO> cards)
+    // 敌人选牌评分：牌型固定伤害（含掷骰永久加成）
+    private int CalculateRawDamage(List<CardDataSO> cards)
     {
-        HandType type =
-            PokerResolver.Evaluate(cards);
-
-        int baseChips =
-            PokerResolver.GetBaseChips(type);
-
-        int multiplier =
-            PokerResolver.GetMultiplier(type);
-
-        HashSet<int> coreIndices =
-            PokerResolver.GetCoreCardIndices(
-                cards,
-                type
-            );
-
-        int cardBonus = 0;
-
-        for (int i = 0; i < cards.Count; i++)
-        {
-            if (!coreIndices.Contains(i))
-                continue;
-
-            cardBonus += GetRankValue(
-                cards[i].rank
-            );
-        }
-
-        return (baseChips + cardBonus) * multiplier;
+        return PokerResolver.GetHandDamage(PokerResolver.Evaluate(cards));
     }
 
     private void DrawToFull()
@@ -305,17 +275,6 @@ public class EnemyController : Singleton<EnemyController>
         }
     }
 
-    private int GetRankValue(CardRank rank)
-    {
-        int value = (int)rank;
-
-        if (value == 1)
-            value = 14;
-
-        return value;
-    }
-
-    
     //-------------特殊效果卡牌----------------
 
     // 效果：乘上倍率

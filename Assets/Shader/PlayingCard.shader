@@ -112,6 +112,7 @@ Shader "Custom/PlayingCard"
             fixed4 frag(v2f i) : SV_Target
             {
                 fixed4 tex = tex2D(_MainTex, i.uv);
+                clip(tex.a - 0.1);   // 圆角透明像素不画（贴图故意画的圆角，Opaque 队列不裁剪会显示成方角白边）
                 half3 col = tex.rgb * _Color.rgb;
 
                 // --- 旧卡纸：整体冷调（极轻，不盖掉动物图颜色） ---

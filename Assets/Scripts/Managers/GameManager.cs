@@ -36,7 +36,7 @@ public class GameManager : Singleton<GameManager>
     public int sidePotCap = 50;           // 边池上限
     public float discardPotRatio = 0.5f;  // 弃牌进 Pot 比例
     private bool deathSequenceRunning = false;  // 玩家打光敌人筹码后，死亡流程正在进行中，防止重复触发
-    public int toGold;                    // 本关结算时主池换金币数
+    public int toDice;                    // 本关结算时主池换骰子数
 
     public bool IsGameOver { get; private set; }
 
@@ -202,15 +202,15 @@ public class GameManager : Singleton<GameManager>
         });
     }
 
-    // 关结束分账：主池筹码全部清空，按 1/10 汇率转金币（10 筹码 = 1 金币，余数舍掉）
-    // 注意：边池不再有进账，只剩开局值+跨关剩余；回血渠道后期由商店金币消费承接
+    // 关结束分账：主池筹码全部清空，按 1/10 汇率转骰子（10 筹码 = 1 骰子，余数舍掉）
+    // 注意：边池不再有进账，只剩开局值+跨关剩余；回血渠道后期由商店骰子消费承接
     private void SettlePot()
     {
         if (PotChips <= 0) return;
 
-        GameProgress.gold += toGold;
+        GameProgress.dice += toDice;
 
-        Debug.Log("[关结束分账] 主池 " + PotChips + " → 金币+" + toGold + "，当前金币 " + GameProgress.gold);
+        Debug.Log("[关结束分账] 主池 " + PotChips + " → 骰子+" + toDice + "，当前骰子 " + GameProgress.dice);
 
         PotChips = 0;
         SendChipsChanged();   // 主池清零，刷新 PotArea 显示
@@ -237,16 +237,16 @@ public class GameManager : Singleton<GameManager>
     }
     private IEnumerator DeathSequenceRoutine()
     {
-        // 1. 算金币、结算（此时前面的队列项都完成了，toGold 是新值）
-        toGold = PotChips / 10;
+        // 1. 算骰子、结算（此时前面的队列项都完成了，toDice 是新值）
+        toDice = PotChips / 10;
         SettlePot();
         GameProgress.playerChips = PlayerChips;
         GameProgress.sidePotChips = SidePotChips;
-        Debug.Log("[死亡流程] toGold = " + toGold);
+        Debug.Log("[死亡流程] toDice = " + toDice);
 
         // 2. 启动 PlayCollect，等它真正跑完（嵌套 StartCoroutine）
         if (TOPhat.Instance != null)
-            yield return TOPhat.Instance.StartCoroutine(TOPhat.Instance.PlayCollect(toGold));
+            yield return TOPhat.Instance.StartCoroutine(TOPhat.Instance.PlayCollect(toDice));
             //传入队列瞬间是原来的数，只有一帧，变的时候我还是传进来原来的数，我进来的时候就已经进队列了
 
         // 3. 额外保险：等所有筛子销毁
@@ -268,14 +268,14 @@ public class GameManager : Singleton<GameManager>
     //     if (deathSequenceRunning) yield break;   // 防止重复触发
     //     deathSequenceRunning = true;
 
-    //     // 1. 先分账：主池换金币（SettlePot 内部会 PotChips=0）
-    //     int gold = PotChips / 10;
+    //     // 1. 先分账：主池换骰子（SettlePot 内部会 PotChips=0）
+    //     int diceReward = PotChips / 10;
     //     SettlePot();
     //     GameProgress.playerChips = PlayerChips;
     //     GameProgress.sidePotChips = SidePotChips;
 
-    //     // 2. 广播死亡事件，帽子开始接金币演出
-    //     EventBus.Publish(new EnemyDefeatedEvent { goldReward = gold });
+    //     // 2. 广播死亡事件，帽子开始接骰子演出
+    //     EventBus.Publish(new EnemyDefeatedEvent { diceReward = diceReward });
 
     //     // 3. 等帽子演出结束（帽子把 IsBusy 置 false）；5 秒超时兜底，防止帽子没挂卡死流程
     //     float timer = 0f;

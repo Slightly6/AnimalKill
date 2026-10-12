@@ -107,27 +107,48 @@ public class FireflySwarm : MonoBehaviour
 
     // 所有萤火虫群共用一个材质，避免运行时反复 new 造成泄漏
     private static Material sharedAdditive;
+    private static Texture2D sharedDotTexture;
+
+    // 程序化生成柔和圆点贴图（不依赖任何内置资源）
+    static Texture2D GetDotTexture()
+    {
+        if (sharedDotTexture != null) return sharedDotTexture;
+        int size = 64;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        tex.filterMode = FilterMode.Bilinear;
+        var pixels = new Color[size * size];
+        float half = size * 0.5f;
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = (x - half) / half;
+                float dy = (y - half) / half;
+                float d = Mathf.Sqrt(dx * dx + dy * dy);
+                float a = Mathf.Clamp01(1f - d);
+                a = a * a;
+                pixels[y * size + x] = new Color(1, 1, 1, a);
+            }
+        }
+        tex.SetPixels(pixels);
+        tex.Apply();
+        sharedDotTexture = tex;
+        return tex;
+    }
 
     Material ResolveMaterial()
     {
         // 1. Inspector 手动指定的优先
         if (particleMaterialOverride != null) return particleMaterialOverride;
 
-        // 2. 优先用 Unity 内置默认粒子材质（柔和圆点贴图 + 受支持的 shader）
-        var builtin = Resources.GetBuiltinResource<Material>("Default-Particle.mat");
-        if (builtin != null && builtin.shader != null && builtin.shader.isSupported)
-            return builtin;
-
-        // 3. 兜底：Mobile/Particles/Additive（发光叠加，内置管线必有），贴内置柔和圆点
+        // 2. 直接用 Mobile/Particles/Additive + 程序化圆点贴图
         if (sharedAdditive == null)
         {
             Shader sh = Shader.Find("Mobile/Particles/Additive");
             if (sh == null) sh = Shader.Find("Sprites/Default");
             sharedAdditive = new Material(sh) { hideFlags = HideFlags.HideAndDontSave };
-
-            Texture dot = builtin != null ? builtin.mainTexture : null;
-            if (dot == null) dot = Resources.GetBuiltinResource<Texture2D>("Default-Particle.psd");
-            if (dot != null) sharedAdditive.mainTexture = dot;
+            sharedAdditive.mainTexture = GetDotTexture();
         }
         return sharedAdditive;
     }
