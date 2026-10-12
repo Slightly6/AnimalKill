@@ -587,11 +587,6 @@ public class DarkGrasslandSceneSetup
         Undo.RecordObject(fog.transform, "Setup AmbientFog");
         fog.transform.position = new Vector3(0, 1.5f, 0);
 
-        var comp = fog.GetComponent<AmbientFog>();
-        if (comp == null) comp = Undo.AddComponent<AmbientFog>(fog);
-        comp.count = 30;
-        comp.areaSize = new Vector3(24f, 3f, 24f);
-        comp.color = new Color(0.12f, 0.18f, 0.18f, 0.2f);
     }
 
     // 11. 空气灰尘微粒（增强丁达尔光柱可见度）
