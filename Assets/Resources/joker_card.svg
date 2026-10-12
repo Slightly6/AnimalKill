@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="720"
+      viewBox="0 0 512 720" shape-rendering="crispEdges">
+   <title>Joker — Dark Grassland Boss (Head Only)</title>
+
+   <!-- 卡牌外框：腐朽深色 -->
+   <rect x="94" y="34" width="336" height="662" fill="#08060f"/>
+   <rect x="100" y="40" width="324" height="650" fill="#1a1228"/>
+   <rect x="108" y="48" width="308" height="634" fill="#0d0a17"/>
+   <rect x="116" y="56" width="292" height="618" fill="#15101f"/>
+
+   <!-- 卡面背景 -->
+   <rect x="128" y="100" width="264" height="528" fill="#0a0712"/>
+   <path d="M128 100H392V628H128Z" fill="#1e1430"/>
+
+   <!-- 雾气渐变 -->
+   <rect x="128" y="100" width="264" height="80" fill="#241a38" opacity="0.6"/>
+   <rect x="128" y="568" width="264" height="60" fill="#06040c" opacity="0.7"/>
+
+   <!-- 腐蚀边框 -->
+   <rect x="116" y="56" width="292" height="6" fill="#3a2a1a"/>
+   <rect x="116" y="668" width="292" height="6" fill="#3a2a1a"/>
+   <rect x="116" y="56" width="6" height="618" fill="#3a2a1a"/>
+   <rect x="402" y="56" width="6" height="618" fill="#3a2a1a"/>
+
+   <!-- 裂痕装饰 -->
+   <path d="M130 120L155 145L140 170L162 195L148 220" fill="none"
+         stroke="#2a1a0a" stroke-width="4"/>
+   <path d="M390 480L365 505L380 530L358 555L372 580" fill="none"
+         stroke="#2a1a0a" stroke-width="4"/>
+   <path d="M130 560L155 535L140 510" fill="none"
+         stroke="#2a1a0a" stroke-width="3"/>
+   <path d="M390 120L365 145L380 170" fill="none"
+         stroke="#2a1a0a" stroke-width="3"/>
+
+   <!-- 角标 -->
+   <text x="124" y="92" fill="#8b1a1a" font-size="22"
+         font-family="monospace" font-weight="bold">♠</text>
+   <text x="372" y="640" fill="#8b1a1a" font-size="22"
+         font-family="monospace" font-weight="bold"
+         transform="rotate(180 372 632)">♠</text>
+
+   <!-- 顶部标题 -->
+   <rect x="170" y="66" width="172" height="28" fill="#0a0612"/>
+   <text x="256" y="87" fill="#9a2020" text-anchor="middle"
+         font-size="18" font-family="monospace" font-weight="bold"
+         letter-spacing="4">JOKER</text>
+
+   <!-- 背后暗红光芒：放大居中辐射 -->
+   <path d="M256 160L285 220L340 185L322 255L390 265L338 310
+            L398 355L322 365L342 430L285 395L256 465L227 395
+            L170 430L190 365L114 355L174 310L122 265L190 255
+            L172 185L227 220Z" fill="#3a0808" opacity="0.7"/>
+   <path d="M256 190L275 240L310 220L302 270L340 275L312 305
+            L340 335L302 345L312 390L275 365L256 410L237 365
+            L200 390L210 345L172 335L200 305L172 275L210 270
+            L202 220L237 240Z" fill="#5a1010" opacity="0.5"/>
+
+   <!-- 小丑帽：放大版 -->
+   <path d="M170 340V250H200V210H235V248L256 190L277 248L312 210V250H342V340H332V360H180V340Z"
+         fill="#1a3a2e"/>
+   <path d="M170 250H200V280H170Z" fill="#6b1010"/>
+   <path d="M235 210H257V248H235Z" fill="#6b1010"/>
+   <path d="M277 248H312V278H277Z" fill="#6b1010"/>
+   <!-- 帽尖绒球 -->
+   <circle cx="178" cy="242" r="10" fill="#3a3525"/>
+   <circle cx="256" cy="184" r="12" fill="#3a3525"/>
+   <circle cx="334" cy="242" r="10" fill="#3a3525"/>
+   <!-- 帽檐 -->
+   <rect x="162" y="330" width="188" height="20" fill="#4a3520"/>
+   <rect x="162" y="350" width="188" height="6" fill="#1a1208"/>
+
+   <!-- 头部轮廓：放大版 -->
+   <path d="M195 345H317V368H337V398H350V488H332V518H313V538H199V518H180V488H162V398H175V368H195Z"
+         fill="#0a0712"/>
+   <path d="M200 350H312V372H332V402H342V480H326V510H307V530H205V510H186V402H196V372H200Z"
+         fill="#c4b89a" opacity="0.85"/>
+
+   <!-- 脸上裂纹 -->
+   <path d="M200 420L216 435L208 455L226 470" fill="none"
+         stroke="#3a2010" stroke-width="3"/>
+   <path d="M312 420L296 435L304 455L286 470" fill="none"
+         stroke="#3a2010" stroke-width="3"/>
+
+   <!-- 眼睛区域：放大 -->
+   <rect x="180" y="395" width="60" height="26" fill="#0a0000"/>
+   <rect x="272" y="395" width="60" height="26" fill="#0a0000"/>
+   <!-- 眼瞳：血红发光 -->
+   <rect x="196" y="400" width="22" height="16" fill="#c01818"/>
+   <rect x="202" y="403" width="10" height="10" fill="#ff4040"/>
+   <rect x="294" y="400" width="22" height="16" fill="#c01818"/>
+   <rect x="300" y="403" width="10" height="10" fill="#ff4040"/>
+   <!-- 眼下血泪 -->
+   <rect x="202" y="421" width="6" height="24" fill="#8b1010"/>
+   <rect x="300" y="421" width="6" height="24" fill="#8b1010"/>
+
+   <!-- 鼻子：骷髅式三角空洞（放大） -->
+   <path d="M240 440L272 440L266 468L246 468Z" fill="#0a0000"/>
+   <path d="M246 446L266 446L263 462L249 462Z" fill="#1a0808"/>
+
+   <!-- 嘴：裂开的大笑（放大） -->
+   <path d="M190 480L256 470L322 480L314 514L298 532L256 538L214 532L198 514Z"
+         fill="#0a0000"/>
+   <!-- 牙齿：参差不齐 -->
+   <rect x="200" y="480" width="16" height="14" fill="#c4b89a" opacity="0.7"/>
+   <rect x="220" y="476" width="12" height="18" fill="#c4b89a" opacity="0.6"/>
+   <rect x="236" y="476" width="16" height="14" fill="#c4b89a" opacity="0.7"/>
+   <rect x="256" y="472" width="12" height="18" fill="#9a2020"/>
+   <rect x="272" y="476" width="16" height="14" fill="#c4b89a" opacity="0.6"/>
+   <rect x="292" y="476" width="12" height="18" fill="#c4b89a" opacity="0.7"/>
+   <rect x="308" y="480" width="16" height="14" fill="#9a2020"/>
+   <!-- 嘴角裂纹 -->
+   <path d="M190 480L178 472L168 468" fill="none"
+         stroke="#3a2010" stroke-width="3"/>
+   <path d="M322 480L334 472L344 468" fill="none"
+         stroke="#3a2010" stroke-width="3"/>
+
+   <!-- 底部暗影 -->
+   <rect x="128" y="590" width="264" height="38" fill="#06040c"/>
+   <!-- 底部标记 -->
+   <rect x="176" y="596" width="160" height="24" fill="#2a0808"/>
+   <text x="256" y="614" fill="#6b1010" text-anchor="middle"
+         font-size="14" font-family="monospace" font-weight="bold"
+         letter-spacing="3">BOSS</text>
+
+   <!-- 卡面暗角 -->
+   <rect x="128" y="100" width="20" height="528" fill="#06040c" opacity="0.6"/>
+   <rect x="372" y="100" width="20" height="528" fill="#06040c" opacity="0.6"/>
+   <rect x="128" y="100" width="264" height="20" fill="#06040c" opacity="0.5"/>
+   <rect x="128" y="608" width="264" height="20" fill="#06040c" opacity="0.5"/>
+</svg>
