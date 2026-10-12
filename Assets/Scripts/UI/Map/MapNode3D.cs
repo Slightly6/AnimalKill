@@ -21,9 +21,16 @@ public class MapNode3D : MonoBehaviour
     [SerializeField] private Color currentColor =
         new Color(1f, 0.8f, 0.2f, 1f);        // 当前所在：金色
 
+    [Header("鼠标悬浮抬起")]
+    public float hoverLift = 0.15f;
+    public float hoverLerpSpeed = 8f;
+
     private SpriteRenderer iconRenderer;
     private MapNodeData data;
     private TableMapGenerator owner;
+    private float baseLocalY;
+    private bool hovered;
+    private bool initialized;
 
     public int NodeId => data != null ? data.id : -1;
 
@@ -91,5 +98,33 @@ public class MapNode3D : MonoBehaviour
             return;
 
         owner.TrySelectNode(data.id);
+    }
+
+    private void OnMouseEnter()
+    {
+        if (data == null) return;
+        hovered = true;
+    }
+
+    private void OnMouseExit()
+    {
+        hovered = false;
+    }
+
+    private void Update()
+    {
+        // 只在地图打开时做悬浮动画
+        if (!GameProgress.mapOpen) return;
+
+        if (!initialized)
+        {
+            baseLocalY = transform.localPosition.y;
+            initialized = true;
+        }
+
+        float targetY = hovered ? baseLocalY + hoverLift : baseLocalY;
+        Vector3 p = transform.localPosition;
+        p.y = Mathf.Lerp(p.y, targetY, hoverLerpSpeed * Time.deltaTime);
+        transform.localPosition = p;
     }
 }

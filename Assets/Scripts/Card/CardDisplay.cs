@@ -19,7 +19,7 @@ public class CardDisplay : MonoBehaviour
     private Vector3 originalScale;
 
     // 拖动时牌的缩放（1.08 = 略微放大，让玩家知道拿起了哪张）
-    public float dragScale = 1.08f;
+    public float dragScale = 0.8f;
 
     // 拖拽判定：鼠标移动超过多少屏幕像素才算拖（区分"点击"和"长按拖"）
     public float dragPixels = 15f;
@@ -28,6 +28,8 @@ public class CardDisplay : MonoBehaviour
 
     // 当前正在长按拖拽的牌（全局标记，让 HandManager 别抢）
     public static CardDisplay draggingCard;
+    // 鼠标悬浮中的牌（全局，唯一），HandManager 排列时让它往前突出
+    public static CardDisplay hoveredCard;
     // 多选：当前选中要打出的牌（铃铛结算 / 弃牌都用它）
     public static List<CardDisplay> selectedCards = new List<CardDisplay>();
 
@@ -135,6 +137,18 @@ public class CardDisplay : MonoBehaviour
         down = false;
     }
 
+    // 鼠标悬浮：标记全局 hoveredCard，HandManager 排列时让这张牌突出
+    void OnMouseEnter()
+    {
+        if (draggingCard != null) return;   // 拖拽中不切 hover
+        hoveredCard = this;
+    }
+
+    void OnMouseExit()
+    {
+        if (hoveredCard == this) hoveredCard = null;
+    }
+
     // 点选：高亮 + 桌面对应位置出现虚影；最多选 5 张
     void ToggleSelect()
     {
@@ -155,6 +169,39 @@ public class CardDisplay : MonoBehaviour
         }
 
         if (BattleView.Instance != null) BattleView.Instance.RefreshGhosts();
+        UpdateCoinLiftPreview();
+    }
+
+    /// <summary>选牌时根据当前牌型消耗点数，让最顶上对应数量金币浮起预览</summary>
+    void UpdateCoinLiftPreview()
+    {
+        if (Coin.Instance == null) return;
+        if (selectedCards.Count == 0)
+        {
+            Coin.Instance.LiftTop(0);
+            return;
+        }
+
+        var normalPicked = new List<CardDataSO>();
+        int itemCostSum = 0;
+        for (int i = 0; i < selectedCards.Count; i++)
+        {
+            var c = selectedCards[i];
+            if (c == null || c.Card == null || c.Card.Data == null) continue;
+            if (c.Card.Data.cardType == CardType.Item)
+                itemCostSum += Mathf.Max(0, c.Card.Data.itemCost);
+            else
+                normalPicked.Add(c.Card.Data);
+        }
+        if (normalPicked.Count == 0 && itemCostSum == 0) { Coin.Instance.LiftTop(0); return; }
+
+        int cost = itemCostSum;
+        if (normalPicked.Count > 0)
+        {
+            HandType type = PokerResolver.Evaluate(normalPicked);
+            cost += PokerResolver.GetPointCost(type);
+        }
+        Coin.Instance.LiftTop(cost);
     }
 
     void Select()

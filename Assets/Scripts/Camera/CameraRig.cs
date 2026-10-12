@@ -30,6 +30,14 @@ public class CameraRig : Singleton<CameraRig>
     public float mapScrollSpeed = 1.5f;
     public float mapScrollMinY = -8f;
     public float mapScrollMaxY = 8f;
+    [Tooltip("自动滚到目标行的速度")]
+    public float autoScrollLerpSpeed = 4f;
+    [Tooltip("滚轮停止后相机追到目标的最大速度（单位/秒），越大越干脆")]
+    public float scrollFollowSpeed = 15f;
+    [Tooltip("和目标距离小于此值直接 snap，避免无限逼近")]
+    public float scrollSnapEpsilon = 0.01f;
+    [Tooltip("地图打开时相机看向的 Z（世界坐标，用于对齐行）")]
+    public float mapLookCenterZ = 0f;
 
     [Header("桌面高度（和 BoardManager 保持一致）")]
     public float boardHeight = 10f;
@@ -43,6 +51,7 @@ public class CameraRig : Singleton<CameraRig>
     private int currentIndex = 0;     // 当前是第几个机位
     private float trauma;             // 震屏强度 0~1，命中时叠加，自动衰减
     private float mapScrollY = 0f;    // 地图打开时的上下滚动偏移
+    private float targetScrollY = 0f; // 滚轮和自动对齐共同写入这个目标值
 
     /// <summary>命中时调用：0.3 小震，0.7 击杀大震</summary>
     public void AddShake(float amount)
@@ -55,6 +64,19 @@ public class CameraRig : Singleton<CameraRig>
     {
         if (shots == null || shots.Length == 0) return;
         currentIndex = Mathf.Clamp(index, 0, shots.Length - 1);
+    }
+
+    /// <summary>
+    /// 地图打开时调用：让相机自动滚到某个 Z 世界坐标对应的行。
+    /// 传入当前节点或目标行的世界 Z 值，相机平滑移动过去。
+    /// </summary>
+    public void ScrollToRow(float worldZ)
+    {
+        // 相机在 shots[1].z + mapScrollY 处看向 +Z 略下方
+        // 要让节点在视野中心，mapScrollY = worldZ - shots[1].z - mapLookCenterZ
+        if (shots == null || shots.Length < 2 || shots[1] == null) return;
+        targetScrollY = worldZ - shots[1].position.z - mapLookCenterZ;
+        targetScrollY = Mathf.Clamp(targetScrollY, mapScrollMinY, mapScrollMaxY);
     }
 
     void Start()
@@ -80,8 +102,8 @@ public class CameraRig : Singleton<CameraRig>
         if (GameProgress.mapOpen)
         {
             // 地图打开时：滚轮上下移动相机，看长地图
-            mapScrollY -= wheel * mapScrollSpeed;
-            mapScrollY = Mathf.Clamp(mapScrollY, mapScrollMinY, mapScrollMaxY);
+            targetScrollY -= wheel * mapScrollSpeed;
+            targetScrollY = Mathf.Clamp(targetScrollY, mapScrollMinY, mapScrollMaxY);
         }
         else if (!GameProgress.InputLocked)
         {
@@ -107,14 +129,22 @@ public class CameraRig : Singleton<CameraRig>
 
         if (shots == null || shots.Length == 0) return;
 
-        CameraShot target;
+        Vector3 targetPos;
+        Quaternion targetRot;
         float zOffset = 0f;
+        CameraShot target;
 
         if (GameProgress.mapOpen && shots.Length > 1)
         {
             // 卷轴地图打开：切到第 2 个机位（高位俯瞰全图），
             // currentIndex 不动 → 关图后镜头自然 lerp 回原机位
             target = shots[1];
+            // MoveTowards：以固定速度追到目标，到达即停，没有 Lerp 的拖尾惯性
+            float distance = Mathf.Abs(targetScrollY - mapScrollY);
+            if (distance < scrollSnapEpsilon)
+                mapScrollY = targetScrollY;
+            else
+                mapScrollY = Mathf.MoveTowards(mapScrollY, targetScrollY, scrollFollowSpeed * Time.deltaTime);
             zOffset = mapScrollY;   // 滚轮沿世界 Z 轴滚动
         }
         else
@@ -122,8 +152,8 @@ public class CameraRig : Singleton<CameraRig>
             target = shots[currentIndex];
         }
 
-        Vector3 targetPos = target.position + new Vector3(0f, boardHeight, zOffset);
-        Quaternion targetRot = Quaternion.Euler(target.eulerAngles);
+        targetPos = target.position + new Vector3(0f, boardHeight, zOffset);
+        targetRot = Quaternion.Euler(target.eulerAngles);
 
         // 位置、旋转、视野都往目标靠
         transform.position = Vector3.Lerp(transform.position, targetPos, lerpSpeed * Time.deltaTime);

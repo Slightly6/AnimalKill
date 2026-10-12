@@ -324,7 +324,7 @@ public class BattleView : Singleton<BattleView>
         Quaternion facePlayer = GetGhostRotation();
         for (int i = 0; i < cards.Count; i++)
         {
-            yield return FlyToTable(cards[i], positions[i], facePlayer, 0.18f);
+            yield return FlyToTable(cards[i], positions[i], facePlayer, 0.35f);
 
             // 飞到瞬间：该位置冒烟 + 这张虚影消失（真牌顶替虚影停在桌上）
             PlaySmoke(positions[i]);
@@ -335,7 +335,7 @@ public class BattleView : Singleton<BattleView>
         yield return ShowHandBoard(type, cards, coreIndices, isPlayfold);
 
         // 3. 不出数字，筹码由 Chips 自动飞进主池
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.4f);
 
         // 4. 结算完了牌才离场：缩小消失
         yield return ShrinkOutCards(cards);
@@ -469,7 +469,7 @@ public class BattleView : Singleton<BattleView>
         board.transform.rotation = Quaternion.Euler(0, 180, RotationZ);
         board.transform.position = GetPlayCenter() + new Vector3(0, jitterY, 0.8f);
         yield return PopIn(board.transform, 0.2f);
-        yield return new WaitForSeconds(0.6f);
+        yield return new WaitForSeconds(1.0f);
         yield return PopOut(board.transform, 0.15f);
         Destroy(board);
     }
@@ -747,12 +747,24 @@ public class BattleView : Singleton<BattleView>
         {
             RemoveFromHand(c);
         }
+        // 打出的牌脱离敌人父物体（敌人继续浮动/倾斜/呼吸时不再带着牌晃）
+        foreach (Card c in selectedViews)
+        {
+            if (c == null) continue;
+            Vector3 worldPos = c.transform.position;
+            Quaternion worldRot = c.transform.rotation;
+            Vector3 worldScale = c.transform.lossyScale;
+            c.transform.SetParent(null, false);
+            c.transform.position = worldPos;
+            c.transform.rotation = worldRot;
+            c.transform.localScale = worldScale;
+        }
         // 2. 飞到桌面结算位（和玩家同一位置）
         List<Vector3> positions = GetPlayPositions(selectedViews.Count);
         Quaternion facePlayer = GetGhostRotation();
         for (int i = 0; i < selectedViews.Count; i++)
         {
-            yield return FlyToTable(selectedViews[i], positions[i], facePlayer, 0.18f);
+            yield return FlyToTable(selectedViews[i], positions[i], facePlayer, 0.35f);
         }
 
         // 3. 抬牌 + 弹牌型名板子（和玩家一致）
@@ -769,7 +781,7 @@ public class BattleView : Singleton<BattleView>
             Destroy(debuff);
         }
 
-        yield return new WaitForSeconds(0.2f);
+        yield return new WaitForSeconds(0.4f);
 
         // 6. 牌缩小销毁（敌人专用）
         yield return ShrinkOutEnemyCards(selectedViews);

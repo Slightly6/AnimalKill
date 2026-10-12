@@ -48,8 +48,11 @@ public class GameManager : Singleton<GameManager>
         if (!GameProgress.chipsInitialized)
         {
             GameProgress.playerChips = startingPlayerChips;
+            GameProgress.playerChipsMax = startingPlayerChips;
             GameProgress.chipsInitialized = true;
         }
+        // 同步上限：篝火升过的上限跨关保留
+        startingPlayerChips = GameProgress.playerChipsMax;
         PlayerChips = GameProgress.playerChips;
         SidePotChips = GameProgress.sidePotChips;
 

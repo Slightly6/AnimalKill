@@ -110,4 +110,12 @@ public static class PokerResolver
     {
         return pointCostTable.TryGetValue(type, out int cost) ? cost : 1;
     }
+
+    public static List<CardDataSO> FilterNormal(IEnumerable<CardDataSO> all)
+    {
+        var result = new List<CardDataSO>();
+        foreach (var c in all)
+            if (c != null && c.cardType == CardType.Normal) result.Add(c);
+        return result;
+    }
 }

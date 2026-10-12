@@ -462,6 +462,7 @@ public class Chips : MonoBehaviour
 
         return bestCoin != null;
     }
+
     public void ReceiveCoin(GameObject coin)
     {
         if (coin == null)

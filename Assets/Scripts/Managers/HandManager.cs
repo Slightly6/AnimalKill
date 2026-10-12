@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.Rendering;
+using System.Collections.Generic;
 
 /// <summary>
 /// 手牌排列。挂在 HandArea 上。
@@ -16,6 +17,14 @@ public class HandManager : MonoBehaviour
     public float yOffset = 0.2f;        // 越靠边越往下沉
     public float handDist = 8f;         // 手牌离相机的距离
     public float zStep = 0.03f;         // 牌离相机的 Z 级差：越靠上的牌离相机越近，点击命中和视觉顺序一致
+
+    [Header("鼠标悬浮时抽出来")]
+    public float hoverForward = 0.5f;   // 往相机方向突出多少
+    public float hoverUp = 0.15f;        // 往上抬多少
+    public float hoverLerpSpeed = 15f; // 平滑速度
+
+    // 每张牌独立的 hover 偏移（切换 hover 牌时各自动画）
+    private readonly Dictionary<Card, Vector3> hoverOffsets = new Dictionary<Card, Vector3>();
 
     [Header("拖牌时向玩家倾斜（0 = 不翻转）")]
     public float dragTiltAngle = 0f;    // 手牌区整体向玩家倾斜多少度（0 表示不翻转）
@@ -79,6 +88,16 @@ public class HandManager : MonoBehaviour
 
             // 越靠上（i 大）的牌离相机近一点，让点击命中的牌和眼睛看到的"盖在上面"一致
             pos -= cam.transform.forward * (i * zStep);
+
+            // 鼠标悬浮的牌：往前突出（每张牌独立平滑）
+            bool isHovered = (CardDisplay.hoveredCard != null && CardDisplay.hoveredCard.Card == card);
+            Vector3 targetOffset = isHovered
+                ? -cam.transform.forward * hoverForward + cam.transform.up * hoverUp
+                : Vector3.zero;
+            if (!hoverOffsets.TryGetValue(card, out Vector3 curOffset)) curOffset = Vector3.zero;
+            curOffset = Vector3.Lerp(curOffset, targetOffset, hoverLerpSpeed * Time.deltaTime);
+            hoverOffsets[card] = curOffset;
+            pos += curOffset;
 
             card.transform.position = pos;
 

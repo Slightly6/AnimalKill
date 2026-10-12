@@ -1,5 +1,12 @@
 using UnityEngine;
 
+// ========== 卡牌类型 ==========
+public enum CardType
+{
+    Normal,   // 普通扑克牌（参与牌型判定）
+    Item      // 道具卡（打出时触发效果，不参与牌型）
+}
+
 // ========== 花色 ==========
 public enum CardSuit
 {
@@ -22,6 +29,9 @@ public enum CardRank
 [CreateAssetMenu(fileName = "NewCard", menuName = "Data/Card Data")]
 public class CardDataSO : ScriptableObject
 {
+    [Header("类型")]
+    public CardType cardType = CardType.Normal;
+
     public CardSuit suit;// 花色
     public CardRank rank;// 点数 1~13
 
@@ -33,6 +43,10 @@ public class CardDataSO : ScriptableObject
     public HookEffectType effectType; // 效果类型枚举
     public Rarity rarity;      // 稀有度
     public int price;          // 价格  
+
+    [Header("道具卡")]
+    public int itemCost = 1;               // 道具卡消耗的点数
+    public ItemEffectSO itemEffect;        // 道具卡打出时触发的效果
     // ---- 文字 ----
 
     public string GetSuitSymbol()

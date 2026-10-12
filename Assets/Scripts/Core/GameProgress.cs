@@ -9,6 +9,7 @@ using UnityEngine;
     {
         public static int currentLevel = 0;      // 当前要打的关卡index（0~51），默认 0 = 第1关
         public static int playerChips = 100;     // 玩家筹码（跨关继承），默认 100= 开局筹码
+        public static int playerChipsMax = 100;  // 玩家筹码上限（篝火加满后+5）
         public static int targetHandSize = 7;    // 目标手牌数（跨关继承），默认 7= 开局手牌数
         public static int dice = 0;              // 骰子（商店用，关结束 Pot 分账获得）
         public static int sidePotChips = 0;     // 边池筹码（跨关继承），默认 0= 开局边池
@@ -66,6 +67,7 @@ using UnityEngine;
         {
             currentLevel = 0;
             playerChips = 100;
+            playerChipsMax = 100;
             sidePotChips = 0;
             targetHandSize = 7;
             dice = 0;

@@ -195,6 +195,32 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
         CreateNodeObjects();
         CreateConnectionLines();
         RefreshAvailability();
+
+        // 地图铺开后，相机自动滚到当前节点所在行（打到哪关看哪关）
+        AlignCameraToCurrentNode();
+    }
+
+    /// <summary>
+    /// 让相机对齐到当前节点（或第 0 行起点）所在的 Z 位置。
+    /// 地图刚铺开时调，让玩家不用滚轮就能看到自己打到哪一关。
+    /// </summary>
+    private void AlignCameraToCurrentNode()
+    {
+        if (CameraRig.Instance == null) return;
+
+        float targetZ = 0f;
+
+        if (currentNodeId >= 0 && nodeLookup.TryGetValue(currentNodeId, out MapNodeData current) && current.view != null)
+        {
+            targetZ = current.view.transform.position.z;
+        }
+        else if (Map.Count > 0 && Map[0].Count > 0 && Map[0][0].view != null)
+        {
+            // 还没选过节点：看向第 0 行
+            targetZ = Map[0][0].view.transform.position.z;
+        }
+
+        CameraRig.Instance.ScrollToRow(targetZ);
     }
 
     // 反复"生成节点 → 尝试基础连接"，直到成功或用尽次数；成功后再追加随机分叉

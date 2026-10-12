@@ -116,7 +116,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0.68, y: -2.8, z: -0.113}
-  m_LocalScale: {x: 0.7, y: 0.7, z: 0.7}
+  m_LocalScale: {x: 0.5, y: 0.5, z: 0.5}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 779850673096563583}
@@ -145,7 +145,6 @@ MonoBehaviour:
   - {fileID: 7920359150304433119}
   bonusText: {fileID: 4343481652058181528}
   frontRenderer: {fileID: 9094554260592311158}
-  skillIconRenderer: {fileID: 0}
   frontArtScale: 0.1
   Data: {fileID: 0}
   CurrentPower: 0
@@ -213,6 +212,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetPosition: {fileID: 5560953094828905134, guid: 3fe9381ce38ef5342b986ab347c9a4e7, type: 3}
+  hoverLift: 0.4
+  hoverScale: 1.08
+  priceLabelHeight: 1.2
 --- !u!114 &4027719241257132459
 MonoBehaviour:
   m_ObjectHideFlags: 0

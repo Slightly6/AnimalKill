@@ -21,6 +21,19 @@ public class BattleManager : Singleton<BattleManager>
         pointBonusNextTurn += n;
     }
 
+    // 道具卡效果：当前回合立即加点数
+    public void AddPoints(int n)
+    {
+        PointsLeft += n;
+        Debug.Log($"[道具] 点数 +{n}，当前 {PointsLeft}");
+    }
+
+    // 道具卡效果：立即抽 n 张（异步，不阻塞结算）
+    public void DrawCardsNow(int count)
+    {
+        StartCoroutine(DeckManager.Instance.DrawCards(count));
+    }
+
     [Header("回合抽牌动画预留（帧）")]
     public int drawFrames = 10;       
 
@@ -104,23 +117,40 @@ public class BattleManager : Singleton<BattleManager>
         if (cards.Count == 0)
         {
             Debug.Log(fold ? "[弃牌堆] 没选牌" : "[出牌堆] 没选牌");
-            // TODO: 以后这里播"请先选牌"的提示/抖动
             return;
         }
 
-        var dataList = cards.ConvertAll(c => c.Data);   // 1. 取出每张牌的数据
-        var hand = PokerResolver.Evaluate(dataList);     // 2. 判断是什么牌型
-        int cost = PokerResolver.GetPointCost(hand);     // 3. 算出点数消耗
-        if (PointsLeft < cost)
+        var dataList = cards.ConvertAll(c => c.Data);
+
+        var normalDatas = new List<CardDataSO>();
+        var itemCards = new List<Card>();
+        for (int i = 0; i < cards.Count; i++)
         {
-            Debug.Log($"点数不足：需要 {cost}，剩余 {PointsLeft}");
-            // TODO: 以后这里让选中的牌抖动/变红，然后 ClearSelection
+            if (cards[i].Data != null && cards[i].Data.cardType == CardType.Item)
+                itemCards.Add(cards[i]);
+            else
+                normalDatas.Add(cards[i].Data);
+        }
+
+        HandType hand = PokerResolver.Evaluate(normalDatas);
+        int handCost = PokerResolver.GetPointCost(hand);
+        if (normalDatas.Count == 0) handCost = 0;
+
+        int itemCostSum = 0;
+        foreach (var ic in itemCards)
+            if (ic.Data != null) itemCostSum += Mathf.Max(0, ic.Data.itemCost);
+
+        int totalCost = handCost + itemCostSum;
+
+        if (PointsLeft < totalCost)
+        {
+            Debug.Log($"点数不足：需要 {totalCost}（牌型{handCost} + 道具{itemCostSum}），剩余 {PointsLeft}");
             return;
         }
 
-        PointsLeft -= cost;
+        PointsLeft -= totalCost;
         isPlayfold = fold;
-        StartCoroutine(ResolvePlayerHand());   // 立即结算，不离开出牌阶段
+        StartCoroutine(ResolvePlayerHand());
     }
     // 主循环
     private IEnumerator GameLoop()
@@ -189,20 +219,50 @@ public class BattleManager : Singleton<BattleManager>
         }
             
 
-        // 1.5 触发"打出时"技能——只有出牌计分才触发，弃牌不触发
+        // 1.5 触发道具卡效果（出牌/弃牌都触发） + 普通牌打出技能
+        var itemCardsPlay = new List<Card>();
+        for (int i = 0; i < cards.Count; i++)
+            if (cards[i] != null && cards[i].Data != null && cards[i].Data.cardType == CardType.Item)
+                itemCardsPlay.Add(cards[i]);
+
+        foreach (var ic in itemCardsPlay)
+        {
+            if (ic.Data.itemEffect != null)
+            {
+                Debug.Log($"[道具卡] 触发 {ic.Data.itemEffect.GetType().Name}");
+                ic.Data.itemEffect.Apply();
+            }
+        }
+
         if (!isPlayfold)
         {
             foreach (Card c in cards)
             {
-                if (c != null) c.TriggerAbility(AbilityTrigger.OnPlay, null);
+                if (c != null && (c.Data == null || c.Data.cardType != CardType.Item))
+                    c.TriggerAbility(AbilityTrigger.OnPlay, null);
             }
         }
 
-        // 2. 纯计算（PokerResolver）：牌型 → 固定伤害（含掷骰永久加成）
-        List<CardDataSO> datas = cards.ConvertAll(c => c.Data);
-        HandType type = PokerResolver.Evaluate(datas);
-        HashSet<int> coreIndices = PokerResolver.GetCoreCardIndices(datas, type);
+        // 2. 纯计算（PokerResolver）：只对普通牌判牌型
+        var normalCardsList = new List<Card>();
+        foreach (var c in cards)
+            if (c != null && c.Data != null && c.Data.cardType != CardType.Item)
+                normalCardsList.Add(c);
+
+        List<CardDataSO> normalDatas = normalCardsList.ConvertAll(c => c.Data);
+        HandType type = normalDatas.Count > 0 ? PokerResolver.Evaluate(normalDatas) : HandType.HighCard;
         int damage = PokerResolver.GetHandDamage(type);
+
+        var rawCoreIndices = normalDatas.Count > 0 ? PokerResolver.GetCoreCardIndices(normalDatas, type) : new HashSet<int>();
+        HashSet<int> coreIndices = new HashSet<int>();
+        for (int i = 0; i < cards.Count; i++)
+        {
+            if (cards[i] != null && cards[i].Data != null && cards[i].Data.cardType != CardType.Item)
+            {
+                int normalIdx = normalCardsList.IndexOf(cards[i]);
+                if (rawCoreIndices.Contains(normalIdx)) coreIndices.Add(i);
+            }
+        }
 
         // 3. 纯演出（BattleView）：飞牌+牌型板子+飞撞+销毁牌
         yield return BattleView.Instance.PlayResolveSequence(cards, type, damage, coreIndices, isPlayfold);
