@@ -1,21 +1,25 @@
 using UnityEngine;
+using System.Collections.Generic;
+
+/// 效果触发时机
+public enum EffectTiming
+{
+    Immediate,  // 即时：打出时立刻生效
+    Delayed,    // 延时：下回合开始补牌恢复点数时生效
+    Wave,       // 波次：下一波出牌结算后生效
+}
 
 /// <summary>
-/// 商店道具效果的抽象基类（策略模式）。
+/// 卡牌效果的抽象基类（策略模式）。
 /// 每个具体效果是一个子类 ScriptableObject，重写 Apply() 实现效果。
 ///
-/// 要加新效果：
-///   1. 继承 ItemEffectSO，写一个新的 .cs
-///   2. 加 [CreateAssetMenu] 特性
-///   3. 在 Project 窗口右键创建对应 .asset
-///   4. 把 .asset 拖到 ShopItemDataSO 的 effect 字段
-/// 完全不用改 GameManager / ShopItemDataSO。
+/// timing 决定何时触发：
+///   Immediate → 打出时立刻调 Apply()
+///   Delayed  → 挂账，下回合 GameLoop Draw 阶段统一执行
+///   Wave     → 挂账，下一波 TryResolveOneHand 结算后执行
 /// </summary>
-public abstract class ItemEffectSO : ScriptableObject
+public abstract class AbilityEffectSO : ScriptableObject
 {
-    /// <summary>
-    /// 应用效果。可以自由访问 GameManager.Instance / BattleManager.Instance /
-    /// BoardManager.Instance / GameProgress 等全局单例。
-    /// </summary>
+    public EffectTiming timing = EffectTiming.Immediate;
     public abstract void Apply();
 }

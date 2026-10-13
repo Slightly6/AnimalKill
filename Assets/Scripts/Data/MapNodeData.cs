@@ -34,4 +34,7 @@ public class MapNodeData
     // 运行时状态，不存档
     [NonSerialized] public bool available;
     [NonSerialized] public MapNode3D view;
+
+    // 本局临时：地图生成时从 EnemyPoolDatabase 抽的敌人，进战斗用这个
+    [NonSerialized] public EnemyConfig runtimeEnemy;
 }

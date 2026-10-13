@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class EnemyController : Singleton<EnemyController>
 {
-    private EnemyConfig config;
+    public EnemyConfig Config { get; private set; }
 
     private readonly List<CardDataSO> hand = new List<CardDataSO>();
 
@@ -17,6 +17,18 @@ public class EnemyController : Singleton<EnemyController>
     [Header("下次攻击伤害倍率")]
     public float nextAttackMultiplier = 1f;
 
+    private EnemyBehaviorSO selectedBehavior;
+
+    public EnemyBehaviorSO SelectedBehavior => selectedBehavior;
+
+    [Tooltip("当前回合数（Rush 等机制用，Initialize 时重置为 0）")]
+    public int RoundNumber { get; private set; } = 0;
+
+    [Tooltip("上回合意图（Double 加倍等机制用）")]
+    public EnemyIntentType LastIntent { get; private set; } = EnemyIntentType.Check;
+
+    // 当前生效的行为池（Switch 变脸时在 behaviors ↔ backupBehaviors 间切换）
+    private List<EnemyBehaviorSO> activeBehaviors;
 
     public IReadOnlyList<CardDataSO> Hand
     {
@@ -41,68 +53,78 @@ public class EnemyController : Singleton<EnemyController>
             return;
         }
 
-        config = enemyConfig;
+        Config = enemyConfig;
 
 
         hand.Clear();
         drawPile.Clear();
         discardPile.Clear();
 
-        drawPile.AddRange(config.deck);
+        drawPile.AddRange(Config.deck);
         Shuffle(drawPile);
 
         DrawToFull();
+
+        // 被动机制：战斗开始钩子
+        RoundNumber = 0;
+        LastIntent = EnemyIntentType.Check;
+        activeBehaviors = Config.behaviors;   // 默认用主行为池
+        if (Config.passives != null)
+        {
+            foreach (var p in Config.passives)
+                p.OnBattleStart(this);
+        }
 
         EventBus.Publish(new EnemyHandChangedEvent{enemy=this});
     }
 
     public void PrepareIntent()
     {
-        if (config == null)
+        RoundNumber++;   // 每回合选意图前 +1
+
+        // 被动机制：敌人回合开始钩子（Bluff/Switch/Double 等在这里触发）
+        if (Config.passives != null)
+        {
+            foreach (var p in Config.passives)
+                p.OnEnemyTurnStart(this);
+        }
+
+        if (activeBehaviors == null || activeBehaviors.Count == 0)
             return;
 
-        float value = UnityEngine.Random.value;
+        // 按 weight 加权随机
+        float totalWeight = 0f;
+        foreach (var b in activeBehaviors) totalWeight += b.weight;
 
-        if (value < config.checkChance)
+        float value = UnityEngine.Random.value * totalWeight;
+        float cum = 0f;
+        selectedBehavior = activeBehaviors[activeBehaviors.Count - 1];  // 兜底
+        foreach (var b in activeBehaviors)
         {
-            currentIntent = EnemyIntentType.Check;
+            cum += b.weight;
+            if (value <= cum) { selectedBehavior = b; break; }
         }
-        else if (value <config.checkChance + config.raiseChance)
-        {
-            currentIntent = EnemyIntentType.Raise;
-        }
-        else
-        {
-            currentIntent = EnemyIntentType.Call;
-        }
-        if (IsDead)
-        {
-            return;
-        }
-        
 
-        EventBus.Publish(new EnemyIntentChangedEvent{enemy=this,intent=currentIntent});
+        currentIntent = selectedBehavior.intent;
+        LastIntent = currentIntent;   // 记录本回合意图，供下回合 Double 用
+
+        if (IsDead) return;
+        EventBus.Publish(new EnemyIntentChangedEvent { enemy = this, intent = currentIntent });
     }
 
     public EnemyPlayData BuildPlayData()
     {
-        EnemyPlayData result = new EnemyPlayData
-        {
-            intent = currentIntent
-        };
+        EnemyPlayData result = new EnemyPlayData { intent = currentIntent };
 
-        if (currentIntent == EnemyIntentType.Check)
-        {
+        // Check/Fold 不出牌；出牌数从敌人配置的区间随机
+        if (selectedBehavior == null
+            || currentIntent == EnemyIntentType.Check
+            || currentIntent == EnemyIntentType.Fold)
             return result;
-        }
 
-        int cardCount =currentIntent == EnemyIntentType.Raise? config.raiseCardCount: config.callCardCount;
-
-
-        cardCount = Mathf.Min(cardCount,hand.Count);
-
-        cardCount = UnityEngine.Random.Range(1, cardCount + 1);
-        List<int> indices =FindBestCombination(cardCount);
+        int cardCount = UnityEngine.Random.Range(Config.minCardCount, Config.maxCardCount + 1);
+        cardCount = Mathf.Min(cardCount, hand.Count);
+        List<int> indices = FindBestCombination(cardCount);
 
         foreach (int index in indices)
         {
@@ -110,7 +132,58 @@ public class EnemyController : Singleton<EnemyController>
             result.cards.Add(hand[index]);
         }
 
+        // 让 behavior 有机会改写选牌（如只挑同花色），默认不动
+        selectedBehavior.ModifyCardChoice(this, result.handIndices);
+
         return result;
+    }
+    public void ExecuteSelectedBehavior()
+    {
+        if (selectedBehavior != null) selectedBehavior.Apply(this);
+    }
+
+    /// <summary>
+    /// Switch 变脸用：在主行为池和备用行为池之间切换。
+    /// </summary>
+    public void SwitchBehaviors()
+    {
+        if (Config.backupBehaviors != null && Config.backupBehaviors.Count > 0)
+        {
+            activeBehaviors = activeBehaviors == Config.behaviors
+                ? Config.backupBehaviors
+                : Config.behaviors;
+        }
+    }
+
+    /// <summary>
+    /// Double 加倍用：强制把 selectedBehavior 改成 lastIntent 对应的行为。
+    /// </summary>
+    public void ForceIntent(EnemyIntentType intent)
+    {
+        if (activeBehaviors == null) return;
+        foreach (var b in activeBehaviors)
+        {
+            if (b.intent == intent) { selectedBehavior = b; currentIntent = intent; return; }
+        }
+    }
+
+    // Fold 用：按敌人配置的弃牌区间随机弃牌进弃牌堆
+    public void DiscardByConfig()
+    {
+        int count = UnityEngine.Random.Range(Config.minDiscard, Config.maxDiscard + 1);
+        for (int i = 0; i < count && hand.Count > 0; i++)
+        {
+            int index = UnityEngine.Random.Range(0, hand.Count);
+            discardPile.Add(hand[index]);
+            hand.RemoveAt(index);
+        }
+        EventBus.Publish(new EnemyHandChangedEvent { enemy = this });
+    }
+
+    // Steal 等被动用：把一张牌塞进敌人弃牌堆
+    public void AddToDiscardPile(CardDataSO card)
+    {
+        discardPile.Add(card);
     }
 
     public void CommitPlayedCards(
@@ -236,7 +309,7 @@ public class EnemyController : Singleton<EnemyController>
 
     private void DrawToFull()
     {
-        while (hand.Count < config.handSize)
+        while (hand.Count < Config.handSize)
         {
             if (drawPile.Count == 0)
                 RecycleDiscardPile();

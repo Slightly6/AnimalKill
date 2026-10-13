@@ -4,7 +4,7 @@ using UnityEngine;
 /// 效果：我方全体在场卡牌 +value 战力。
 /// </summary>
 [CreateAssetMenu(fileName = "AttackUpEffect", menuName = "Shop Effects/Attack Up")]
-public class AttackUpEffectSO : ItemEffectSO
+public class AttackUpEffectSO : AbilityEffectSO
 {
     public int value = 1;
 

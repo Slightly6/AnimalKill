@@ -50,8 +50,11 @@ public class DeckManager : Singleton<DeckManager>
       }
       else
       {
-          drawPile = new List<CardDataSO>(deckCards);
-          GameProgress.playerDeck = new List<CardDataSO>(deckCards);   // 存进进度，以后跨关继承
+          // 初始牌组：逐张克隆成运行时独立个体再进牌库（原资产只读，强化不污染）
+          drawPile = new List<CardDataSO>();
+          for (int i = 0; i < deckCards.Count; i++)
+              drawPile.Add(GameProgress.CloneCard(deckCards[i]));
+          GameProgress.playerDeck = new List<CardDataSO>(drawPile);   // 存进进度，以后跨关继承
       }
       Shuffle(drawPile);
       Debug.Log("牌组初始化完成，共 " + drawPile.Count + " 张");
@@ -177,8 +180,6 @@ public class DeckManager : Singleton<DeckManager>
             card.SetLayerRecursively(HandCamera.HandLayerIndex);   // 切到手牌层 → HandCamera 渲染 → 永远在最上层
         EventBus.Publish(new HandChangedEvent());
 
-        // 抽到时触发的技能（OnDraw，后期自己配）
-        card.TriggerAbility(AbilityTrigger.OnDraw, null);
         Debug.Log("[发牌] 已入手牌：" + data.name);
     }
 
@@ -234,7 +235,8 @@ public class DeckManager : Singleton<DeckManager>
     }
     public void AddToDeck(CardDataSO data)
     {
-        drawPile.Add(data);  
-        GameProgress.playerDeck.Add(data); 
+        CardDataSO clone = GameProgress.CloneCard(data);   // 商店买/宝箱给的卡：克隆成独立个体再进牌库
+        drawPile.Add(clone);
+        GameProgress.playerDeck.Add(clone);
     }
 }

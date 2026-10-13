@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7ff1280b727030942a6c98b72f680160, type: 3}
   m_Name: Damagehalf
   m_EditorClassIdentifier: 
-  description: "\u654C\u4EBA\u4E0B\u6B21\u4F24\u5BB3\u51CF\u534A"
+  timing: 2
   damagemult: 0.5

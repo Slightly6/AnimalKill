@@ -37,6 +37,58 @@ using UnityEngine;
         // 同一种动物牌组里有多张也共享觉醒；商店购买后加入，死亡/重开清空。
         public static HashSet<string> awakenedCardNames = new HashSet<string>();
 
+        // ===== 卡牌强化（三选一）=====
+        // 牌库里每一张都是原资产的克隆体（独立个体），强化只改克隆体，原资产永远只读。
+        // 重开一局 Reset + 场景重载后，InitDeck 从原资产重新克隆，强化自然归零。
+        public static Dictionary<string, List<string>> cardEnhancements = new Dictionary<string, List<string>>();   // 原资产名 → 已附加的效果名列表（存档用；运行时真源在克隆体的 effects 上）
+
+        // 克隆一张卡成运行时独立个体（进牌库统一走这，防"强化写进资产、重开残留"）
+        public static CardDataSO CloneCard(CardDataSO src)
+        {
+            if (src == null) return null;
+            if (src.isRuntimeClone) return src;   // 已经是克隆体就复用，不套娃
+            CardDataSO clone = Object.Instantiate(src);
+            clone.name = src.name;                // 抹掉 "(Clone)" 后缀，觉醒等按资产名匹配的逻辑照常工作
+            clone.isRuntimeClone = true;
+            return clone;
+        }
+
+        // 给一张牌附加效果（强化三选一选中时调），一张牌最多 3 个效果
+        public static void ApplyEnhancement(CardDataSO target, AbilityEffectSO effect)
+        {
+            if (target == null) return;
+
+            // 防御：万一传入的是原资产（哪个进牌入口漏了克隆），现场克隆并替换 playerDeck 里的引用
+            if (!target.isRuntimeClone)
+            {
+                CardDataSO clone = CloneCard(target);
+                int idx = playerDeck.IndexOf(target);
+                if (idx >= 0) playerDeck[idx] = clone;
+                target = clone;
+                Debug.LogWarning("[强化] 传入的是原资产，已现场克隆替换：" + target.name);
+            }
+
+            if (target.effects == null) target.effects = new List<AbilityEffectSO>();
+            if (target.effects.Count >= 3)
+            {
+                Debug.Log("[强化] " + target.name + " 已有 3 个效果，达到上限");
+                return;
+            }
+
+            if (effect == null)
+            {
+                Debug.Log("[强化] 效果池为空，本次只走选牌流程，不挂效果");
+                return;
+            }
+
+            target.effects.Add(effect);
+            if (!cardEnhancements.ContainsKey(target.name))
+                cardEnhancements[target.name] = new List<string>();
+            cardEnhancements[target.name].Add(effect.name);
+            Debug.Log("[强化] " + target.name + " 获得效果：" + effect.name + "（" + target.effects.Count + "/3）");
+        }
+
+
         // 这张卡的动物觉醒了没有
         public static bool IsCardAwakened(CardDataSO data)
         {
@@ -82,6 +134,7 @@ using UnityEngine;
             currentNodeType = MapNodeType.Monster;
             ownedItemNames = new List<string>();
             awakenedCardNames = new HashSet<string>();
+            cardEnhancements = new Dictionary<string, List<string>>();
             mapOpen = false;
             transitioning = false;
             chipFly=false;

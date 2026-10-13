@@ -311,6 +311,8 @@ public class BattleView : Singleton<BattleView>
         foreach (CardDisplay d in CardDisplay.selectedCards)
             if (d != null && d.Card != null) d.Card.IsSelected = false;
         CardDisplay.selectedCards.Clear();
+        // 清金币悬浮预览
+        if (Coin.Instance != null) Coin.Instance.LiftTop(0);
     }
 
     // ========== 完整演出入口（BattleManager 调用） ==========
@@ -456,8 +458,6 @@ public class BattleView : Singleton<BattleView>
         {
             if (coreIndices.Contains(i) && cards[i] != null)
             {
-                if (!isPlay)
-                    cards[i].TriggerAbility(AbilityTrigger.OnScore, null);
                 yield return PunchCard(cards[i]);
             }
         }

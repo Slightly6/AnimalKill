@@ -12,12 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c24f5aa9dbdbe3468b022dc770b2e83, type: 3}
   m_Name: "\u4F24\u5BB3\u51CF\u534A"
   m_EditorClassIdentifier: 
+  cardType: 0
   suit: 0
   rank: 7
   faceTexture: {fileID: -8328923581568760697, guid: ab3fcc340608b1447b4f10f624a9b543, type: 3}
-  ability: {fileID: 11400000, guid: 678a29bbb4e49bb459bf0af329259b63, type: 2}
+  effects:
+  - {fileID: 11400000, guid: d7ecd05899fafa94b9285d65a7412e58, type: 2}
   abilityName: "\u51CF\u534A"
   description: "\u654C\u65B9\u4E0B\u6B21\u4F24\u5BB3\u51CF\u534A"
   effectType: 0
   rarity: 0
   price: 5
+  itemCost: 1

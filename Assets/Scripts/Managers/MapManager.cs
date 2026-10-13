@@ -15,6 +15,9 @@ public class MapManager : Singleton<MapManager>
     [Header("关卡数据库（52关）")]
     public LevelDatabase database;
 
+    // 本关从敌人池抽的 runtimeEnemy（由 EnterNodeByType 传入，StartLevel 用它替代 LevelConfig.enemyConfig）
+    private EnemyConfig currentEnemyOverride;
+
     [Header("场景名（要和 Build Settings 里一致）")]
     public string mapSceneName = "Map";            // 地图场景（已不再加载，保留字段兼容）
     public string battleSceneName = "SampleScene"; // 战斗场景
@@ -139,6 +142,21 @@ public class MapManager : Singleton<MapManager>
         }
 
         LevelConfig cfg = database.levels[index];
+
+        // 如果本关从敌人池抽到了 runtimeEnemy，克隆 cfg 替换 enemyConfig（不动原资产）
+        if (currentEnemyOverride != null)
+        {
+            cfg = new LevelConfig
+            {
+                levelName = cfg.levelName,
+                isBoss = cfg.isBoss,
+                enemyConfig = currentEnemyOverride,
+                enemyBonusPower = cfg.enemyBonusPower,
+                enemyAwakened = cfg.enemyAwakened,
+                enemyStartingChips = cfg.enemyStartingChips,
+                initialHandSize = cfg.initialHandSize
+            };
+        }
 
         // 同场景换关：手动模拟原来切场景的销毁重建
         DeckManager.Instance.ResetForNewLevel();    // 销毁手牌实体、重新洗牌
@@ -297,7 +315,14 @@ public class MapManager : Singleton<MapManager>
             GameProgress.currentSuit++;   // 解锁下一章（卷轴打开时会检测 suit 变化自动生成新章地图）
         }
 
-        OpenMapUI();   // 普通关/Boss章节末：同场景卷轴选关
+        EnhanceManager.Instance.Show(AfterEnhance);   // 强化三选一：选完补存档再开卷轴
+    }
+
+    // 强化选完（或没得选）的回调：强化结果发生在过关存档之后，这里补一刀
+    void AfterEnhance()
+    {
+        SaveManager.Instance.Save();
+        OpenMapUI();
     }
 
     // 打开地图：优先用 3D 卷纸 RollingMap3D，没有则 fallback 到旧 MapScrollUI
@@ -320,9 +345,10 @@ public class MapManager : Singleton<MapManager>
     private const int LevelsPerSuit = 13;       // 每章在 LevelDatabase 占的关卡数
     private const int MaxNormalBattleIndex = 11; // 普通/精英战斗序号上限（12 留给 Boss）
 
-    public void EnterNodeByType(MapNodeType type, int levelIndex)
+    public void EnterNodeByType(MapNodeType type, int levelIndex, EnemyConfig overrideEnemy = null)
     {
         GameProgress.currentNodeType = type;
+        currentEnemyOverride = overrideEnemy;   // StartLevel 会用它替代 LevelConfig.enemyConfig
         // ClearSpawnedNonBattleObjects();
 
         switch (type)

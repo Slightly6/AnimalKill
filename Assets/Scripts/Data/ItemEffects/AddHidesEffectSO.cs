@@ -4,7 +4,7 @@ using UnityEngine;
 /// 效果：获得 amount 兽皮。
 /// </summary>
 [CreateAssetMenu(fileName = "AddHidesEffect", menuName = "Shop Effects/Add Hides")]
-public class AddHidesEffectSO : ItemEffectSO
+public class AddHidesEffectSO : AbilityEffectSO
 {
     public int amount = 1;
 

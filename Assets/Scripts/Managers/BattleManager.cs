@@ -14,11 +14,69 @@ public class BattleManager : Singleton<BattleManager>
     public int pointsPerTurn = 3;        // 每回合点数上限
     public int PointsLeft { get; private set; }   // 剩余点数
     private int pointBonusNextTurn = 0;  // 下回合额外点数挂账（AddCoin 手牌效果）
+    private int drawBonusNextTurn = 0;  // 下回合额外抽牌挂账（道具卡效果）
+    private int pendingDamageBonus = 0; // 本次出牌额外伤害（道具卡效果，用完清零）
+
+    // 效果挂账（按 timing 分流）
+    private List<AbilityEffectSO> delayedEffects = new(); // 延时：下回合开始时执行
+    private List<AbilityEffectSO> waveEffects = new();   // 波次：下一波出牌结算后执行
+
+    public void QueueDelayed(AbilityEffectSO effect)
+    {
+        delayedEffects.Add(effect);
+        Debug.Log($"[延时挂账] {effect.GetType().Name}");
+    }
+
+    public void QueueWave(AbilityEffectSO effect)
+    {
+        waveEffects.Add(effect);
+        Debug.Log($"[波次挂账] {effect.GetType().Name}");
+    }
+
+    // 下回合开始时执行所有延时效果
+    private void FlushDelayedEffects()
+    {
+        if (delayedEffects.Count == 0) return;
+        Debug.Log($"[延时触发] 执行 {delayedEffects.Count} 个延时效果");
+        foreach (var e in delayedEffects)
+        {
+            Debug.Log($"  → {e.GetType().Name}");
+            e.Apply();
+        }
+        delayedEffects.Clear();
+    }
+
+    // 下一波出牌结算后执行所有波次效果
+    private void FlushWaveEffects()
+    {
+        if (waveEffects.Count == 0) return;
+        Debug.Log($"[波次触发] 执行 {waveEffects.Count} 个波次效果");
+        foreach (var e in waveEffects)
+        {
+            Debug.Log($"  → {e.GetType().Name}");
+            e.Apply();
+        }
+        waveEffects.Clear();
+    }
 
     // 手牌效果：下回合多 1 点（AddCoin 效果调）
     public void AddPointsNextTurn(int n)
     {
         pointBonusNextTurn += n;
+    }
+
+    // 道具卡效果：下回合多抽 n 张
+    public void AddDrawNextTurn(int n)
+    {
+        drawBonusNextTurn += n;
+        Debug.Log($"[道具] 下回合多抽 {n} 张");
+    }
+
+    // 道具卡效果：本次出牌多 n 点伤害
+    public void AddDamageBonus(int n)
+    {
+        pendingDamageBonus += n;
+        Debug.Log($"[道具] 本次伤害 +{n}");
     }
 
     // 道具卡效果：当前回合立即加点数
@@ -159,11 +217,15 @@ public class BattleManager : Singleton<BattleManager>
         {
             SetPhase(TurnPhase.Draw);
             GameProgress.transitioning = false;
+            // 延时效果在补牌恢复点数之前执行
+            FlushDelayedEffects();
             PointsLeft = pointsPerTurn + pointBonusNextTurn;   // 每回合点数补满（含手牌挂账的额外点数）
             Debug.Log($"[回合开始] 点数补满 {pointsPerTurn} + 挂账{pointBonusNextTurn} = {PointsLeft}");
             pointBonusNextTurn = 0;
 
             int need = GameProgress.targetHandSize - DeckManager.Instance.HandCards.Count;
+            need += drawBonusNextTurn;
+            drawBonusNextTurn = 0;
             if (need > 0)
                 yield return DeckManager.Instance.DrawCards(need);
 
@@ -219,27 +281,13 @@ public class BattleManager : Singleton<BattleManager>
         }
             
 
-        // 1.5 触发道具卡效果（出牌/弃牌都触发） + 普通牌打出技能
-        var itemCardsPlay = new List<Card>();
-        for (int i = 0; i < cards.Count; i++)
-            if (cards[i] != null && cards[i].Data != null && cards[i].Data.cardType == CardType.Item)
-                itemCardsPlay.Add(cards[i]);
-
-        foreach (var ic in itemCardsPlay)
-        {
-            if (ic.Data.itemEffect != null)
-            {
-                Debug.Log($"[道具卡] 触发 {ic.Data.itemEffect.GetType().Name}");
-                ic.Data.itemEffect.Apply();
-            }
-        }
-
+        // 1.5 触发所有卡牌效果（道具卡 + 普通牌效果统一走 ApplyEffects）
         if (!isPlayfold)
         {
             foreach (Card c in cards)
             {
-                if (c != null && (c.Data == null || c.Data.cardType != CardType.Item))
-                    c.TriggerAbility(AbilityTrigger.OnPlay, null);
+                if (c != null && c.Data != null && c.Data.effects != null && c.Data.effects.Count > 0)
+                    c.ApplyEffects();
             }
         }
 
@@ -251,7 +299,8 @@ public class BattleManager : Singleton<BattleManager>
 
         List<CardDataSO> normalDatas = normalCardsList.ConvertAll(c => c.Data);
         HandType type = normalDatas.Count > 0 ? PokerResolver.Evaluate(normalDatas) : HandType.HighCard;
-        int damage = PokerResolver.GetHandDamage(type);
+        int damage = PokerResolver.GetHandDamage(type) + pendingDamageBonus;
+        pendingDamageBonus = 0;
 
         var rawCoreIndices = normalDatas.Count > 0 ? PokerResolver.GetCoreCardIndices(normalDatas, type) : new HashSet<int>();
         HashSet<int> coreIndices = new HashSet<int>();
@@ -284,6 +333,18 @@ public class BattleManager : Singleton<BattleManager>
             if (need > 0)
                 yield return DeckManager.Instance.DrawCards(need);
         }
+
+        // 6. 被动机制：监听玩家出牌结果（Trap 设套回血、Showdown 记牌型）
+        EnemyController ec2 = EnemyController.Instance;
+        if (ec2 != null && ec2.Config != null && ec2.Config.passives != null)
+        {
+            foreach (var p in ec2.Config.passives)
+                p.OnPlayerHandResolved(ec2, type);
+        }
+
+        // 7. 波次效果：本波结算后触发
+        FlushWaveEffects();
+
         resolving = false;
         GameProgress.transitioning = false;
     }
@@ -302,10 +363,11 @@ public class BattleManager : Singleton<BattleManager>
 
         EnemyPlayData playData = EnemyController.Instance.BuildPlayData();
 
-        // Check：不出牌
-        if (playData.intent == EnemyIntentType.Check)
+        // Check/Fold：不出牌不攻击（Check 加筹码，Fold 标记回血）
+        if (playData.intent == EnemyIntentType.Check || playData.intent == EnemyIntentType.Fold)
         {
-            Debug.Log("[敌人] CHECK，跳过攻击");
+            Debug.Log("[敌人] " + playData.intent + "，跳过攻击");
+            EnemyController.Instance.ExecuteSelectedBehavior();  // 触发意图独有效果
             yield return new WaitForSeconds(0.4f);
             EnemyController.Instance.PrepareIntent();
             resolving = false;
@@ -316,13 +378,24 @@ public class BattleManager : Singleton<BattleManager>
         resolving = true;
         GameProgress.transitioning = true;   // 锁输入（InputLocked = mapOpen || transitioning）
 
-        // Call/Raise：算伤害（牌型固定伤害 × 敌人技能倍率）
+        // Call/Raise：算伤害（牌型固定伤害 × 特殊效果倍率；Raise 的额外伤害走 Apply）
         List<CardDataSO> datas = playData.cards;
         HandType type = PokerResolver.Evaluate(datas);
         HashSet<int> coreIndices = PokerResolver.GetCoreCardIndices(datas, type);
         float atkMult = EnemyController.Instance.ConsumeNextAttackMultiplier();
-        int preDamage = PokerResolver.GetHandDamage(type);                        // 减半前
-        int damage = Mathf.Max(1, Mathf.RoundToInt(preDamage * atkMult));         // 减半后
+        int preDamage = PokerResolver.GetHandDamage(type);                         
+        int damage = Mathf.Max(1, Mathf.RoundToInt(preDamage * atkMult));     
+
+        // 被动机制 + 当前意图的伤害修正钩子
+        EnemyController ec = EnemyController.Instance;
+        if (ec.SelectedBehavior != null)
+            damage = ec.SelectedBehavior.ModifyDamage(ec, damage);
+        if (ec.Config != null && ec.Config.passives != null)
+        {
+            foreach (var p in ec.Config.passives)
+                damage = p.ModifyDamage(ec, damage);
+        }
+        damage = Mathf.Max(1, damage);     
 
         // 演出
         yield return BattleView.Instance.PlayEnemyResolveSequence(playData, type, damage, coreIndices, atkMult, preDamage);
@@ -330,6 +403,16 @@ public class BattleManager : Singleton<BattleManager>
         // 游戏逻辑：敌人直接扣玩家筹码（无护盾），扣掉的进主池
         Debug.Log("[敌人攻击] 伤害:" + damage);
         GameManager.Instance.LoseChips(damage);
+
+        // 触发意图独有效果（Call/Raise 默认空，留作演出钩子）
+        EnemyController.Instance.ExecuteSelectedBehavior();
+
+        // 被动机制：敌人攻击后触发（Steal 偷牌等）
+        if (ec.Config != null && ec.Config.passives != null)
+        {
+            foreach (var p in ec.Config.passives)
+                p.OnEnemyAttack(ec);
+        }
 
         // 敌人手牌更新 + 补牌 + 下回合意图
         EnemyController.Instance.CommitPlayedCards(playData);

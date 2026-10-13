@@ -187,7 +187,8 @@ public enum EnemyIntentType
 {
     Check,//过牌加筹码
     Call,//攻击
-    Raise//加强
+    Raise,//加强
+    Fold  //弃牌跳过，下回合回血
 }
 
 public enum isHoleCard

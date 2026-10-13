@@ -76,7 +76,7 @@ public class GameManager : Singleton<GameManager>
     // 进入一关：设敌人筹码（MapManager 调用）
     public void LoadLevel(LevelConfig cfg)
     {
-        EnemyChips = cfg.enemyStartingChips;
+        EnemyChips = cfg.enemyConfig != null ? cfg.enemyConfig.Chips : cfg.enemyStartingChips;
 
         // 上关 SettlePot 累加的边池保留到本关，本关可弃牌回血
         // 第一关 SidePotChips 还是 0，下面赋初始值
@@ -116,7 +116,7 @@ public class GameManager : Singleton<GameManager>
     {
         if (IsGameOver) return;
         if (e.item == null || e.item.effect == null) return;
-        e.item.effect.Apply();   // 效果逻辑全在 ItemEffectSO 子类里
+        e.item.effect.Apply();   // 效果逻辑全在 AbilityEffectSO 子类里
     }
 
     // ========== 筹码 ==========
@@ -159,7 +159,17 @@ public class GameManager : Singleton<GameManager>
         int healSide = Mathf.RoundToInt(sidePotCap * ratio);
         PlayerChips = Mathf.Min(PlayerChips + healChips, startingPlayerChips);
         SidePotChips = Mathf.Min(SidePotChips + healSide, sidePotCap);
-        SendChipsChanged();   // 事件一发出，玩家堆/边池实体自己跟着长
+
+        // 筹码加满了：上限+5，并把加的 5 也补满
+        if (PlayerChips >= startingPlayerChips)
+        {
+            startingPlayerChips += 5;
+            GameProgress.playerChipsMax = startingPlayerChips;
+            PlayerChips = startingPlayerChips;
+            Debug.Log($"[篝火] 筹码满！上限+5 → {startingPlayerChips}");
+        }
+
+        SendChipsChanged();
         CheckWin();
     }
 
@@ -266,32 +276,13 @@ public class GameManager : Singleton<GameManager>
     }
      
 
-    // private IEnumerator EnemyDeathSequence()
-    // {
-    //     if (deathSequenceRunning) yield break;   // 防止重复触发
-    //     deathSequenceRunning = true;
-
-    //     // 1. 先分账：主池换骰子（SettlePot 内部会 PotChips=0）
-    //     int diceReward = PotChips / 10;
-    //     SettlePot();
-    //     GameProgress.playerChips = PlayerChips;
-    //     GameProgress.sidePotChips = SidePotChips;
-
-    //     // 2. 广播死亡事件，帽子开始接骰子演出
-    //     EventBus.Publish(new EnemyDefeatedEvent { diceReward = diceReward });
-
-    //     // 3. 等帽子演出结束（帽子把 IsBusy 置 false）；5 秒超时兜底，防止帽子没挂卡死流程
-    //     float timer = 0f;
-    //     while (TOPhat.Instance != null && TOPhat.Instance.IsBusy && timer < 5f)
-    //     {
-    //         timer += Time.deltaTime;
-    //         yield return null;
-    //     }
-
-    //     // 4. 演出看完，正式过关（→ 清场 → 铺地图）
-    //     deathSequenceRunning = false;
-    //     EventBus.Publish(new LevelClearedEvent());
-    // }
+    public void EnemyAddChips(int amount)
+    {
+        if (IsGameOver) return;
+        EnemyChips += amount;
+        SendChipsChanged();
+        CheckWin();
+    }
     private void EndGame(bool playerWin)
     {
         IsGameOver = true;

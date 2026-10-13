@@ -5,7 +5,7 @@ using UnityEngine;
 /// 只对当前回合生效，用一次就没。
 /// </summary>
 [CreateAssetMenu(fileName = "SkipEnemyTurnEffect", menuName = "Shop Effects/Skip Enemy Turn")]
-public class SkipEnemyTurnEffectSO : ItemEffectSO
+public class SkipEnemyTurnEffectSO : AbilityEffectSO
 {
     public override void Apply()
     {

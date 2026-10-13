@@ -12,6 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d417b9fe0f75d54c9a0d22fb33c26ca, type: 3}
   m_Name: AddCoin-1
   m_EditorClassIdentifier: 
-  abilityName: "\u52A0\u91D1"
-  description: "\u4E0B\u56DE\u5408\u589E\u52A0\u4E00\u91D1\u5E01"
+  timing: 2
   addCoin: 1

@@ -4,7 +4,7 @@ using UnityEngine;
 /// 效果：玩家获得 amount 筹码。
 /// </summary>
 [CreateAssetMenu(fileName = "AddChipsEffect", menuName = "Shop Effects/Add Chips")]
-public class AddChipsEffectSO : ItemEffectSO
+public class AddChipsEffectSO : AbilityEffectSO
 {
     public int amount = 5;
 

@@ -4,7 +4,7 @@ using UnityEngine;
 /// 效果：直接扣敌方 amount 筹码（等于打脸伤害）。
 /// </summary>
 [CreateAssetMenu(fileName = "DamageEnemyEffect", menuName = "Shop Effects/Damage Enemy")]
-public class DamageEnemyEffectSO : ItemEffectSO
+public class DamageEnemyEffectSO : AbilityEffectSO
 {
     public int amount = 3;
 

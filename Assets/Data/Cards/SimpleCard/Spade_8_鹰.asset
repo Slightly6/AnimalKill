@@ -12,11 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c24f5aa9dbdbe3468b022dc770b2e83, type: 3}
   m_Name: "Spade_8_\u9E70"
   m_EditorClassIdentifier: 
+  cardType: 0
   suit: 0
   rank: 8
-  animalName: "\u9E70"
-  description: "\u6218\u529B 8"
+  faceTexture: {fileID: -8328923581568760697, guid: 2ef8dc5b058030f4b83c053c9b84885f, type: 3}
+  effects: []
   abilityName: 
-  abilityIcon: {fileID: 0}
-  awakenedAbility: {fileID: 0}
-  artwork: {fileID: 0}
+  description: "\u6218\u529B 8"
+  effectType: 0
+  rarity: 0
+  price: 0
+  itemCost: 1

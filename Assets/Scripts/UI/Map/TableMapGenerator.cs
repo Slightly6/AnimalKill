@@ -47,6 +47,9 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
     [SerializeField] private Transform nodeRoot;                   // 生成节点的父物体（不拖自动建）
     [SerializeField] private List<NodeSpriteSetting> nodeSprites = new List<NodeSpriteSetting>();  // 各类型图标
 
+    [Header("敌人池（按节点类型+floor 抽敌人；不拖=回退到 LevelConfig.enemyConfig）")]
+    [SerializeField] private EnemyPoolDatabase enemyPoolDatabase;
+
     [Header("连线")]
     [SerializeField] private Transform lineRoot;                   // 生成连线的父物体（不拖自动建）
     [SerializeField] private Material lineMaterial;                // 连线材质
@@ -333,6 +336,15 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
                     levelIndex = levelIndex,
                     localPosition = new Vector3(x, nodeHeight, z)
                 };
+
+                // 战斗节点：从敌人池抽一个 runtimeEnemy（本局固定）
+                if (enemyPoolDatabase != null
+                    && (nodeType == MapNodeType.Monster
+                        || nodeType == MapNodeType.Elite
+                        || nodeType == MapNodeType.Boss))
+                {
+                    node.runtimeEnemy = enemyPoolDatabase.GetRandom(nodeType, floor);
+                }
 
                 Nodes.Add(node);
                 nodeLookup.Add(node.id, node);
@@ -1022,7 +1034,7 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
 
         // 地图卷起后按节点类型进入对应关卡/玩法
         if (MapManager.Instance != null)
-            MapManager.Instance.EnterNodeByType(selected.type, selected.levelIndex);
+            MapManager.Instance.EnterNodeByType(selected.type, selected.levelIndex, selected.runtimeEnemy);
         Debug.Log("[EnterNode] 3 EnterNodeByType 完成");
     }
 

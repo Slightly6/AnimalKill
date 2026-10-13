@@ -4,7 +4,7 @@ using UnityEngine;
 /// 效果：敌方全体在场卡牌 -value 战力。
 /// </summary>
 [CreateAssetMenu(fileName = "EnemyAttackDownEffect", menuName = "Shop Effects/Enemy Attack Down")]
-public class EnemyAttackDownEffectSO : ItemEffectSO
+public class EnemyAttackDownEffectSO : AbilityEffectSO
 {
     public int value = 1;
 

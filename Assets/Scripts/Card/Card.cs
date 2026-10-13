@@ -27,7 +27,7 @@ public class Card : MonoBehaviour
     [System.NonSerialized] public SortingGroup sortingGroup;   // 缓存引用，避免每帧 GetComponent
     [System.NonSerialized] public bool IsSelected;   // 这张牌被点选（准备出牌）
     [System.NonSerialized] public bool IsStaged;   // 已拖上桌集结（还没结算）
-    [System.NonSerialized] public AbilitySO runtimeAbility;
+    // 已废弃：统一用 Data.effects
 
     private Renderer[] cardRenderers;
     private MaterialPropertyBlock propBlock;// 材质属性块
@@ -103,7 +103,7 @@ public class Card : MonoBehaviour
         IsDead = false;
 
         // 技能状态全部清零（对象池/复用时也安全）
-        runtimeAbility = data.ability;   // 从卡牌数据读能力（普通牌为 null）
+        // 已废弃：效果直接从 Data.effects 读取
 
         RefreshDisplay();
     
@@ -225,24 +225,27 @@ public class Card : MonoBehaviour
         if (show) bonusText.text = PowerBonus > 0 ? "+" + PowerBonus : PowerBonus.ToString();
     }
 
-    public void TriggerAbility(AbilityTrigger trigger, Card target)
+    // 打出时触发所有效果（按 timing 分流）
+    public void ApplyEffects()
     {
-        if (IsDead) return;
-        FireOne(runtimeAbility, trigger, target);
-    }
-
-    bool FireOne(AbilitySO ab, AbilityTrigger trigger, Card target)
-    {
-        if (ab == null || ab.trigger != trigger) return false;
-        Debug.Log($"[技能触发] {ab.abilityName} trigger={ab.trigger} 效果数={ab.effects.Count}");
-
-        bool anyFired = false;
-        foreach (var effect in ab.effects)
+        if (IsDead || Data == null || Data.effects == null) return;
+        foreach (var effect in Data.effects)
         {
-            if (effect != null && effect.Apply(this, target))
-                anyFired = true;
+            if (effect == null) continue;
+            switch (effect.timing)
+            {
+                case EffectTiming.Immediate:
+                    Debug.Log($"[即时] {effect.GetType().Name}");
+                    effect.Apply();
+                    break;
+                case EffectTiming.Delayed:
+                    BattleManager.Instance.QueueDelayed(effect);
+                    break;
+                case EffectTiming.Wave:
+                    BattleManager.Instance.QueueWave(effect);
+                    break;
+            }
         }
-        return anyFired;
     }
     void Die()
     {
@@ -256,8 +259,6 @@ public class Card : MonoBehaviour
             laneIndex = -1,   // 槽位已删除
             isPlayerSide = IsPlayer
         });
-
-        TriggerAbility(AbilityTrigger.OnDeath, null);
 
         StartCoroutine(DeathAnim());
     }

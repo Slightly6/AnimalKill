@@ -12,12 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c24f5aa9dbdbe3468b022dc770b2e83, type: 3}
   m_Name: "Club_4_\u8C6A\u732A"
   m_EditorClassIdentifier: 
+  cardType: 0
   suit: 3
   rank: 4
-  faceTexture: {fileID: -8328923581568760697, guid: 6b6b71953dfbbb14bbd2ebfff2fbf0ae, type: 3}
-  ability: {fileID: 0}
+  faceTexture: {fileID: -8328923581568760697, guid: f92cd256c586a184287a062801a6d17a, type: 3}
+  effects: []
   abilityName: 
   description: "\u6218\u529B 4"
   effectType: 0
   rarity: 0
   price: 0
+  itemCost: 1
