@@ -75,9 +75,12 @@ public class Card : MonoBehaviour
     [Header("悬浮提示")]
     public GameObject tooltip; 
 
+    CardEffectBells effectBells;   // 效果铃铛标记（预制体上没挂 = null，不影响）
+
     void Awake()
     {
         sortingGroup = GetComponent<SortingGroup>();
+        effectBells = GetComponent<CardEffectBells>();
         // 只收集挂着 PlayingCard shader 的 MeshRenderer（自动排除 TextMeshPro 文字渲染器）
         var all = GetComponentsInChildren<Renderer>(true);
         var list = new List<Renderer>(all.Length);
@@ -231,6 +234,8 @@ public class Card : MonoBehaviour
 
     public void RefreshDisplay()
     {
+        if (effectBells != null) effectBells.Refresh();   // 效果铃铛跟着牌面一起刷新
+
         // 有整张牌面贴图：直接换掉正面 _MainTex，隐藏点数文字
         if (Data.faceTexture != null && frontRenderer != null)
         {

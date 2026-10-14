@@ -21,6 +21,10 @@ public enum EffectTiming
 public abstract class AbilityEffectSO : ScriptableObject
 {
     public EffectTiming timing = EffectTiming.Immediate;
+
+    [Header("铃铛图标（自己画，拖 Sprite 进来；空 = 卡牌上不显示标记）")]
+    public Sprite bellIcon;
+
     public abstract void Apply();
 
     // 带"打出这张牌的点数"的重载：计分时卡牌会把点数传进来

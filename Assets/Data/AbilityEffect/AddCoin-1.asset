@@ -13,4 +13,5 @@ MonoBehaviour:
   m_Name: AddCoin-1
   m_EditorClassIdentifier: 
   timing: 2
+  bellIcon: {fileID: -2313717586436924124, guid: 77e6eb440c9160049bb2081768d92465, type: 3}
   addCoin: 1

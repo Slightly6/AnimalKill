@@ -118,6 +118,7 @@ public class RestManager : Singleton<RestManager>
         if (chipInstance != null && IsChildOrSelf(clicked, chipInstance.transform))
         {
             consumed = true;
+            if (handInstance != null) { Destroy(handInstance); handInstance = null; }   // 没选的直接销毁
             GameManager.Instance.RestHeal();                 // 回 30% 筹码 + 30% 边池
             MapManager.Instance.FinishNonBattleNode();       // 回地图
             return;
@@ -127,6 +128,7 @@ public class RestManager : Singleton<RestManager>
         if (handInstance != null && IsChildOrSelf(clicked, handInstance.transform))
         {
             consumed = true;
+            if (chipInstance != null) { Destroy(chipInstance); chipInstance = null; }   // 没选的直接销毁
             StartCoroutine(ThrowDiceRoutine());
             return;
         }
@@ -202,24 +204,31 @@ public class RestManager : Singleton<RestManager>
 
         Debug.Log($"[休息] 骰子点数={faceValue}，伤害+1");
 
-        // 在骰子头上飘字显示结果
-        ShowDiceResult(dice.position, faceValue);
-
         // 10点：所有牌型全加；1-9点：只加对应牌型
         if (faceValue == 10)
         {
+            // 计分板的牌型轮没法显示"全部牌型"，10点保留骰子头上的飘字
+            ShowDiceResult(dice.position, faceValue);
             PokerResolver.AddBonusToAll(1);
             Debug.Log("[休息] 10点！所有牌型永久：伤害+1");
         }
         else
         {
             HandType ht = PokerResolver.DiceToHandType(faceValue);
+            int damageBefore = PokerResolver.GetHandDamage(ht);   // 加之前的当前伤害
             PokerResolver.AddBonus(ht, 1);
             Debug.Log($"[休息] {faceValue}点！{PokerResolver.HandName(ht)}永久：伤害+1");
+
+            // 计分板演出：滚到当前牌型+伤害 → 停一秒 → 数字 +1；没配板子就退回飘字
+            ScoreBoard3D board = BattleView.Instance != null ? BattleView.Instance.scoreBoard : null;
+            if (board != null)
+                yield return board.PlayDiceResult(ht, damageBefore, 1f);
+            else
+                ShowDiceResult(dice.position, faceValue);
         }
 
         // 等待 5 秒让玩家看清结果
-        yield return new WaitForSeconds(5f);
+        yield return new WaitForSeconds(3f);
 
         MapManager.Instance.FinishNonBattleNode();
     }

@@ -478,7 +478,7 @@ public class BattleView : Singleton<BattleView>
             board.transform.rotation = Quaternion.Euler(0, 180, RotationZ);
             board.transform.position = GetPlayCenter() + new Vector3(0, jitterY, 0.8f);
             yield return PopIn(board.transform, 0.2f);
-            yield return new WaitForSeconds(1.0f);
+            yield return new WaitForSeconds(1f);
             yield return PopOut(board.transform, 0.15f);
             Destroy(board);
         }
