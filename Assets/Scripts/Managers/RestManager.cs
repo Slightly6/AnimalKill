@@ -120,6 +120,7 @@ public class RestManager : Singleton<RestManager>
             consumed = true;
             if (handInstance != null) { Destroy(handInstance); handInstance = null; }   // 没选的直接销毁
             GameManager.Instance.RestHeal();                 // 回 30% 筹码 + 30% 边池
+            
             MapManager.Instance.FinishNonBattleNode();       // 回地图
             return;
         }

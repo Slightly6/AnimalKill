@@ -254,9 +254,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9338a257f1774674ebaa05dfd6b27114, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  firstSlotOffset: {x: 0.55, y: 0.95, z: -0.02}
-  slotStep: {x: 0, y: -0.35, z: 0}
-  iconScale: 0.25
+  firstSlotOffset: {x: -0.695, y: 0.407, z: -0.03}
+  slotStep: {x: 0, y: -0.363, z: 0}
+  iconScale: 1.5
   sortingOrder: 10
 --- !u!1 &2000421894215644711
 GameObject:

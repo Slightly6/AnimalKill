@@ -183,7 +183,6 @@ public class GameManager : Singleton<GameManager>
         }
 
         SendChipsChanged();
-        CheckWin();
     }
 
     // 弃牌：暂时直接回血（牌型伤害 × 0.8）

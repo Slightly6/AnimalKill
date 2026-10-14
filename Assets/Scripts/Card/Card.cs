@@ -13,7 +13,6 @@ public class Card : MonoBehaviour
     public TextMeshPro bonusText;            // 战力加/减的浮动文字（+1 / -1，没拖就空着不显示）
     public MeshRenderer frontRenderer;       
     public float frontArtScale = 0.12f;      // 正面动物图大小
-    // public Sprite stackedSkillIcon;          // 叠加得到的技能图标（献祭来的，没叠是 null）
     // ---- 运行时状态 ----
     public CardDataSO Data;
     public int CurrentPower;// 当前力量
@@ -344,8 +343,10 @@ public class Card : MonoBehaviour
 
     void OnMouseOver()
     {
-        if (Input.GetMouseButtonDown(1)) 
+        if (Input.GetMouseButtonDown(1))
         {
+            if (effectBells != null && effectBells.HoveringBell) return;   // 右键点在铃铛上，让铃铛自己显示效果说明
+
             Card card = GetComponent<Card>();
             if (card == null || card.Data == null || tooltip == null) return;
 

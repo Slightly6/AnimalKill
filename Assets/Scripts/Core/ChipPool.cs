@@ -50,11 +50,18 @@ public class ChipPool : MonoBehaviour
     public void Return(GameObject coin)
     {
         coin.SetActive(false);
+        // 池子自己正在销毁时别再挂父（Unity 禁止，且会打断还池流程），反正马上一起销毁
+        if (!destroying)
+            coin.transform.SetParent(transform, true);   // 收回池子名下，别留在敌人堆/主池下面
         inUse.Remove(coin);
         pool.Enqueue(coin);
     }
+
+    private bool destroying;
+
     void OnDestroy()
     {
+        destroying = true;
         ReturnAll();
     }
     public void ReturnAll()

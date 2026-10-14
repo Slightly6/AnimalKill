@@ -31,9 +31,16 @@ public class ShopCard : MonoBehaviour, IShopFlyable
     }
 
     // 商店卡逻辑只在商店节点生效（手牌和商店卡共用 prefab，战斗中手牌上也挂着本脚本）
+    // 例外：强化三选一激活时（EnhanceManager.Choosing）也放行悬浮，但价格标签仍只在真商店显示
     bool InShop()
     {
-        return GameProgress.currentNodeType == MapNodeType.Shop;
+        return GameProgress.currentNodeType == MapNodeType.Shop || EnhanceManager.Choosing;
+    }
+
+    // 外部同步悬浮的"家"位置（强化卡是飞到桌位的，Start 时记的起飞点不对）
+    public void SyncBasePos()
+    {
+        basePos = transform.position;
     }
 
     // 悬浮：上浮 + 微放大 + 显示价格；移开：回落复位 + 隐藏价格
@@ -42,7 +49,7 @@ public class ShopCard : MonoBehaviour, IShopFlyable
         if (locked || !InShop() || GameProgress.InputLocked) return;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
         hoverRoutine = StartCoroutine(HoverAnim(basePos + Vector3.up * hoverLift, hoverScale));
-        ShowPriceLabel();
+        if (GameProgress.currentNodeType == MapNodeType.Shop) ShowPriceLabel();   // 价格只在真商店弹，强化界面不弹
     }
     void OnMouseExit()
     {
@@ -117,8 +124,8 @@ public class ShopCard : MonoBehaviour, IShopFlyable
         transform.position = baseP;
     }
 
-    // 购买时停掉悬浮协程，避免它和飞走动画抢位置；scale 复位（FlyStraight 不管缩放）
-    void StopHover()
+    // 购买/飞走时停掉悬浮协程，避免它和飞走动画抢位置；scale 复位（FlyStraight 不管缩放）
+    public void StopHover()
     {
         locked = true;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);

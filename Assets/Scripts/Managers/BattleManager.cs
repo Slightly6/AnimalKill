@@ -263,7 +263,7 @@ public class BattleManager : Singleton<BattleManager>
         {
             while (!BattleQueue.Instance.IsEmpty)
                 yield return null;
-            EventBus.Publish(new LevelClearedEvent());
+           
 
         }
         IsInBattle = false;

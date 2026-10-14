@@ -329,7 +329,7 @@ public class BattleView : Singleton<BattleView>
         Quaternion facePlayer = GetGhostRotation();
         for (int i = 0; i < cards.Count; i++)
         {
-            yield return FlyToTable(cards[i], positions[i], facePlayer, 0.35f);
+            yield return FlyToTable(cards[i], positions[i], facePlayer, 0.2f);
 
             // 飞到瞬间：该位置冒烟 + 这张虚影消失（真牌顶替虚影停在桌上）
             PlaySmoke(positions[i]);
@@ -774,7 +774,7 @@ public class BattleView : Singleton<BattleView>
         Quaternion facePlayer = GetGhostRotation();
         for (int i = 0; i < selectedViews.Count; i++)
         {
-            yield return FlyToTable(selectedViews[i], positions[i], facePlayer, 0.35f);
+            yield return FlyToTable(selectedViews[i], positions[i], facePlayer, 0.2f);
         }
 
         // 3. 抬牌 + 滚牌型/伤害（和玩家一致）

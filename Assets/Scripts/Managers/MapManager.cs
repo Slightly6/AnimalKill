@@ -315,6 +315,7 @@ public class MapManager : Singleton<MapManager>
             GameProgress.currentSuit++;   // 解锁下一章（卷轴打开时会检测 suit 变化自动生成新章地图）
         }
 
+        if (CameraRig.Instance != null) CameraRig.Instance.JumpToIndex(1);   // 先回第一视角，再摆强化三选一
         EnhanceManager.Instance.Show(AfterEnhance);   // 强化三选一：选完补存档再开卷轴
     }
 

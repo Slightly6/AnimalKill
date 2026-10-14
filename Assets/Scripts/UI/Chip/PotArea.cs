@@ -66,6 +66,20 @@ public class PotArea : MonoBehaviour
         Rearrange();
     }
 
+    // 算某枚筹码在摞里的准确落点（和 Rearrange 同一套公式，掉落动画直接往这里飞，落地不瞬移）
+    public Vector3 GetCoinWorldPos(GameObject coin)
+    {
+        int i = potCoins.IndexOf(coin);
+        if (i < 0) return transform.position;
+
+        int stackIndex = i / coinsPerStack;
+        int level = i % coinsPerStack;
+        int groupIndex = stackIndex / StacksPerPattern;
+        int slotIndex = stackIndex % StacksPerPattern;
+
+        return transform.TransformPoint(GetLocalPosition(groupIndex, slotIndex, level));
+    }
+
     public void Rearrange()
     {
         coinsPerStack = Mathf.Max(1, coinsPerStack);

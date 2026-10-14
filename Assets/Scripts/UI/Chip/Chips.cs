@@ -287,6 +287,7 @@ public class Chips : MonoBehaviour
 
     private IEnumerator LoseCoinsRoutine()
     {
+        Debug.Log("[Chips] 开始飞，coins=" + coins.Count + "，target=" + targetCount);
         while (coins.Count > targetCount)
         {
             if (!TryFindClosestTopCoin(
@@ -337,55 +338,61 @@ public class Chips : MonoBehaviour
     public float potDropInterval = 0.15f; // 每枚间隔
 
     // 等本批筹码都飞完 → 逐枚从主池上方掉下来
+    // 外层循环：飞完一批后再看 flyCoins——飞行期间下一手可能又塞了筹码进来，不能撂下不管
     private IEnumerator FlyUpRoutine()
     {
-        // 等其他 LoseCoinsRoutine 把筹码都塞进 flyCoins
-        while (loseRoutine != null)
-            yield return null;
-
-        List<GameObject> batch = new List<GameObject>(flyCoins);
-        flyCoins.Clear();
-
-        // 1. 全部同时竖直飞上天（物理向上冲），到点回收进池
-        foreach (GameObject coin in batch)
+        while (true)
         {
-            if (coin == null) continue;
-            Rigidbody rb = coin.GetComponent<Rigidbody>();
-            if (rb != null)
+            // 等 LoseCoinsRoutine 把筹码都塞进 flyCoins
+            while (loseRoutine != null)
+                yield return null;
+
+            if (flyCoins.Count == 0)
+                break;   // 真没了才收工
+
+            List<GameObject> batch = new List<GameObject>(flyCoins);
+            flyCoins.Clear();
+
+            // 1. 全部同时竖直飞上天（物理向上冲），到点回收进池
+            foreach (GameObject coin in batch)
             {
-                rb.isKinematic = false;
-                rb.constraints = RigidbodyConstraints.None;
-                rb.velocity = Vector3.up * (flyUpHeight / flyUpDuration);
-                rb.angularVelocity = Random.insideUnitSphere * 2f;
-            }
-        }
-
-        yield return new WaitForSeconds(flyUpDuration);
-
-        // 回收飞天上的筹码，直接还池（天上那批只是演出）
-        foreach (GameObject coin in batch)
-            if (coin != null) pool.Return(coin);
-
-        // 2. 从主池正上方逐枚取新筹码掉下来，落地即排好（不用点）
-        Vector3 dropOrigin = potArea.transform.position + Vector3.up * potDropHeight;
-
-        for (int i = 0; i < batch.Count; i++)
-        {
-            GameObject coin = pool.Get();
-            if (coin == null) continue;
-
-            potArea.ReceiveCoin(coin);
-
-            Rigidbody rb = coin.GetComponent<Rigidbody>();
-            if (rb != null)
-            {
-                rb.isKinematic = true;
-                rb.position = dropOrigin;
-                rb.rotation = potArea.transform.rotation;
-                StartCoroutine(PotDropAnim(rb, potArea.transform.position));
+                if (coin == null) continue;
+                Rigidbody rb = coin.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    rb.isKinematic = false;
+                    rb.constraints = RigidbodyConstraints.None;
+                    rb.velocity = Vector3.up * (flyUpHeight / flyUpDuration);
+                    rb.angularVelocity = Random.insideUnitSphere * 2f;
+                }
             }
 
-            yield return new WaitForSeconds(potDropInterval);
+            yield return new WaitForSeconds(flyUpDuration);
+
+            // 回收飞天上的筹码，直接还池（天上那批只是演出）
+            foreach (GameObject coin in batch)
+                if (coin != null) pool.Return(coin);
+
+            // 2. 逐枚取新筹码，从各自落点的正上方直接掉到位（不再先掉主池中心再瞬移）
+            for (int i = 0; i < batch.Count; i++)
+            {
+                GameObject coin = pool.Get();
+                if (coin == null) continue;
+
+                potArea.ReceiveCoin(coin);
+
+                Rigidbody rb = coin.GetComponent<Rigidbody>();
+                if (rb != null)
+                {
+                    Vector3 landPos = potArea.GetCoinWorldPos(coin);   // 它在摞里的准确位置
+                    rb.isKinematic = true;
+                    rb.position = landPos + Vector3.up * potDropHeight;
+                    rb.rotation = potArea.transform.rotation;
+                    StartCoroutine(PotDropAnim(rb, landPos));
+                }
+
+                yield return new WaitForSeconds(potDropInterval);
+            }
         }
         flyRoutine = null;
         GameProgress.chipFly = false;
@@ -529,11 +536,23 @@ public class Chips : MonoBehaviour
 
         pendingPlayerCoins.Clear();
     }
-    // 账本清零（实体已由 CoinPool.ReturnAll 统一还池）
+    // 账本清零：列表清空，实体也统一还池（没人调 pool.ReturnAll，指望不上）
     public void ClearLedger()
     {
         if (loseRoutine != null) { StopCoroutine(loseRoutine); loseRoutine = null; }
         if (flyRoutine != null) { StopCoroutine(flyRoutine); flyRoutine = null; }
+
+        if (pool != null)
+        {
+            // 搁浅在 flyCoins 里的幽灵筹码 + 堆里没飞完的 + 飞来途中没入摞的，全部还池
+            foreach (GameObject coin in flyCoins)
+                if (coin != null) pool.Return(coin);
+            foreach (GameObject coin in coins)
+                if (coin != null) pool.Return(coin);
+            foreach (GameObject coin in pendingPlayerCoins)
+                if (coin != null) pool.Return(coin);
+        }
+
         flyCoins.Clear();
         coins.Clear();
         pendingPlayerCoins.Clear();

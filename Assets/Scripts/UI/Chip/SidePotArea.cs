@@ -362,10 +362,15 @@ public class SidePotArea : MonoBehaviour
 
         return bestCoin != null;
     }
-    // 账本清零（实体已由 CoinPool.ReturnAll 统一还池）
+    // 账本清零：列表清空，实体也统一还池（没人调 pool.ReturnAll，指望不上）
     public void ClearLedger()
     {
         if (loseRoutine != null) { StopCoroutine(loseRoutine); loseRoutine = null; }
+
+        if (pool != null)
+            foreach (GameObject coin in coins)
+                if (coin != null) pool.Return(coin);
+
         coins.Clear();
         stackGroups.Clear();
         targetCount = 0;

@@ -18,6 +18,7 @@ public class CardDifference : MonoBehaviour
     void OnMouseDown()
     {
         if (GameProgress.InputLocked) return;
+        if (EnhanceManager.Choosing) return;   // 强化三选一：点击只走 EnhanceCardClick，别碰出牌/购买分流
 
         if (GameProgress.currentNodeType == MapNodeType.Shop)
         {
