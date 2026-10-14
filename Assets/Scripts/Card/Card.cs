@@ -27,6 +27,45 @@ public class Card : MonoBehaviour
     [System.NonSerialized] public SortingGroup sortingGroup;   // 缓存引用，避免每帧 GetComponent
     [System.NonSerialized] public bool IsSelected;   // 这张牌被点选（准备出牌）
     [System.NonSerialized] public bool IsStaged;   // 已拖上桌集结（还没结算）
+    [System.NonSerialized] public CardDataSO originalData;   // 拟态变身前的本体数据（弃牌/牌库归属用它）
+
+    // ---- 拟态（CardDataSO.isMimic = true 的牌）----
+
+    public bool IsMimic => Data != null && Data.isMimic;
+
+    // 牌库归属数据：拟态牌无论变成谁，进弃牌堆/统计的都是本体
+    public CardDataSO DeckData => originalData != null ? originalData : Data;
+
+    // 完全变成目标牌（点数/花色/技能全复制，视觉同步刷新）
+    public void MimicInto(Card target)
+    {
+        if (target == null || target == this || target.Data == null) return;
+        if (originalData == null) originalData = Data;   // 只记第一次，本体不丢
+        Data = target.Data;
+        RefreshDisplay();
+    }
+
+    // 打出时随机变成手里一张（含自己 = 概率保持原样）
+    public void MimicRandomly(List<Card> hand)
+    {
+        var pool = new List<Card>();
+        if (hand != null) pool.AddRange(hand);
+        if (!pool.Contains(this)) pool.Add(this);
+        pool.RemoveAll(c => c == null);
+        if (pool.Count == 0) return;
+        Card target = pool[Random.Range(0, pool.Count)];
+        MimicInto(target);
+        Debug.Log($"[拟态] {originalData.name} 打出时变成了 {Data.name}");
+    }
+
+    // 显回原形（拟态牌自己排到最左时调用）
+    public void RestoreFromMimic()
+    {
+        if (originalData == null) return;   // 没变过身
+        Data = originalData;
+        originalData = null;
+        RefreshDisplay();
+    }
     // 已废弃：统一用 Data.effects
 
     private Renderer[] cardRenderers;
@@ -98,6 +137,7 @@ public class Card : MonoBehaviour
             return;
         }
         Data = data;
+        originalData = null;   // 拟态变身记录清零（对象池/复用时安全）
         IsPlayer = isPlayer;
         PowerBonus = 0;   // 技能加的战力，每张牌从 0 开始
         IsDead = false;
@@ -236,7 +276,7 @@ public class Card : MonoBehaviour
             {
                 case EffectTiming.Immediate:
                     Debug.Log($"[即时] {effect.GetType().Name}");
-                    effect.Apply();
+                    effect.Apply((int)Data.rank);   // 传入本牌点数（按点数结算的效果用它）
                     break;
                 case EffectTiming.Delayed:
                     BattleManager.Instance.QueueDelayed(effect);

@@ -36,6 +36,9 @@ public class BattleView : Singleton<BattleView>
     public Transform PlayerFoldPos;         // 玩家位置（弃牌加盾时 Score 飞向这）
     public Transform PlayerPos;
 
+    [Header("实体计分板（3D 滚轮；留空则用旧的牌型板子）")]
+    public ScoreBoard3D scoreBoard;
+
     private readonly List<GameObject> ghosts = new List<GameObject>();   // 桌面虚影（牌自己的半透明克隆）
     private readonly List<GameObject> shadows = new List<GameObject>();  // 每个虚影脚下的阴影
     private static Shader ghostShader;   // 虚影专用透明 shader（懒加载）
@@ -333,8 +336,8 @@ public class BattleView : Singleton<BattleView>
             RemoveGhostAt(i);
         }
 
-        // 2. 抬牌 + 弹牌型名板子
-        yield return ShowHandBoard(type, cards, coreIndices, isPlayfold);
+        // 2. 抬牌 + 滚牌型/伤害
+        yield return ShowHandBoard(type, cards, coreIndices, isPlayfold, damage);
 
         // 3. 不出数字，筹码由 Chips 自动飞进主池
         yield return new WaitForSeconds(0.4f);
@@ -445,7 +448,7 @@ public class BattleView : Singleton<BattleView>
 
     // 结算演出：抬牌 + 得分牌逐张弹一下 + 中间弹牌型名板子
     // isPlay: true=弃牌(不触发"计分时"技能)；false=出牌(触发)
-    private IEnumerator ShowHandBoard(HandType type, List<Card> cards, HashSet<int> coreIndices, bool isPlay)
+    private IEnumerator ShowHandBoard(HandType type, List<Card> cards, HashSet<int> coreIndices, bool isPlay, int damage)
     {
         // 结算开始：所有得分的牌先一起抬起来一点（非得分牌原地不动）
         List<Card> liftCards = new List<Card>();
@@ -462,16 +465,23 @@ public class BattleView : Singleton<BattleView>
             }
         }
 
-        // 中间弹牌型名板子
-        GameObject board = CreateBoardText(PokerResolver.HandName(type), new Color(0.4f, 0.7f, 1f));
-        float jitterY = Random.Range(-0.1f, 0.1f);
-        float RotationZ = Random.Range(0, 9);
-        board.transform.rotation = Quaternion.Euler(0, 180, RotationZ);
-        board.transform.position = GetPlayCenter() + new Vector3(0, jitterY, 0.8f);
-        yield return PopIn(board.transform, 0.2f);
-        yield return new WaitForSeconds(1.0f);
-        yield return PopOut(board.transform, 0.15f);
-        Destroy(board);
+        // 中间滚实体计分板（左牌型 + 右带进位数字）；没配计分板则退回旧的牌型板子
+        if (scoreBoard != null)
+        {
+            yield return scoreBoard.Play(type, damage, isPlay);
+        }
+        else
+        {
+            GameObject board = CreateBoardText(PokerResolver.HandName(type), new Color(0.4f, 0.7f, 1f));
+            float jitterY = Random.Range(-0.1f, 0.1f);
+            float RotationZ = Random.Range(0, 9);
+            board.transform.rotation = Quaternion.Euler(0, 180, RotationZ);
+            board.transform.position = GetPlayCenter() + new Vector3(0, jitterY, 0.8f);
+            yield return PopIn(board.transform, 0.2f);
+            yield return new WaitForSeconds(1.0f);
+            yield return PopOut(board.transform, 0.15f);
+            Destroy(board);
+        }
     }
 
     // Score 加分反馈
@@ -767,8 +777,8 @@ public class BattleView : Singleton<BattleView>
             yield return FlyToTable(selectedViews[i], positions[i], facePlayer, 0.35f);
         }
 
-        // 3. 抬牌 + 弹牌型名板子（和玩家一致）
-        yield return ShowHandBoard(type, selectedViews, coreIndices, isPlay: false);
+        // 3. 抬牌 + 滚牌型/伤害（和玩家一致）
+        yield return ShowHandBoard(type, selectedViews, coreIndices, isPlay: false, damage);
         // 3.5 减半演出：只弹红×0.5 板子，不出数字
         if (attackMult < 1f)
         {

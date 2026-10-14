@@ -136,6 +136,8 @@ public class BattleManager : Singleton<BattleManager>
         PointsLeft = pointsPerTurn;
         BattleView.Instance.ClearGhosts();
         BattleView.Instance.ClearSelection();
+        if (BattleView.Instance.scoreBoard != null)
+            BattleView.Instance.scoreBoard.ResetBoard();   // 每关开始计分板归零
         if (cfg.enemyConfig != null)
         {
             Debug.Log("[Battle] PrepareIntent 前");
@@ -176,6 +178,13 @@ public class BattleManager : Singleton<BattleManager>
         {
             Debug.Log(fold ? "[弃牌堆] 没选牌" : "[出牌堆] 没选牌");
             return;
+        }
+
+        // 拟态牌：打出时随机变成手里一张（点数/花色/技能全按新身份结算）
+        for (int i = 0; i < cards.Count; i++)
+        {
+            if (cards[i] != null && cards[i].IsMimic)
+                cards[i].MimicRandomly(DeckManager.Instance.HandCards);
         }
 
         var dataList = cards.ConvertAll(c => c.Data);

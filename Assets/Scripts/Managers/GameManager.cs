@@ -151,6 +151,19 @@ public class GameManager : Singleton<GameManager>
         CheckWin();
     }
 
+    // 偷取：敌人筹码直接转给玩家（不走主池，和"伤害→主池"区分开）
+    // 按点数偷筹码的效果用它
+    public void StealChips(int amount)
+    {
+        if (IsGameOver) return;
+        int steal = Mathf.Min(amount, EnemyChips);   // 不能偷超过敌人现有的
+        if (steal <= 0) return;
+        EnemyChips -= steal;
+        PlayerChips += steal;
+        SendChipsChanged();
+        CheckWin();
+    }
+
     // 休息节点：按上限比例回复玩家筹码和边池（RestManager 点击筹码时调）
     public void RestHeal(float ratio = 0.3f)
     {

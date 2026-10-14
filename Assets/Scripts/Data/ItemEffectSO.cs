@@ -22,4 +22,8 @@ public abstract class AbilityEffectSO : ScriptableObject
 {
     public EffectTiming timing = EffectTiming.Immediate;
     public abstract void Apply();
+
+    // 带"打出这张牌的点数"的重载：计分时卡牌会把点数传进来
+    // 只有需要知道自己是被哪张牌打出的效果，才重写它；默认转调无参 Apply()，老效果零影响
+    public virtual void Apply(int cardRank) { Apply(); }
 }

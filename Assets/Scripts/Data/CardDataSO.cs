@@ -49,6 +49,9 @@ public class CardDataSO : ScriptableObject
     [Header("道具卡")]
     public int itemCost = 1;               // 道具卡消耗的点数
 
+    [Header("拟态（特殊牌：手牌里完全变成最左那张，打出时随机变成手里一张）")]
+    public bool isMimic;
+
     [System.NonSerialized] public bool isRuntimeClone;   // 运行时克隆体标记：true = 牌库里的独立个体，可安全强化（原资产永远只读）
     // ---- 文字 ----
 

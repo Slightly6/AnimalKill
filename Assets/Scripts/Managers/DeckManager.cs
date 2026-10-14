@@ -178,6 +178,7 @@ public class DeckManager : Singleton<DeckManager>
         HandCards.Add(card);
         if (HandCamera.HandLayerIndex >= 0)
             card.SetLayerRecursively(HandCamera.HandLayerIndex);   // 切到手牌层 → HandCamera 渲染 → 永远在最上层
+        SyncMimicVisuals();
         EventBus.Publish(new HandChangedEvent());
 
         Debug.Log("[发牌] 已入手牌：" + data.name);
@@ -187,9 +188,10 @@ public class DeckManager : Singleton<DeckManager>
     public void RemoveFromHand(Card card)
     {
         if (card == null) return;
-        discardPile.Add(card.Data);
+        discardPile.Add(card.DeckData);   // 拟态牌进本体，变身对象不重复
         HandCards.Remove(card);
         card.SetLayerRecursively(0);   // 切回 Default 层 → 恢复正常遮挡
+        SyncMimicVisuals();
         EventBus.Publish(new HandChangedEvent());
     }
 
@@ -202,6 +204,7 @@ public class DeckManager : Singleton<DeckManager>
         if (oldIndex == newIndex) return;
         HandCards.RemoveAt(oldIndex);
         HandCards.Insert(newIndex, card);
+        SyncMimicVisuals();
         EventBus.Publish(new HandChangedEvent());
     }
 
@@ -209,10 +212,26 @@ public class DeckManager : Singleton<DeckManager>
     public void DiscardToPile(Card card)
     {
         if (card == null) return;
-        discardPile.Add(card.Data);
+        discardPile.Add(card.DeckData);   // 拟态牌进本体，变身对象不重复
         HandCards.Remove(card);
         Destroy(card.gameObject);
+        SyncMimicVisuals();
         EventBus.Publish(new HandChangedEvent());
+    }
+
+    // 拟态牌视觉同步：手牌里完全变成最左那张（自己排到最左时显原形）
+    // 每次手牌变动（抽牌/弃牌/换位）都要调一遍
+    void SyncMimicVisuals()
+    {
+        if (HandCards == null || HandCards.Count == 0) return;
+        Card leftmost = HandCards[0];
+        for (int i = 0; i < HandCards.Count; i++)
+        {
+            Card c = HandCards[i];
+            if (c == null || !c.IsMimic) continue;
+            if (c == leftmost) c.RestoreFromMimic();   // 自己在最左 → 原图
+            else c.MimicInto(leftmost);                // 完全变成最左那张
+        }
     }
 
     // // 补手牌到 7 张（每轮结算完调用）
