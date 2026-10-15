@@ -11,17 +11,11 @@ public class ShopCard : MonoBehaviour, IShopFlyable
     public float hoverLift = 0.4f;      // 上浮高度
     public float hoverScale = 1.08f;    // 悬浮放大
 
-    [Header("购买价格")]
-    public float priceLabelHeight = 1.2f;   // 价格标签悬浮在卡上方多高
-
     Vector3 basePos;
     Vector3 baseScale;
     Coroutine hoverRoutine;
     Coroutine shakeRoutine;
     bool locked;   // 购买飞走后置真，悬浮逻辑全部停用
-
-    GameObject priceLabel;                    // 悬浮价格标签（懒创建）
-    TMPro.TextMeshPro priceTmp;
 
     void Start()
     {
@@ -43,20 +37,26 @@ public class ShopCard : MonoBehaviour, IShopFlyable
         basePos = transform.position;
     }
 
-    // 悬浮：上浮 + 微放大 + 显示价格；移开：回落复位 + 隐藏价格
+    // 悬浮：上浮 + 微放大；移开：回落复位 + 让赌博杯子复位
     void OnMouseEnter()
     {
         if (locked || !InShop() || GameProgress.InputLocked) return;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
         hoverRoutine = StartCoroutine(HoverAnim(basePos + Vector3.up * hoverLift, hoverScale));
-        if (GameProgress.currentNodeType == MapNodeType.Shop) ShowPriceLabel();   // 价格只在真商店弹，强化界面不弹
+        if (GameProgress.currentNodeType == MapNodeType.Shop)
+        {
+            // 悬浮时让魔术帽里飘出当前卡所需的骰子数
+            Card card = GetComponent<Card>();
+            if (card != null && card.Data != null && ShopManager.Instance != null)
+                ShopManager.Instance.ShowDiceCup(card.Data.price);
+        }
     }
     void OnMouseExit()
     {
         if (locked || !InShop()) return;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
         hoverRoutine = StartCoroutine(HoverAnim(basePos, 1f));
-        HidePriceLabel();
+        if (ShopManager.Instance != null) ShopManager.Instance.HideDiceCup();
     }
     IEnumerator HoverAnim(Vector3 toPos, float toScale)
     {
@@ -70,40 +70,8 @@ public class ShopCard : MonoBehaviour, IShopFlyable
             float p = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t));
             transform.position = Vector3.Lerp(fromPos, toPos, p);
             transform.localScale = Vector3.Lerp(fromScale, baseScale * toScale, p);
-            // 价格标签一直贴在卡上方
-            if (priceLabel != null && priceLabel.activeSelf)
-                priceLabel.transform.position = transform.position + Vector3.up * priceLabelHeight;
             yield return null;
         }
-    }
-
-    // 显示这张卡的售价（世界空间 TMP，面向相机，懒创建）
-    void ShowPriceLabel()
-    {
-        Card card = GetComponent<Card>();
-        if (card == null || card.Data == null) return;
-
-        if (priceLabel == null)
-        {
-            priceLabel = new GameObject("PriceLabel");
-            priceTmp = priceLabel.AddComponent<TMPro.TextMeshPro>();
-            priceTmp.fontSize = 5f;
-            priceTmp.fontStyle = TMPro.FontStyles.Bold;
-            priceTmp.alignment = TMPro.TextAlignmentOptions.Center;
-            priceTmp.sortingOrder = 50;
-            priceTmp.color = new Color(1f, 0.85f, 0.3f);   // 金色，和骰子/结算数字呼应
-            priceTmp.transform.localScale = Vector3.one*2;
-        
-        }
-        if (Camera.main != null)
-            priceLabel.transform.rotation = Camera.main.transform.rotation;
-        priceTmp.text = card.Data.price.ToString();
-        priceLabel.transform.position = transform.position + Vector3.up * priceLabelHeight;
-        priceLabel.SetActive(true);
-    }
-    void HidePriceLabel()
-    {
-        if (priceLabel != null) priceLabel.SetActive(false);
     }
 
     // 骰子不够：卡左右晃一下表示拒绝
@@ -130,6 +98,7 @@ public class ShopCard : MonoBehaviour, IShopFlyable
         locked = true;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
         transform.localScale = baseScale;
+        if (ShopManager.Instance != null) ShopManager.Instance.HideDiceCup();
     }
 
     public void OnClick()
@@ -139,18 +108,22 @@ public class ShopCard : MonoBehaviour, IShopFlyable
         Card card = GetComponent<Card>();
         if (card == null || card.Data == null) return;
 
-        // 骰子不够：左右晃一下拒绝，不购买
-        if (GameProgress.dice < card.Data.price)
+        // 骰子不够：左右晃一下拒绝，不购买 + 敌人开口说你付不起（开挂=无限骰子，跳过判断）
+        if (!GameProgress.cheatMode && GameProgress.dice < card.Data.price)
         {
             if (shakeRoutine != null) StopCoroutine(shakeRoutine);
             shakeRoutine = StartCoroutine(ShakeAnim());
+            if (ShopManager.Instance != null) ShopManager.Instance.HintCantAfford(card.Data.price - GameProgress.dice);
             return;
         }
 
-        GameProgress.dice -= card.Data.price;   // 扣骰子
-        if (TOPhat.Instance != null) TOPhat.Instance.RefreshCount();   // 帽子计数同步
+        if (!GameProgress.cheatMode)   // 开挂：不扣骰子
+        {
+            GameProgress.dice -= card.Data.price;
+            if (TOPhat.Instance != null) TOPhat.Instance.RefreshCount();   // 帽子计数同步
+            if (ShopManager.Instance != null) ShopManager.Instance.ShowDiceLine();   // 报数同步到新余额
+        }
 
-        HidePriceLabel();
         StopHover();
         DeckManager.Instance.AddToDeck(card.Data);
         Debug.Log("已购买卡牌：" + card.Data.name + "，花费骰子 " + card.Data.price);

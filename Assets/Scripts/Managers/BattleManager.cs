@@ -72,6 +72,36 @@ public class BattleManager : Singleton<BattleManager>
         Debug.Log($"[道具] 下回合多抽 {n} 张");
     }
 
+    // ---- N 回合后多抽牌的挂账（卡牌强化"点数个回合后"用）----
+    private class PendingDraw
+    {
+        public int turnsLeft;   // 还剩几回合到账
+        public int amount;      // 到账时多抽几张
+    }
+    private List<PendingDraw> pendingDraws = new();
+
+    // 挂账：turns 个回合后多抽 amount 张
+    public void AddDrawAfterTurns(int turns, int amount)
+    {
+        pendingDraws.Add(new PendingDraw { turnsLeft = turns, amount = amount });
+        Debug.Log($"[强化挂账] {turns} 回合后多抽 {amount} 张");
+    }
+
+    // 每回合开始倒计时：到 0 的当回合加抽（必须跑在 need += drawBonusNextTurn 之前）
+    private void TickPendingDraws()
+    {
+        for (int i = pendingDraws.Count - 1; i >= 0; i--)
+        {
+            pendingDraws[i].turnsLeft--;
+            if (pendingDraws[i].turnsLeft <= 0)
+            {
+                Debug.Log($"[强化到账] 多抽 {pendingDraws[i].amount} 张");
+                drawBonusNextTurn += pendingDraws[i].amount;
+                pendingDraws.RemoveAt(i);
+            }
+        }
+    }
+
     // 道具卡效果：本次出牌多 n 点伤害
     public void AddDamageBonus(int n)
     {
@@ -134,6 +164,7 @@ public class BattleManager : Singleton<BattleManager>
         resolving = false;
         endTurnRequested = false;
         PointsLeft = pointsPerTurn;
+        pendingDraws.Clear();   // 跨关清账：上关没到账的"N 回合后多抽"不带进下一关
         BattleView.Instance.ClearGhosts();
         BattleView.Instance.ClearSelection();
         if (BattleView.Instance.scoreBoard != null)
@@ -228,6 +259,7 @@ public class BattleManager : Singleton<BattleManager>
             GameProgress.transitioning = false;
             // 延时效果在补牌恢复点数之前执行
             FlushDelayedEffects();
+            TickPendingDraws();   // N 回合后抽牌的挂账倒计时（到 0 当回合生效）
             PointsLeft = pointsPerTurn + pointBonusNextTurn;   // 每回合点数补满（含手牌挂账的额外点数）
             Debug.Log($"[回合开始] 点数补满 {pointsPerTurn} + 挂账{pointBonusNextTurn} = {PointsLeft}");
             pointBonusNextTurn = 0;
@@ -297,6 +329,15 @@ public class BattleManager : Singleton<BattleManager>
             {
                 if (c != null && c.Data != null && c.Data.effects != null && c.Data.effects.Count > 0)
                     c.ApplyEffects();
+            }
+        }
+        else   // 弃牌：触发"弃置时"效果（OnDiscard），打出效果不走
+        {
+            foreach (Card c in cards)
+            {
+                if (c == null || c.Data == null || c.Data.effects == null) continue;
+                foreach (var e in c.Data.effects)
+                    if (e != null) e.OnDiscard((int)c.Data.rank);
             }
         }
 
@@ -376,6 +417,7 @@ public class BattleManager : Singleton<BattleManager>
         if (playData.intent == EnemyIntentType.Check || playData.intent == EnemyIntentType.Fold)
         {
             Debug.Log("[敌人] " + playData.intent + "，跳过攻击");
+            Narrator.Hide();   // 敌人行动了，意图气泡收掉
             EnemyController.Instance.ExecuteSelectedBehavior();  // 触发意图独有效果
             yield return new WaitForSeconds(0.4f);
             EnemyController.Instance.PrepareIntent();
@@ -407,6 +449,7 @@ public class BattleManager : Singleton<BattleManager>
         damage = Mathf.Max(1, damage);     
 
         // 演出
+        Narrator.Hide();   // 敌人出牌了，意图气泡收掉
         yield return BattleView.Instance.PlayEnemyResolveSequence(playData, type, damage, coreIndices, atkMult, preDamage);
 
         // 游戏逻辑：敌人直接扣玩家筹码（无护盾），扣掉的进主池

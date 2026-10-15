@@ -1,6 +1,5 @@
 using System.Collections;
 using UnityEngine;
-using TMPro;
 
 /// <summary>
 /// 小丑实体：商店里待售的小丑挂卡，买后飞到钩子上，没买飞回牌堆消失。
@@ -13,8 +12,7 @@ public class HookCard : MonoBehaviour, IShopFlyable
     [Header("悬浮反馈")]
     public float hoverLift = 0.4f;      // 上浮高度
     public float hoverScale = 1.08f;    // 悬浮放大
-     [Header("悬浮提示")]
-    public GameObject tooltip; 
+
     Vector3 basePos;
     Vector3 baseScale;
     Coroutine hoverRoutine;
@@ -48,16 +46,11 @@ public class HookCard : MonoBehaviour, IShopFlyable
     void OnMouseOver()
     {
         if (Input.GetMouseButtonDown(1))
-        {
-            if (Data == null || tooltip == null) return;
-            string desc = string.IsNullOrEmpty(Data.description) ? "" : "\n<size=80%>" + Data.description;
-            tooltip.GetComponentInChildren<TextMeshPro>().text = "<b>" + Data.jokerName + "</b>" + desc;
-            tooltip.SetActive(true);
-        }
+            PhoneDisplay.Instance.ShowJoker(Data);   // 小丑说明投到手机屏幕上
     }
     void OnMouseExit()
     {
-        if (tooltip != null) tooltip.SetActive(false);
+        PhoneDisplay.Instance.SlideBack();   // 移开小丑卡，手机滑回起点
         if (locked) return;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
         hoverRoutine = StartCoroutine(HoverAnim(basePos, 1f));

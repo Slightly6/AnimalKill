@@ -22,10 +22,21 @@ public class NarratorBubble : Singleton<NarratorBubble>, IPointerClickHandler
     private void Start()
     {
         EventBus.Subscribe<SayEvent>(OnSay);
+        EventBus.Subscribe<NarratorHideEvent>(OnHide);
     }
     private void OnDestroy()
     {
         EventBus.Unsubscribe<SayEvent>(OnSay);
+        EventBus.Unsubscribe<NarratorHideEvent>(OnHide);
+    }
+
+    // 强制收气泡（敌人开始行动时；Sticky 台词靠这个消失）
+    private void OnHide(NarratorHideEvent e)
+    {
+        if (_routine != null) StopCoroutine(_routine);
+        _routine = null;
+        _isTyping = false;
+        group.alpha = 0f;
     }
 
     private void OnSay(SayEvent e)
@@ -57,9 +68,12 @@ public class NarratorBubble : Singleton<NarratorBubble>, IPointerClickHandler
         bodyText.text = _fullText;
         _isTyping = false;
 
-        // 停留后淡出
-        yield return new WaitForSecondsRealtime(holdDuration);
-        yield return FadeOut(0.4f);
+        // 停留后淡出；Sticky（敌人意图）跳过，亮到 OnHide 被调
+        if (!e.Sticky)
+        {
+            yield return new WaitForSecondsRealtime(holdDuration);
+            yield return FadeOut(0.4f);
+        }
 
         _routine = null;
     }

@@ -13,6 +13,61 @@ public class ShopManager : Singleton<ShopManager>
     public float spacing = 1.5f;
     public Transform Anchor; 
     public List<Transform> shopCards=new List<Transform>();
+
+    private Coroutine cantAffordRoutine;   // "买不起"临时台词的倒计时
+    private Coroutine hideCupRoutine;      // 收骰子的延迟协程
+    private int currentHoverPrice = 0;     // 当前悬浮卡价；>0 表示骰子已经在帽子外飘着
+
+    // 商店常驻播报：敌人报出玩家当前持有的骰子数（进商店、买完都要调）
+    public void ShowDiceLine()
+    {
+        if (GameProgress.cheatMode)   // 开挂：骰子无限
+        {
+            Narrator.SayStickyText("开挂中：骰子无限");
+            return;
+        }
+        Narrator.SayStickyText("你持有的骰子数量为 " + GameProgress.dice);
+    }
+
+    // 买不起：报出还差多少，3 秒后自动变回持有骰子数
+    public void HintCantAfford(int shortfall)
+    {
+        Narrator.SayStickyText("你无法支付该卡的费用，还差 " + shortfall + " 个骰子");
+        if (cantAffordRoutine != null) StopCoroutine(cantAffordRoutine);
+        cantAffordRoutine = StartCoroutine(RevertToDiceLine());
+    }
+
+    IEnumerator RevertToDiceLine()
+    {
+        yield return new WaitForSecondsRealtime(3f);
+        cantAffordRoutine = null;
+        ShowDiceLine();
+    }
+
+    // 悬浮商店卡：魔术帽里飘出所需数量的骰子（数量 = 卡价）
+    public void ShowDiceCup(int price)
+    {
+        currentHoverPrice = price;
+        if (hideCupRoutine != null) { StopCoroutine(hideCupRoutine); hideCupRoutine = null; }
+        if (TOPhat.Instance != null) TOPhat.Instance.ShowHoverDice(price);
+    }
+
+    // 移开卡：骰子缩回帽子里。延迟一帧再收 —— 从 A 卡换到 B 卡时 Unity 会先触发 Exit 再触发 Enter
+    public void HideDiceCup()
+    {
+        currentHoverPrice = 0;
+        if (hideCupRoutine != null) StopCoroutine(hideCupRoutine);
+        hideCupRoutine = StartCoroutine(HideCupNextFrame());
+    }
+
+    IEnumerator HideCupNextFrame()
+    {
+        yield return null;                    // 等一帧，看有没有新卡接手
+        hideCupRoutine = null;
+        if (currentHoverPrice > 0) yield break;   // 已被新卡接管，不收
+        if (TOPhat.Instance != null) TOPhat.Instance.HideHoverDice();
+    }
+
     public void CardPoolInit()
     {
         
@@ -20,6 +75,7 @@ public class ShopManager : Singleton<ShopManager>
         int shopSize = Mathf.Min(maxShopSize, CardsPool.Count);
         
         GetPlayPositions(cardPrefab,shopSize,0);
+        ShowDiceLine();   // 进商店先报一次持有骰子数
     }
     public void JokerPoolInit()
     {

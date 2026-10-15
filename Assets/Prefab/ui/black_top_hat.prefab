@@ -94,7 +94,6 @@ GameObject:
   - component: {fileID: 3656711155501092476}
   - component: {fileID: 4520770711182449858}
   - component: {fileID: 3749862613993108221}
-  - component: {fileID: 4202724303359177097}
   m_Layer: 0
   m_Name: Text (TMP)
   m_TagString: Untagged
@@ -255,20 +254,6 @@ MonoBehaviour:
   m_hasFontAssetChanged: 0
   m_renderer: {fileID: 4520770711182449858}
   m_maskType: 0
---- !u!114 &4202724303359177097
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1484753780806665204}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e9eb385dd8313c948bfee18678f7752e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  radius: 0.5
-  arcOffset: 0
 --- !u!1 &3378999489213802293
 GameObject:
   m_ObjectHideFlags: 0
@@ -477,7 +462,6 @@ GameObject:
   - component: {fileID: 8805512324279221561}
   - component: {fileID: 3230024428364588867}
   - component: {fileID: 8394291156881487545}
-  - component: {fileID: 3446562224509680766}
   m_Layer: 0
   m_Name: black_top_hat
   m_TagString: Untagged
@@ -543,25 +527,11 @@ MonoBehaviour:
   CenterOffset: {x: 5, y: -0.6, z: -5}
   sai: 0
   nodePrefab: {fileID: 4305982859382548592, guid: 1867d0434bae88f43956c71283cb977f, type: 3}
+  fallCatchTime: 0.5
+  hatRadius: 0.3
+  startHeight: 13
+  emergeHeight: 0.8
+  emergeTime: 0.28
+  emergeStagger: 0.05
+  dieSpacing: 0.18
   countText: {fileID: 3749862613993108221}
---- !u!65 &3446562224509680766
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8176468066336302979}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 12, y: 4.7252016, z: 12}
-  m_Center: {x: 0, y: 9.683847, z: 0}

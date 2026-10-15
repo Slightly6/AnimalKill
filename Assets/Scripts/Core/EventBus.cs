@@ -179,7 +179,10 @@ public struct SayEvent
     public string Speaker;
     public string Text;
     public SpeakTopic Topic;
+    public bool Sticky;   // true = 打字完不自动淡出，等人调 Hide（敌人意图用）
 }
+
+public struct NarratorHideEvent { }   // 强制收掉旁白气泡
 
 
 

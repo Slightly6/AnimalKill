@@ -186,6 +186,7 @@ public class MapManager : Singleton<MapManager>
 
             case MapNodeType.Shop:
                 clearshopCards();
+                Narrator.Hide();   // 收掉商店常驻的"持有骰子数"播报，别跟着飘到地图
                 // 清商品
                 // DestroySpawned("Goods");
                 break;
@@ -254,6 +255,7 @@ public class MapManager : Singleton<MapManager>
         ShopManager.Instance.CardPoolInit();
         ShopManager.Instance.JokerPoolInit();
         if (CameraRig.Instance != null) CameraRig.Instance.JumpToIndex(1);
+        if (TOPhat.Instance != null) TOPhat.Instance.StartCoroutine(TOPhat.Instance.PlayEnter());   // 帽子甩出来，悬浮卡冒骰子从它这儿出
     }
 
     void Chest()
@@ -273,6 +275,7 @@ public class MapManager : Singleton<MapManager>
     public void FinishNonBattleNode()
     {
         ClearSpawnedNonBattleObjects();
+        if (TOPhat.Instance != null) TOPhat.Instance.StartCoroutine(TOPhat.Instance.PlayExit());   // 帽子甩回常驻位
         SaveManager.Instance.Save();   // 买完/选完立即存，不必等下一关打完（桌上实体被扫进存档）
         OpenMapUI();
     }
@@ -282,8 +285,8 @@ public class MapManager : Singleton<MapManager>
     {
         
         //筹码区
-        if(playerChips!=null) playerChips.ClearLedger();
-        else foreach (Chips stack in FindObjectsOfType<Chips>())stack.ClearLedger();
+        // 我的筹码不还池：整个跑局都在同一场景，玩家筹码堆跨关保留原样，
+        // 下一关 ChipsChangedEvent 报同样的数，SetCount 不会动它（不重掉一遍开场下筹码雨）
         if(enemyChips!=null) enemyChips.ClearLedger();
         if(potArea!=null) potArea.ClearCoins();
         else FindObjectOfType<PotArea>().ClearCoins();

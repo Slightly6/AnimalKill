@@ -35,8 +35,14 @@ public class GameManager : Singleton<GameManager>
     public int takeLimit = 200;           // 回血上限（超出留在 Pot）
     public int sidePotCap = 50;           // 边池上限
     public float discardPotRatio = 0.5f;  // 弃牌进 Pot 比例
+
+    [Header("过关骰子奖励（按节点类型给固定值，主池不再换骰子）")]
+    public int smallBlindDice = 3;   // 小盲注（Monster）
+    public int bigBlindDice = 5;     // 大盲注（Elite）
+    public int bossDice = 8;         // Boss
+
     private bool deathSequenceRunning = false;  // 玩家打光敌人筹码后，死亡流程正在进行中，防止重复触发
-    public int toDice;                    // 本关结算时主池换骰子数
+    public int toDice;                    // 本关过关奖励的骰子数（按节点类型算）
 
     public bool IsGameOver { get; private set; }
 
@@ -227,15 +233,23 @@ public class GameManager : Singleton<GameManager>
         });
     }
 
-    // 关结束分账：主池筹码全部清空，按 1/10 汇率转骰子（10 筹码 = 1 骰子，余数舍掉）
-    // 注意：边池不再有进账，只剩开局值+跨关剩余；回血渠道后期由商店骰子消费承接
+    // 过关骰子奖励：按当前节点类型给固定值（小盲注 3 / 大盲注 5 / Boss 8，数值可在 Inspector 调）
+    private int GetClearDiceReward()
+    {
+        switch (GameProgress.currentNodeType)
+        {
+            case MapNodeType.Elite: return bigBlindDice;
+            case MapNodeType.Boss:  return bossDice;
+            default:                return smallBlindDice;   // Monster = 小盲注
+        }
+    }
+
+    // 关结束分账：主池清空（不再换骰子），过关骰子按节点类型另发
     private void SettlePot()
     {
-        if (PotChips <= 0) return;
-
         GameProgress.dice += toDice;
 
-        Debug.Log("[关结束分账] 主池 " + PotChips + " → 骰子+" + toDice + "，当前骰子 " + GameProgress.dice);
+        Debug.Log("[关结束分账] " + GameProgress.currentNodeType + " 过关 → 骰子+" + toDice + "，当前骰子 " + GameProgress.dice);
 
         PotChips = 0;
         SendChipsChanged();   // 主池清零，刷新 PotArea 显示
@@ -249,6 +263,7 @@ public class GameManager : Singleton<GameManager>
             EnemyChips = 0;
             if (deathSequenceRunning) return;
             deathSequenceRunning = true;
+            Narrator.Hide();   // 敌人已死，收掉残留的意图气泡（"我想要弃牌"之类）
             BattleQueue.Instance.Until(() => !GameProgress.chipFly, 15f);
             BattleQueue.Instance.Run(DeathSequenceRoutine());   // 一个协程搞定后面所有
         }
@@ -262,8 +277,8 @@ public class GameManager : Singleton<GameManager>
     }
     private IEnumerator DeathSequenceRoutine()
     {
-        // 1. 算骰子、结算（此时前面的队列项都完成了，toDice 是新值）
-        toDice = PotChips / 10;
+        // 1. 算过关骰子（按节点类型固定值）、结算
+        toDice = GetClearDiceReward();
         SettlePot();
         GameProgress.playerChips = PlayerChips;
         GameProgress.sidePotChips = SidePotChips;

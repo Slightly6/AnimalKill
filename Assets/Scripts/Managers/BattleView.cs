@@ -75,18 +75,15 @@ public class BattleView : Singleton<BattleView>
 
     private void OnEnemyIntentChanged(EnemyIntentChangedEvent e)
     {
-        if(e.intent == EnemyIntentType.Check)
-        {
-            Narrator.Say(SpeakTopic.Check);
-        }
-        else if(e.intent == EnemyIntentType.Call)
-        {
-            Narrator.Say(SpeakTopic.Call);
-        }
-        else if(e.intent == EnemyIntentType.Raise)
-        {
-            Narrator.Say(SpeakTopic.Raise);
-        }
+        // 敌人意图常驻显示：亮到敌人行动才消失（Narrator.Hide）
+        if (e.intent == EnemyIntentType.Check)
+            Narrator.SaySticky(SpeakTopic.Check);
+        else if (e.intent == EnemyIntentType.Call)
+            Narrator.SaySticky(SpeakTopic.Call);
+        else if (e.intent == EnemyIntentType.Raise)
+            Narrator.SaySticky(SpeakTopic.Raise);
+        else if (e.intent == EnemyIntentType.Fold)
+            Narrator.SaySticky(SpeakTopic.Fold);
         Debug.Log("[敌人意图显示] " + e.intent);
     }
 

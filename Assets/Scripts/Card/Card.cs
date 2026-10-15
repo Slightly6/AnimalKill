@@ -71,8 +71,6 @@ public class Card : MonoBehaviour
     private MaterialPropertyBlock propBlock;// 材质属性块
     private float selectGlow;      // 选中扫光 平滑到 0/1
     private const string SHADER_NAME = "Custom/PlayingCard";
-    [Header("悬浮提示")]
-    public GameObject tooltip; 
 
     CardEffectBells effectBells;   // 效果铃铛标记（预制体上没挂 = null，不影响）
 
@@ -347,16 +345,12 @@ public class Card : MonoBehaviour
         {
             if (effectBells != null && effectBells.HoveringBell) return;   // 右键点在铃铛上，让铃铛自己显示效果说明
 
-            Card card = GetComponent<Card>();
-            if (card == null || card.Data == null || tooltip == null) return;
-
-            string desc = string.IsNullOrEmpty(card.Data.description) ? "" : "\n<size=80%>" + card.Data.description;
-            tooltip.GetComponentInChildren<TextMeshPro>().text = "<b>" + card.Data.abilityName + "</b>" + desc;
-            tooltip.SetActive(true);
+            if (Data == null) return;
+            PhoneDisplay.Instance.ShowCard(Data);   // 卡牌信息投到手机屏幕上
         }
     }
     void OnMouseExit()
     {
-        if (tooltip != null) tooltip.SetActive(false);
+        PhoneDisplay.Instance.SlideBack();   // 移开卡牌，手机滑回起点
     }
 }

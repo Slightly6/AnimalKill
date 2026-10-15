@@ -20,7 +20,11 @@ public enum SpeakTopic
     //战斗中敌人出牌操作显示
     Check,//过牌加筹码
     Call,//攻击
-    Raise//加强
+     Raise,//加强
+    Fold,//弃牌跳过
+
+    //商店
+    ShopCantAfford//骰子不够，买不起
 
 }
 
@@ -41,6 +45,8 @@ public static class NarratorLines
         { SpeakTopic.Check,            new[] { "我选择过牌。" } },
         { SpeakTopic.Call,             new[] { "我想要出牌。" } },
         { SpeakTopic.Raise,            new[] { "我想要加强。" } },
+        { SpeakTopic.Fold,             new[] { "我打算弃牌。" } },
+        { SpeakTopic.ShopCantAfford,   new[] { "你支付不起这张卡的费用。", "骰子不够，付不起。" } },
     };
 
     public static string GetRandom(SpeakTopic topic)
