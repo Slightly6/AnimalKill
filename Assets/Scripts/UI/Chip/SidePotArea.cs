@@ -67,8 +67,8 @@ public class SidePotArea : MonoBehaviour
 
     private void OnChipsChanged(ChipsChangedEvent e)
     {
-        // 边池只听边池数量：回血时 SidePotChips 变小 → LoseCoinsRoutine 飞向玩家堆
-        SetCount(e.sidePotChips);
+        // 【边池机制暂时关闭】不响应边池数量：既不从池子生成筹码，也不往玩家堆飞
+        // SetCount(e.sidePotChips);
     }
 
     public void SetCount(int newCount)

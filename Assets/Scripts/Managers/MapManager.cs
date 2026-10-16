@@ -227,9 +227,7 @@ public class MapManager : Singleton<MapManager>
         list.Clear();
 
         foreach (var c in coroutines) if (c != null) yield return c;
-        OpenMapUI();
     }
-
 
     // 商店/奖励关/休息（非战斗节点）
     void EnterNonBattleNode()
@@ -255,7 +253,7 @@ public class MapManager : Singleton<MapManager>
         ShopManager.Instance.CardPoolInit();
         ShopManager.Instance.JokerPoolInit();
         if (CameraRig.Instance != null) CameraRig.Instance.JumpToIndex(1);
-        if (TOPhat.Instance != null) TOPhat.Instance.StartCoroutine(TOPhat.Instance.PlayEnter());   // 帽子甩出来，悬浮卡冒骰子从它这儿出
+        if (TOPhat.Instance != null) TOPhat.Instance.EnterShop();   // 帽子甩出来，悬浮卡冒骰子从它这儿出
     }
 
     void Chest()
@@ -271,11 +269,21 @@ public class MapManager : Singleton<MapManager>
             RestManager.Instance.SpawnRestOptions();
     }
 
-    // ========== 商店买完 / 宝箱选完：不切场景，卷轴重新掉下来选下一关 ==========
+    // ========== 商店买完 / 宝箱选完：不切场景，帽子原路回去后卷轴再掉下来选下一关 ==========
     public void FinishNonBattleNode()
     {
+        StartCoroutine(FinishNonBattleNodeRoutine());
+    }
+
+    IEnumerator FinishNonBattleNodeRoutine()
+    {
         ClearSpawnedNonBattleObjects();
-        if (TOPhat.Instance != null) TOPhat.Instance.StartCoroutine(TOPhat.Instance.PlayExit());   // 帽子甩回常驻位
+        // 帽子在外面（进过商店）就先完整演一遍原路返回，等它回到常驻位再开卷轴，避免相机立刻切走把回程盖掉
+        if (TOPhat.Instance != null && TOPhat.Instance.IsOutside)
+        {
+            TOPhat.Instance.ExitShop();
+            yield return TOPhat.Instance.WaitIdle();
+        }
         SaveManager.Instance.Save();   // 买完/选完立即存，不必等下一关打完（桌上实体被扫进存档）
         OpenMapUI();
     }
@@ -283,15 +291,23 @@ public class MapManager : Singleton<MapManager>
     // 过关：K（章节 Boss）→ 解锁下一章 / 胜利；普通关 → 卷轴掉下来
     void OnLevelCleared(LevelClearedEvent e)
     {
-        
+        // 开挂「跳过此关」在商店里按：这是非战斗节点，没有战斗结算/强化三选一，
+        // 按正常离场收场（商品清场 → 帽子原路返回 → 开卷轴），否则帽子会永远留在商店位
+        if (GameProgress.currentNodeType == MapNodeType.Shop)
+        {
+            FinishNonBattleNode();
+            return;
+        }
+
         //筹码区
         // 我的筹码不还池：整个跑局都在同一场景，玩家筹码堆跨关保留原样，
         // 下一关 ChipsChangedEvent 报同样的数，SetCount 不会动它（不重掉一遍开场下筹码雨）
         if(enemyChips!=null) enemyChips.ClearLedger();
         if(potArea!=null) potArea.ClearCoins();
         else FindObjectOfType<PotArea>().ClearCoins();
-        if(playerSidePot!=null) playerSidePot.ClearLedger();
-        else FindObjectOfType<SidePotArea>().ClearLedger();
+        // 【边池机制关闭】边池不再有筹码实体，不用清场
+        // if(playerSidePot!=null) playerSidePot.ClearLedger();
+        // else FindObjectOfType<SidePotArea>().ClearLedger();
         
         //手牌区
         DeckManager.Instance.ClearHandObjects();  // 删玩家手牌
@@ -318,7 +334,7 @@ public class MapManager : Singleton<MapManager>
             GameProgress.currentSuit++;   // 解锁下一章（卷轴打开时会检测 suit 变化自动生成新章地图）
         }
 
-        if (CameraRig.Instance != null) CameraRig.Instance.JumpToIndex(1);   // 先回第一视角，再摆强化三选一
+        // 相机不动（留在战斗视角看宝箱砸桌开盖），宝箱开完盖 EnhanceManager 才切强化视角
         EnhanceManager.Instance.Show(AfterEnhance);   // 强化三选一：选完补存档再开卷轴
     }
 

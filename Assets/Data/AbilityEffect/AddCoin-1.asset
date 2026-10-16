@@ -14,4 +14,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   timing: 2
   bellIcon: {fileID: -2313717586436924124, guid: 77e6eb440c9160049bb2081768d92465, type: 3}
+  bellPrefab: {fileID: 5435789299415402666, guid: 06179c542d61e764aa9ad9f6ffa1c9d5, type: 3}
+  description: "\u4E0B\u56DE\u5408\u591A\u52A0\u4E00\u91D1\u5E01"
   addCoin: 1

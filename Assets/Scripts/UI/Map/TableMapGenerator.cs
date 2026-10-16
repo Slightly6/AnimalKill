@@ -58,6 +58,11 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
     [Tooltip("线头距节点中心的截短距离：线硬停在节点图标边缘（世界单位，0=不截短）")]
     [SerializeField, Min(0f)] private float lineEndpointInset = 0.35f;
 
+    [Header("虚线（dashed 打开后忽略 lineMaterial，用运行时生成的虚线纹理）")]
+    [SerializeField] private bool dashed = true;        // true=虚线；false=实线（用 lineMaterial）
+    [SerializeField, Min(0.01f)] private float dashLength = 0.28f;  // 每段实线长度（世界单位）
+    [SerializeField, Min(0.01f)] private float gapLength = 0.18f;   // 每段间隔长度（世界单位）
+
     [Header("地图尺寸")]
     [SerializeField, Min(1f)] private float mapWidth = 8f;         // 纸面宽度（X）
     [SerializeField, Min(1f)] private float mapLength = 12f;       // 纸面长度（Z，行方向）
@@ -154,7 +159,6 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
     public void GenerateMap()
     {
         ClearGeneratedObjects();
-
         bool hasExistingMap =
             GameProgress.mapGenerated &&
             GameProgress.mapSuit == GameProgress.currentSuit &&
@@ -201,6 +205,14 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
 
         // 地图铺开后，相机自动滚到当前节点所在行（打到哪关看哪关）
         AlignCameraToCurrentNode();
+    }
+
+    // 调概率用：无视已有地图/存档，强制重抽一张新图（右键组件菜单调）
+    [ContextMenu("Force Regenerate Map")]
+    public void ForceRegenerateMap()
+    {
+        GameProgress.mapGenerated = false;
+        GenerateMap();
     }
 
     /// <summary>
@@ -944,7 +956,11 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
         line.numCapVertices = 4;
         line.numCornerVertices = 4;
 
-        if (lineMaterial != null)
+        if (dashed)
+        {
+            line.sharedMaterial = GetDashedLineMaterial();
+        }
+        else if (lineMaterial != null)
         {
             line.sharedMaterial = lineMaterial;
         }
@@ -979,8 +995,48 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
         start.y -= nodeHeight * 0.5f;   // 略低于节点，防止穿过图标
         end.y -= nodeHeight * 0.5f;
 
+        // 虚线：按这条线截短后的实际长度算纹理重复次数，所有线的实段/间隔世界长度才一致
+        if (dashed)
+        {
+            float period = Mathf.Max(0.01f, dashLength + gapLength);
+            float repeat = Mathf.Max(1f, drawnLength / period);
+            var block = new MaterialPropertyBlock();
+            block.SetVector("_MainTex_ST", new Vector4(repeat, 1f, 0f, 0f));
+            line.SetPropertyBlock(block);
+        }
+
         line.SetPosition(0, start);
         line.SetPosition(1, end);
+    }
+
+    // 虚线材质（全图共用一份）：运行时生成一段"前实后空"的周期纹理，Repeat 包裹；
+    // 每条线各自的重复次数通过 MaterialPropertyBlock 改 _MainTex_ST，不用一线一材质
+    private Material dashedLineMaterial;
+    private Material GetDashedLineMaterial()
+    {
+        if (dashedLineMaterial != null) return dashedLineMaterial;
+
+        Shader spriteShader = Shader.Find("Sprites/Default");
+        if (spriteShader == null) return null;
+
+        const int w = 64, h = 4;
+        float period = Mathf.Max(0.01f, dashLength + gapLength);
+        int dashPx = Mathf.RoundToInt(w * Mathf.Clamp01(dashLength / period));
+
+        var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Repeat;
+        tex.filterMode = FilterMode.Bilinear;
+
+        var pixels = new Color32[w * h];
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+                pixels[y * w + x] = x < dashPx ? new Color32(255, 255, 255, 255) : new Color32(0, 0, 0, 0);
+        tex.SetPixels32(pixels);
+        tex.Apply();
+
+        dashedLineMaterial = new Material(spriteShader);
+        dashedLineMaterial.mainTexture = tex;
+        return dashedLineMaterial;
     }
 
     // 点击节点入口：校验 → 标 visited → 存档 → 清节点卷起地图（后期在这里接 EnterNodeByType）
@@ -1081,7 +1137,8 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
         float value = RandomValue();
 
         if (value < 0.20f) return MapNodeType.Monster;
-        if (value<0.66f) return MapNodeType.Rest;
+        if (value < 0.30f) return MapNodeType.Elite;
+        if (value<0.66f) return MapNodeType.Rest;                   //-----------节点生成概率-------------
         if (value < 0.99f) return MapNodeType.Shop;        // 12%
         return MapNodeType.Treasure;                        // 8%
     }

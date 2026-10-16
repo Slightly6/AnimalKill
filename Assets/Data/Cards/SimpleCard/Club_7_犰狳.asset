@@ -12,11 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c24f5aa9dbdbe3468b022dc770b2e83, type: 3}
   m_Name: "Club_7_\u72B0\u72F3"
   m_EditorClassIdentifier: 
+  cardType: 0
   suit: 3
   rank: 7
-  animalName: "\u72B0\u72F3"
-  description: "\u6218\u529B 7"
+  faceTexture: {fileID: -8328923581568760697, guid: c6d329b73e242df49832d793ee490eed, type: 3}
+  effects: []
   abilityName: 
-  abilityIcon: {fileID: 0}
-  awakenedAbility: {fileID: 0}
-  artwork: {fileID: 0}
+  description: "\u6218\u529B 7"
+  effectType: 0
+  rarity: 0
+  price: 0
+  itemCost: 1
+  isMimic: 0

@@ -13,7 +13,7 @@ public class TOPhat : Singleton<TOPhat>
     public GameObject nodePrefab;      // Inspector 里拖 Prefab 进来
 
     [Header("关卡结束掉骰子（露出个头就销毁）")]
-    public float fallCatchTime = 0.5f;    // 从帽上方落到帽口要多久，到点就销毁
+    public float fallCatchTime = 0.4f;    // 从帽上方落到帽口要多久，到点就销毁
 
     [Header("商店悬浮卡：从帽子里冒骰子")]
     public float hatRadius = 0.3f;        // 冒出的横向范围（略小于帽子内径）
@@ -35,6 +35,7 @@ public class TOPhat : Singleton<TOPhat>
     private readonly List<Transform> hoverDice = new List<Transform>();   // 现在浮在帽子外面的骰子
     private readonly List<int> hoverCells = new List<int>();              // 每颗骰子领的格号，和 hoverDice 一一对应
     private Coroutine hoverRoutine;    // "往上冒"的协程（换卡时要停掉重来）
+    private Coroutine motionRoutine;   // 帽子进/出商店的主协程（防重入：进场没跑完就走，先停旧的）
     private float currentAngle = 180f; // 帽子当前角度（180 = 常驻位，90 = 甩出来的位置）
 
     // 格点发放：帽口圆面按 dieSpacing 切格子，一格一颗 —— 格距不小于骰子直径，任意两颗都没有重合部分
@@ -382,6 +383,29 @@ public class TOPhat : Singleton<TOPhat>
         yield return MoveTo(ArcPos(currentAngle));
         yield return SwingTo(180f);
         IsBusy = false;
+        motionRoutine = null;
+    }
+
+    // 帽子是否在常驻位之外（进过商店 / 进场动画还没回来）。MapManager 据此决定要不要演回程
+    public bool IsOutside => !Mathf.Approximately(currentAngle, 180f);
+
+    // 统一入口：重启进/出主协程，防止进场没跑完就触发出场，两个协程抢 transform
+    public void EnterShop()
+    {
+        if (motionRoutine != null) StopCoroutine(motionRoutine);
+        motionRoutine = StartCoroutine(PlayEnter());
+    }
+
+    public void ExitShop()
+    {
+        if (motionRoutine != null) StopCoroutine(motionRoutine);
+        motionRoutine = StartCoroutine(PlayExit());
+    }
+
+    // 等帽子当前的进/出动画跑完（收场时卷轴要等它回到位再打开）
+    public IEnumerator WaitIdle()
+    {
+        while (IsBusy) yield return null;
     }
 
     // 帽子平滑滑到目标点（进出商店落脚点用）

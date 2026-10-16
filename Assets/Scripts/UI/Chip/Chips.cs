@@ -92,9 +92,14 @@ public class Chips : MonoBehaviour
         int oldTargetCount = targetCount;
         targetCount = newCount;
 
-        // 之后数量增加：不从池子生成，新筹码由边池飞过来（ReceiveCoin）
-        if (newCount >= oldTargetCount)
+        // 数量增加（篝火回血/上限+5/道具/偷取）：边池机制关闭后没有筹码飞过来了，
+        // 新筹码直接从本堆上方排队掉进来（AddCoins 的掉落动画）
+        if (newCount > oldTargetCount)
+        {
+            int add = Mathf.Max(0, newCount - coins.Count);
+            if (add > 0) AddCoins(add);
             return;
+        }
 
         // 数量减少：从正式摞里掉
         if (targetCount < coins.Count && loseRoutine == null)
@@ -116,6 +121,7 @@ public class Chips : MonoBehaviour
     // 所有筹码从统一出生位置排队掉落：上一枚离开起点后下一枚才出发
     private IEnumerator AddCoinsRoutine(int amount)
     {
+        GameProgress.chipFly = true;   // 篝火等它掉完才收场（开局掉落期间也算飞行动画）
         Vector3 spawnPos = stackRoot.position + Vector3.up * dropHeight;
 
         for (int i = 0; i < amount; i++)
@@ -153,6 +159,7 @@ public class Chips : MonoBehaviour
             // 等上一枚离开出生位置再放下一枚
             yield return new WaitForSeconds(dropDuration * 0.1f);
         }
+        GameProgress.chipFly = false;
     }
 
     // 找当前筹码最少且未满的小摞；所有小摞都满后再开一组。

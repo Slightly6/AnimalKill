@@ -26,7 +26,7 @@ public class GameManager : Singleton<GameManager>
     // 主池：双方伤害+弃牌都进这里，关结束分账
     public int PotChips { get; private set; }
 
-    // 边池：关结束 Pot 分账的一部分，下关开局当血量
+    // 边池：【机制暂时关闭】数值恒为 0，不再开局发储备、不承接弃牌回血、篝火也不补它
     public int SidePotChips { get; private set; }
 
     [Header("双池参数")]
@@ -60,7 +60,8 @@ public class GameManager : Singleton<GameManager>
         // 同步上限：篝火升过的上限跨关保留
         startingPlayerChips = GameProgress.playerChipsMax;
         PlayerChips = GameProgress.playerChips;
-        SidePotChips = GameProgress.sidePotChips;
+        // 边池机制关闭：不再从存档恢复边池储备
+        // SidePotChips = GameProgress.sidePotChips;
 
         GameProgress.cheatMode = cheatMode;  // 开挂开关同步到全局（跨场景）
     }
@@ -84,16 +85,15 @@ public class GameManager : Singleton<GameManager>
     {
         EnemyChips = cfg.enemyConfig != null ? cfg.enemyConfig.Chips : cfg.enemyStartingChips;
 
-        // 上关 SettlePot 累加的边池保留到本关，本关可弃牌回血
-        // 第一关 SidePotChips 还是 0，下面赋初始值
-        SidePotChips = GameProgress.sidePotChips;
+        // 边池机制关闭：进关不再发放 50 枚边池储备，也不从存档继承
+        // SidePotChips = GameProgress.sidePotChips;
         PlayerChips = GameProgress.playerChips;
-        if (SidePotChips <= 0)
-            SidePotChips = startingSidePot;
+        // if (SidePotChips <= 0)
+        //     SidePotChips = startingSidePot;
         PotChips = 0;       // 主池每关重置
         Coin.Instance.initialized=true;
         SendChipsChanged();
-        Debug.Log("[关卡] 进入 " + cfg.levelName + "，敌人筹码 " + EnemyChips + "，边池 " + SidePotChips);
+        Debug.Log("[关卡] 进入 " + cfg.levelName + "，敌人筹码 " + EnemyChips);
     }
 
     // 整局胜利（MapManager 打完 52 关后调用）
@@ -170,14 +170,15 @@ public class GameManager : Singleton<GameManager>
         CheckWin();
     }
 
-    // 休息节点：按上限比例回复玩家筹码和边池（RestManager 点击筹码时调）
+    // 休息节点：只回复玩家筹码（边池机制关闭，不再补边池）；回满后再用 = 上限+5 并把这 5 点补满
     public void RestHeal(float ratio = 0.3f)
     {
         if (IsGameOver) return;
         int healChips = Mathf.RoundToInt(startingPlayerChips * ratio);
-        int healSide = Mathf.RoundToInt(sidePotCap * ratio);
+        // 边池机制关闭：篝火不再回复边池
+        // int healSide = Mathf.RoundToInt(sidePotCap * ratio);
         PlayerChips = Mathf.Min(PlayerChips + healChips, startingPlayerChips);
-        SidePotChips = Mathf.Min(SidePotChips + healSide, sidePotCap);
+        // SidePotChips = Mathf.Min(SidePotChips + healSide, sidePotCap);
 
         // 筹码加满了：上限+5，并把加的 5 也补满
         if (PlayerChips >= startingPlayerChips)
@@ -191,18 +192,19 @@ public class GameManager : Singleton<GameManager>
         SendChipsChanged();
     }
 
-    // 弃牌：暂时直接回血（牌型伤害 × 0.8）
+    // 弃牌：【边池机制关闭】弃牌不再回血，保留空壳供 BattleManager 调用，以后重做再填
     public void DiscardToPot(int cardDamage)
     {
-        if (IsGameOver) return;
-        int heal = Mathf.RoundToInt(cardDamage * 0.8f);
-        // 边池不够时只能拿走边池里有的，不能扣成负数
-        heal = Mathf.Min(heal, SidePotChips);
-        if (heal <= 0) return;
-        SidePotChips -= heal;
-        PlayerChips += heal;
-        SendChipsChanged();
-        CheckWin();
+        // if (IsGameOver) return;
+        // int heal = Mathf.RoundToInt(cardDamage * 0.8f);
+        // // 边池不够时只能拿走边池里有的，不能扣成负数
+        // heal = Mathf.Min(heal, SidePotChips);
+        // if (heal <= 0) return;
+        // SidePotChips -= heal;
+        // PlayerChips += heal;
+        // SendChipsChanged();
+        // CheckWin();
+        return;
     }
     // ========== 开挂模式 ==========
 
@@ -271,7 +273,7 @@ public class GameManager : Singleton<GameManager>
         {
             PlayerChips = 0;
             PotChips = 0;
-            SidePotChips = 0;
+            // SidePotChips = 0;   // 边池机制关闭
             EndGame(false);
         }
     }
@@ -281,7 +283,7 @@ public class GameManager : Singleton<GameManager>
         toDice = GetClearDiceReward();
         SettlePot();
         GameProgress.playerChips = PlayerChips;
-        GameProgress.sidePotChips = SidePotChips;
+        // GameProgress.sidePotChips = SidePotChips;   // 边池机制关闭：不再跨关继承
         Debug.Log("[死亡流程] toDice = " + toDice);
 
         // 2. 启动 PlayCollect，等它真正跑完（嵌套 StartCoroutine）

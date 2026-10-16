@@ -12,11 +12,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6c24f5aa9dbdbe3468b022dc770b2e83, type: 3}
   m_Name: "Diamond_9_\u51B0\u72FC"
   m_EditorClassIdentifier: 
+  cardType: 0
   suit: 2
   rank: 9
-  animalName: "\u51B0\u72FC"
-  description: "\u6218\u529B 9"
+  faceTexture: {fileID: -8328923581568760697, guid: 97c0cac6ed1d4d944ac1daf9c47f51ab, type: 3}
+  effects: []
   abilityName: 
-  abilityIcon: {fileID: 0}
-  awakenedAbility: {fileID: 0}
-  artwork: {fileID: 0}
+  description: "\u6218\u529B 9"
+  effectType: 0
+  rarity: 0
+  price: 0
+  itemCost: 1
+  isMimic: 0

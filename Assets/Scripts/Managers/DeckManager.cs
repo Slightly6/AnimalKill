@@ -43,6 +43,8 @@ public class DeckManager : Singleton<DeckManager>
     // 初始化牌组（整局只洗一次，跨关继承）
       private void InitDeck()
     {
+      discardPile.Clear();   // 换关重建时弃牌堆必须一起清，不然上一关的牌会洗回抽牌堆被重复抽
+
       // 跨关继承：进度里已经有牌组就用它；没有（第一次）用 Inspector 的初始牌组
       if (GameProgress.playerDeck != null && GameProgress.playerDeck.Count > 0)
       {
