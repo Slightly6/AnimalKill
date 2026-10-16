@@ -173,6 +173,7 @@ public class BattleManager : Singleton<BattleManager>
         {
             Debug.Log("[Battle] PrepareIntent 前");
             EnemyController.Instance.Initialize(cfg.enemyConfig);
+            if (BlindTokenBoard.Instance != null) BlindTokenBoard.Instance.Show(cfg.enemyConfig);   // 敌人这关抽到的机制摆上桌
             EnemyController.Instance.PrepareIntent();
             Debug.Log("[Battle] PrepareIntent 完成");
         }

@@ -119,9 +119,7 @@ public class RestManager : Singleton<RestManager>
         {
             consumed = true;
             if (handInstance != null) { Destroy(handInstance); handInstance = null; }   // 没选的直接销毁
-            GameManager.Instance.RestHeal();                 // 回 30% 筹码 + 30% 边池
-            
-            MapManager.Instance.FinishNonBattleNode();       // 回地图
+            StartCoroutine(ChipHealRoutine());               // 回血 → 等筹码飞完 → 回地图
             return;
         }
 
@@ -133,6 +131,22 @@ public class RestManager : Singleton<RestManager>
             StartCoroutine(ThrowDiceRoutine());
             return;
         }
+    }
+
+    // 选筹码：数值立即回，等桌上筹码飞完落袋再回地图，别把加筹码的演出拦腰切断
+    IEnumerator ChipHealRoutine()
+    {
+        GameManager.Instance.RestHeal();   // 数值立即加，筹码开始飞（chipFly 全程为 true，同步置位）
+
+        float timeout = 0f;
+        while (GameProgress.chipFly && timeout < 10f)   // 等所有筹码落袋（10 秒保险，防卡死）
+        {
+            timeout += Time.deltaTime;
+            yield return null;
+        }
+
+        yield return new WaitForSeconds(0.4f);   // 缓一拍看清数字再走
+        MapManager.Instance.FinishNonBattleNode();
     }
 
     // 确保物体（含子物体）有 Collider，否则 Raycast 打不到

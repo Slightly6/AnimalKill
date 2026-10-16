@@ -459,6 +459,10 @@ public class BattleView : Singleton<BattleView>
             if (coreIndices.Contains(i) && cards[i] != null)
             {
                 yield return PunchCard(cards[i]);
+
+                // 卡牌结算跳动之后：这张卡点亮的铃铛逐个抖一下（表示效果触发），再结算下一张
+                CardEffectBells bells = cards[i].GetComponent<CardEffectBells>();
+                if (bells != null) yield return bells.ShakeBells();
             }
         }
 
