@@ -165,6 +165,7 @@ public class BattleManager : Singleton<BattleManager>
         endTurnRequested = false;
         PointsLeft = pointsPerTurn;
         pendingDraws.Clear();   // 跨关清账：上关没到账的"N 回合后多抽"不带进下一关
+        TrinketRuntime.ResetForBattle();   // 镶嵌物：本场战斗状态全部清零
         BattleView.Instance.ClearGhosts();
         BattleView.Instance.ClearSelection();
         if (BattleView.Instance.scoreBoard != null)
@@ -249,6 +250,7 @@ public class BattleManager : Singleton<BattleManager>
 
         PointsLeft -= totalCost;
         isPlayfold = fold;
+        if (!fold) TrinketRuntime.BeginHand(cards, totalCost, hand);   // 镶嵌物上下文：第几手/耗点/牌型/筹码签挂账
         StartCoroutine(ResolvePlayerHand());
     }
     // 主循环
@@ -258,6 +260,7 @@ public class BattleManager : Singleton<BattleManager>
         {
             SetPhase(TurnPhase.Draw);
             GameProgress.transitioning = false;
+            TrinketRuntime.ResetForTurn();   // 镶嵌物：回合状态清零 + 当票还款 + 钩子回手 + 吸铁石吸牌
             // 延时效果在补牌恢复点数之前执行
             FlushDelayedEffects();
             TickPendingDraws();   // N 回合后抽牌的挂账倒计时（到 0 当回合生效）
@@ -287,6 +290,7 @@ public class BattleManager : Singleton<BattleManager>
             if (levelEnded || GameManager.Instance.IsGameOver) break;
             BattleView.Instance.ClearSelection();    // 清残留选中（引用的是即将销毁的牌）
             BattleView.Instance.ClearGhosts();       // 清桌上虚影+阴影
+            TrinketRuntime.FireTurnEndHeld();        // 镶嵌物：攥在手里没打出的效果（延期票/秒针/保险箱）
             DeckManager.Instance.DiscardAllHand();   // 回合结束，手牌全弃
             SetPhase(TurnPhase.EnemyBattle);
             yield return StartCoroutine(ResolveEnemyTurn());
@@ -350,7 +354,7 @@ public class BattleManager : Singleton<BattleManager>
 
         List<CardDataSO> normalDatas = normalCardsList.ConvertAll(c => c.Data);
         HandType type = normalDatas.Count > 0 ? PokerResolver.Evaluate(normalDatas) : HandType.HighCard;
-        int damage = PokerResolver.GetHandDamage(type) + pendingDamageBonus;
+        int damage = Mathf.Max(0, PokerResolver.GetHandDamage(type) + pendingDamageBonus);   // 保底 0：蛇眼等效果可能挂负加成
         pendingDamageBonus = 0;
 
         var rawCoreIndices = normalDatas.Count > 0 ? PokerResolver.GetCoreCardIndices(normalDatas, type) : new HashSet<int>();

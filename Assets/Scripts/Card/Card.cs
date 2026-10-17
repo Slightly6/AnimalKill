@@ -277,8 +277,10 @@ public class Card : MonoBehaviour
             switch (effect.timing)
             {
                 case EffectTiming.Immediate:
+                    if (TrinketRuntime.IsDisabled(Data, effect)) break;   // 被大邪典吃掉的本关跳过
                     Debug.Log($"[即时] {effect.GetType().Name}");
-                    effect.Apply((int)Data.rank);   // 传入本牌点数（按点数结算的效果用它）
+                    effect.Apply((int)Data.rank, Data);   // 传入点数+卡牌本体（镶嵌物计数器/联动用）
+                    TrinketRuntime.RecordTriggered(effect);   // 回音石复刻用
                     break;
                 case EffectTiming.Delayed:
                     BattleManager.Instance.QueueDelayed(effect);

@@ -260,4 +260,28 @@ public class DeckManager : Singleton<DeckManager>
         drawPile.Add(clone);
         GameProgress.playerDeck.Add(clone);
     }
+
+    // 镶嵌物·吸铁石：把抽牌堆里的指定卡挪到堆顶（下次抽牌必抽到）
+    public void MoveToDrawPileTop(CardDataSO data)
+    {
+        if (data == null) return;
+        if (!drawPile.Remove(data)) return;   // 不在抽牌堆（在手里/弃牌堆）就算了
+        drawPile.Insert(0, data);
+    }
+
+    // 镶嵌物·钩子：把弃牌堆里的指定卡直接拿回手牌（生成实体走正常入手机）
+    public void ReturnCardFromDiscard(CardDataSO data)
+    {
+        if (data == null) return;
+        if (!discardPile.Remove(data)) return;   // 不在弃牌堆就算了
+        StartCoroutine(CreateCardInHand(data));
+        Debug.Log("[钩子] " + data.name + " 从弃牌堆勾回手牌");
+    }
+
+    // 镶嵌物·窥孔：看弃牌堆顶（空堆返回 null）
+    public CardDataSO PeekDiscardTop()
+    {
+        if (discardPile.Count == 0) return null;
+        return discardPile[discardPile.Count - 1];
+    }
 }

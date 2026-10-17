@@ -143,6 +143,7 @@ public class GameManager : Singleton<GameManager>
         if (GameProgress.cheatMode) return;   // 开挂：玩家筹码不扣
         PlayerChips -= amount;
         PotChips += amount;                   // 玩家流出的筹码进主池
+        TrinketRuntime.NotifyPotGained(amount);   // 镶嵌物：存根/大账簿记账
         SendChipsChanged();
         CheckWin();
     }
@@ -153,8 +154,28 @@ public class GameManager : Singleton<GameManager>
         if (IsGameOver) return;
         EnemyChips -= amount;
         PotChips += amount;                   // 敌人流出的筹码进主池
+        TrinketRuntime.NotifyPotGained(amount);   // 镶嵌物：存根/大账簿记账
         SendChipsChanged();
         CheckWin();
+    }
+
+    // 镶嵌物：往主池加筹码（延期票/筹码签用）
+    public void AddToPot(int amount)
+    {
+        if (IsGameOver || amount <= 0) return;
+        PotChips += amount;
+        TrinketRuntime.NotifyPotGained(amount);
+        SendChipsChanged();
+    }
+
+    // 镶嵌物：从主池取筹码（当票/金库钥匙/黑蜡烛用），返回实际取到的数
+    public int TakeFromPot(int amount)
+    {
+        if (IsGameOver || amount <= 0) return 0;
+        int take = Mathf.Min(amount, PotChips);
+        PotChips -= take;
+        SendChipsChanged();
+        return take;
     }
 
     // 偷取：敌人筹码直接转给玩家（不走主池，和"伤害→主池"区分开）
@@ -249,6 +270,7 @@ public class GameManager : Singleton<GameManager>
     // 关结束分账：主池清空（不再换骰子），过关骰子按节点类型另发
     private void SettlePot()
     {
+        TrinketRuntime.FireLevelSettle();   // 镶嵌物：分红票等"关卡结算"效果在主池清零前触发
         GameProgress.dice += toDice;
 
         Debug.Log("[关结束分账] " + GameProgress.currentNodeType + " 过关 → 骰子+" + toDice + "，当前骰子 " + GameProgress.dice);
