@@ -105,8 +105,11 @@ public class ShopManager : Singleton<ShopManager>
             if(cardPrefabrd==cardPrefab)
             {
                 Card card = cardObj.GetComponent<Card>();
-                card.Init(CardsPool[i], true); 
+                card.Init(CardsPool[i], true);
                 card.transform.rotation = Quaternion.Euler(90f, 90f, -90f);
+                // 道具卡在商店里缩放直接定为 0.75，和普通牌区分开（在 Start 记 baseScale 之前设置，悬浮回落也用它）
+                if (CardsPool[i] != null && CardsPool[i].cardType == CardType.Item)
+                    card.transform.localScale = Vector3.one * 0.75f;
             }else
             {
                 HookCard card = cardObj.GetComponent<HookCard>();

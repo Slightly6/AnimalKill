@@ -64,10 +64,13 @@ public class DeckManager : Singleton<DeckManager>
       Debug.Log("牌组初始化完成，共 " + drawPile.Count + " 张");
     }
     // 回合结束：手牌全部进弃牌堆（销毁实体，数据留着抽干后洗回）
+    // 批量窗口：清手整个动作只算 1 次手牌变动（船锚计数用）
     public void DiscardAllHand()
     {
+        TrinketRuntime.BeginHandChangeBatch();
         for (int i = HandCards.Count - 1; i >= 0; i--)
             DiscardToPile(HandCards[i]);
+        TrinketRuntime.EndHandChangeBatch();
     }
     // 同场景换关时调用：原来切场景会把 DeckManager 整个销毁重建（Start→InitDeck 重洗牌），
     // 现在不切场景，手动模拟——销毁所有手牌实体，从 GameProgress.playerDeck 重新洗一副。
@@ -87,12 +90,15 @@ public class DeckManager : Singleton<DeckManager>
         InitDeck();
     }
     // 抽 N 张（协程，一张张翻面）
+    // 批量窗口：一轮补牌不管几张只算 1 次手牌变动（船锚计数用）
     public System.Collections.IEnumerator DrawCards(int count)
     {
+        TrinketRuntime.BeginHandChangeBatch();
         for (int i = 0; i < count; i++)
         {
             yield return DrawOneCard();
         }
+        TrinketRuntime.EndHandChangeBatch();
     }
 
     // 编辑器测试用：把指定卡直接生成进手牌（不走抽牌堆），觉醒状态自动生效
@@ -173,6 +179,10 @@ public class DeckManager : Singleton<DeckManager>
         }
 
         card.Init(data, true);   // Init 里默认扣着（背面朝上）
+        // 记号笔：镶了它的牌抽上手就做记号（金色角标）
+        if (data.effects != null)
+            foreach (var e in data.effects)
+                if (e is MarkedCardTrinket) { card.SetMarked(true); break; }
         go.transform.rotation = Quaternion.Euler(90, 0, 0);   // 平放在牌堆上，面朝下（不竖着穿模）
         // AudioManager.Instance.PlayDraw();   // 抽牌音效  （排查卡死：暂时关闭）
 
@@ -192,7 +202,18 @@ public class DeckManager : Singleton<DeckManager>
     public void RemoveFromHand(Card card)
     {
         if (card == null) return;
-        discardPile.Add(card.DeckData);   // 拟态牌进本体，变身对象不重复
+        // 道具牌一次性：使用（打出或弃掉）即消耗。创可贴挂账：下一个道具第一次用完不销毁、进弃牌堆（洗回可再用）
+        if (card.DeckData.cardType == CardType.Item)
+        {
+            if (TrinketRuntime.ConsumeNextItemSave())
+                discardPile.Add(card.DeckData);
+            else
+                GameProgress.playerDeck.Remove(card.DeckData);
+        }
+        else if (!TrinketRuntime.IsBanished(card.DeckData))
+        {
+            discardPile.Add(card.DeckData);   // 拟态牌进本体，变身对象不重复；大邪典销毁的牌不进弃牌堆
+        }
         HandCards.Remove(card);
         card.SetLayerRecursively(0);   // 切回 Default 层 → 恢复正常遮挡
         SyncMimicVisuals();
@@ -200,6 +221,7 @@ public class DeckManager : Singleton<DeckManager>
     }
 
     // 手牌内换位（拖拽换序）：把牌移到新索引
+    // 不发 HandChangedEvent——换位不算手牌变动（船锚计数不涨）
     public void MoveHandCard(Card card, int newIndex)
     {
         int oldIndex = HandCards.IndexOf(card);
@@ -209,14 +231,22 @@ public class DeckManager : Singleton<DeckManager>
         HandCards.RemoveAt(oldIndex);
         HandCards.Insert(newIndex, card);
         SyncMimicVisuals();
-        EventBus.Publish(new HandChangedEvent());
     }
 
     // 弃牌：数据进弃牌堆（抽干后洗回），销毁手牌实体
+    // 道具弃掉也算"使用"：消耗（创可贴挂账则免死一次进弃牌堆）
     public void DiscardToPile(Card card)
     {
         if (card == null) return;
-        discardPile.Add(card.DeckData);   // 拟态牌进本体，变身对象不重复
+        if (card.DeckData.cardType == CardType.Item)
+        {
+            if (TrinketRuntime.ConsumeNextItemSave())
+                discardPile.Add(card.DeckData);
+            else
+                GameProgress.playerDeck.Remove(card.DeckData);
+        }
+        else if (!TrinketRuntime.IsBanished(card.DeckData))
+            discardPile.Add(card.DeckData);   // 拟态牌进本体，变身对象不重复；大邪典销毁的牌不进弃牌堆
         HandCards.Remove(card);
         Destroy(card.gameObject);
         SyncMimicVisuals();

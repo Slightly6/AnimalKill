@@ -12,7 +12,7 @@ public class GameManager : Singleton<GameManager>
     public int startingPlayerChips = 100;   // 玩家开局筹码数（在 Inspector 里填）
     public int startingSidePot = 50;        // 边池开局筹码数（在 Inspector 里填）
 
-    [Header("开挂模式（勾上：无限筹码 / 地图全亮 / 可跳过此关）")]
+    [Header("开挂模式（勾上：双方无限血（蓝码/主池/记账照常结算）/ 地图全亮 / 可跳过此关）")]
     public bool cheatMode = false;
 
     // 玩家当前筹码（别的脚本只读，不要直接改）
@@ -150,10 +150,9 @@ public class GameManager : Singleton<GameManager>
     public void LoseChips(int amount)
     {
         if (IsGameOver) return;
-        if (GameProgress.cheatMode) return;   // 开挂：玩家筹码不扣
-        PlayerChips -= amount;
+        if (!GameProgress.cheatMode) PlayerChips -= amount;   // 开挂：玩家筹码不扣，但主池照进（读主池的镶嵌照样能测）
         PotChips += amount;                   // 玩家流出的筹码进主池
-        TrinketRuntime.NotifyPotGained(amount);   // 镶嵌物：存根/大账簿记账
+        TrinketRuntime.NotifyPotChanged();   // 镶嵌物：存根/大账簿记账
         SendChipsChanged();
         CheckWin();
     }
@@ -171,7 +170,6 @@ public class GameManager : Singleton<GameManager>
     public void TakeEnemyDamage(int amount)
     {
         if (IsGameOver || amount <= 0) return;
-        if (GameProgress.cheatMode) return;   // 开挂：不掉血
         int blocked = Mathf.Min(BlueChips, amount);
         if (blocked > 0)
         {
@@ -182,9 +180,9 @@ public class GameManager : Singleton<GameManager>
         if (rest > 0)
         {
             hurtThisTurn = true;
-            PlayerChips -= rest;
+            if (!GameProgress.cheatMode) PlayerChips -= rest;   // 开挂：红码不扣，但蓝码照挡、主池照进、受伤旗标照立
             PotChips += rest;
-            TrinketRuntime.NotifyPotGained(rest);   // 镶嵌物：存根/大账簿只认真筹码
+            TrinketRuntime.NotifyPotChanged();   // 镶嵌物：存根/大账簿——主池每变动一次计数 +1
             SendChipsChanged();
             CheckWin();
         }
@@ -205,6 +203,15 @@ public class GameManager : Singleton<GameManager>
             BlueChips = 0;
             Debug.Log("[蓝码] 回合开始，蓝色筹码清零");
         }
+        // 沙漏挂账：直接扣红码（不经过蓝码）
+        if (pendingRedLossNextTurn > 0)
+        {
+            int loss = pendingRedLossNextTurn;
+            pendingRedLossNextTurn = 0;
+            if (!GameProgress.cheatMode) PlayerChips = Mathf.Max(0, PlayerChips - loss);
+            Debug.Log("[沙漏] 失去 " + loss + " 点红色筹码");
+            CheckWin();
+        }
         SendChipsChanged();
     }
 
@@ -212,9 +219,9 @@ public class GameManager : Singleton<GameManager>
     public void EnemyLoseChips(int amount)
     {
         if (IsGameOver) return;
-        EnemyChips -= amount;
+        if (!GameProgress.cheatMode) EnemyChips -= amount;   // 开挂：敌人不掉血，但主池照进、记账照跑
         PotChips += amount;                   // 敌人流出的筹码进主池
-        TrinketRuntime.NotifyPotGained(amount);   // 镶嵌物：存根/大账簿记账
+        TrinketRuntime.NotifyPotChanged();   // 镶嵌物：存根/大账簿——主池每变动一次计数 +1
         SendChipsChanged();
         CheckWin();
     }
@@ -224,7 +231,7 @@ public class GameManager : Singleton<GameManager>
     {
         if (IsGameOver || amount <= 0) return;
         PotChips += amount;
-        TrinketRuntime.NotifyPotGained(amount);
+        TrinketRuntime.NotifyPotChanged();   // 存根/大账簿记账
         SendChipsChanged();
     }
 
@@ -234,8 +241,17 @@ public class GameManager : Singleton<GameManager>
         if (IsGameOver || amount <= 0) return 0;
         int take = Mathf.Min(amount, PotChips);
         PotChips -= take;
+        TrinketRuntime.NotifyPotChanged();   // 取出也算一次主池变动
         SendChipsChanged();
         return take;
+    }
+
+    // 沙漏挂账：下回合开始玩家直接失去 N 点红色筹码（不经过蓝码）
+    private int pendingRedLossNextTurn;
+    public void LoseRedChipsNextTurn(int n)
+    {
+        pendingRedLossNextTurn += n;
+        Debug.Log("[沙漏] 下回合将失去 " + pendingRedLossNextTurn + " 点红色筹码");
     }
 
     // 偷取：敌人筹码直接转给玩家（不走主池，和"伤害→主池"区分开）
@@ -245,7 +261,7 @@ public class GameManager : Singleton<GameManager>
         if (IsGameOver) return;
         int steal = Mathf.Min(amount, EnemyChips);   // 不能偷超过敌人现有的
         if (steal <= 0) return;
-        EnemyChips -= steal;
+        if (!GameProgress.cheatMode) EnemyChips -= steal;   // 开挂：敌人不掉血，玩家照拿
         PlayerChips += steal;
         SendChipsChanged();
         CheckWin();

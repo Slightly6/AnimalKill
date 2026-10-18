@@ -12,7 +12,7 @@ public class ShopCard : MonoBehaviour, IShopFlyable
     public float hoverScale = 1.08f;    // 悬浮放大
 
     Vector3 basePos;
-    Vector3 baseScale;
+    Vector3 baseScale = Vector3.one;   // 兜底 1：Start 还没跑就被 StopHover 时不会把 scale 清零
     Coroutine hoverRoutine;
     Coroutine shakeRoutine;
     bool locked;   // 购买飞走后置真，悬浮逻辑全部停用

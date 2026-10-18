@@ -333,8 +333,8 @@ public class BattleView : Singleton<BattleView>
             RemoveGhostAt(i);
         }
 
-        // 2. 抬牌 + 滚牌型/伤害
-        yield return ShowHandBoard(type, cards, coreIndices, isPlayfold, damage);
+        // 2. 亮底分 + 抬牌 + 逐张弹牌发效果滚分
+        yield return ShowHandBoard(type, cards, coreIndices, isPlayfold, damage, isPlayer: true);
 
         // 3. 不出数字，筹码由 Chips 自动飞进主池
         yield return new WaitForSeconds(0.4f);
@@ -445,8 +445,16 @@ public class BattleView : Singleton<BattleView>
 
     // 结算演出：抬牌 + 得分牌逐张弹一下 + 中间弹牌型名板子
     // isPlay: true=弃牌(不触发"计分时"技能)；false=出牌(触发)
-    private IEnumerator ShowHandBoard(HandType type, List<Card> cards, HashSet<int> coreIndices, bool isPlay, int damage)
+    // isPlayer: 玩家出牌时 damage 是底分——计分板先亮牌型+底分，之后每弹一张发一张的效果（ApplyEffects）、
+    // 数字滚一次；敌人/弃牌走老路（演完一次性滚到总分）
+    private IEnumerator ShowHandBoard(HandType type, List<Card> cards, HashSet<int> coreIndices, bool isPlay, int damage, bool isPlayer = false)
     {
+        bool firePerCard = isPlayer && !isPlay;   // 玩家出牌：每弹一张发一张的效果（和有没有计分板无关）
+        bool hasBoard = scoreBoard != null;
+
+        // 分数先显示牌型得的分数（底分一次滚到位），之后每张只往上叠效果分
+        if (firePerCard && hasBoard) yield return scoreBoard.ShowBase(type, damage);
+
         // 结算开始：所有得分的牌先一起抬起来一点（非得分牌原地不动）
         List<Card> liftCards = new List<Card>();
         for (int i = 0; i < cards.Count; i++)
@@ -454,22 +462,33 @@ public class BattleView : Singleton<BattleView>
         if (liftCards.Count > 0) yield return LiftCards(liftCards, PlayLift);
 
         // 得分牌逐张弹一下（出牌时触发"计分时"技能，弃牌不算计分不触发）
+        // 顺序：跳完（自动回位）→ 镶嵌才抖 → 效果才发 → 分数往上叠
         for (int i = 0; i < cards.Count; i++)
         {
             if (coreIndices.Contains(i) && cards[i] != null)
             {
-                yield return PunchCard(cards[i]);
+                yield return PunchCard(cards[i]);   // 跳完这一下 scale 已回到原位
 
-                // 卡牌结算跳动之后：这张卡点亮的铃铛逐个抖一下（表示效果触发），再结算下一张
-                CardEffectBells bells = cards[i].GetComponent<CardEffectBells>();
-                if (bells != null) yield return bells.ShakeBells();
+                if (firePerCard)
+                {
+                    // 卡已回位：稳 0.3 秒，镶嵌才抖，效果才发，效果分才往上叠
+                    yield return new WaitForSeconds(0.3f);
+                    CardEffectBells bells = cards[i].GetComponent<CardEffectBells>();
+                    if (bells != null) yield return bells.ShakeBells();
+                    cards[i].ApplyEffects(true);
+                    if (hasBoard)
+                        yield return scoreBoard.TickTo(damage + BattleManager.Instance.PendingDamageBonus);
+                }
             }
         }
 
         // 中间滚实体计分板（左牌型 + 右带进位数字）；没配计分板则退回旧的牌型板子
-        if (scoreBoard != null)
+        if (hasBoard)
         {
-            yield return scoreBoard.Play(type, damage, isPlay);
+            if (firePerCard)
+                yield return new WaitForSeconds(scoreBoard.holdTime);   // 逐张滚完了停留一下
+            else
+                yield return scoreBoard.Play(type, damage, isPlay);
         }
         else
         {

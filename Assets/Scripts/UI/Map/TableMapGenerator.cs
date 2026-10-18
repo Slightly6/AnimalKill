@@ -1136,9 +1136,10 @@ public class TableMapGenerator : Singleton<TableMapGenerator>
 
         float value = RandomValue();
 
-        if (value < 0.20f) return MapNodeType.Monster;
-        if (value < 0.30f) return MapNodeType.Elite;
-        if (value<0.66f) return MapNodeType.Rest;                   //-----------节点生成概率-------------
+        if (value < 0.29f) return MapNodeType.Monster;
+        if (value < 0.49f) return MapNodeType.Elite;
+        if (value < 0.69f) return MapNodeType.Event;
+        if (value<0.89f) return MapNodeType.Rest;                   //-----------节点生成概率-------------------------------
         if (value < 0.99f) return MapNodeType.Shop;        // 12%
         return MapNodeType.Treasure;                        // 8%
     }

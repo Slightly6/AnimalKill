@@ -40,14 +40,12 @@ public class CardDataSO : ScriptableObject
     public Texture2D faceTexture;   // 整张牌面图（画好的黑桃1~7拖这里）；没拖则回退到花色+点数文字
     [Header("效果（直接拖入 AbilityEffectSO 资产，打出时全部触发）")]
     public List<AbilityEffectSO> effects = new();   // 卡牌效果列表（普通牌留空即可）
-    public string abilityName = "";
-    public string description; // 描述
-    public HookEffectType effectType; // 效果类型枚举
-    public Rarity rarity;      // 稀有度
     public int price;          // 价格  
 
     [Header("道具卡")]
     public int itemCost = 1;               // 道具卡消耗的点数
+    [Header("道具卡效果（cardType=Item 专用；拖 ItemEffectSO 资产，使用时全部触发）")]
+    public List<ItemEffectSO> itemEffects = new();
 
     [Header("拟态（特殊牌：手牌里完全变成最左那张，打出时随机变成手里一张）")]
     public bool isMimic;
@@ -73,4 +71,44 @@ public class CardDataSO : ScriptableObject
         return ((int)rank).ToString();
     }
 
+}
+
+// ========== 卡牌显示信息统一出口 ==========
+// 名字/描述全部读效果自带的（效果资产是唯一数据源），卡资产上不再重复填。
+// 普通无效果牌回退到 花色+点数 当标题。
+public static class CardInfo
+{
+    // 显示标题：有效果用第一个效果的 effectName，否则花色+点数
+    public static string GetTitle(CardDataSO data)
+    {
+        if (data.cardType == CardType.Item)
+        {
+            var e = (data.itemEffects != null && data.itemEffects.Count > 0) ? data.itemEffects[0] : null;
+            if (e != null && !string.IsNullOrEmpty(e.effectName)) return e.effectName;
+        }
+        else if (data.effects != null && data.effects.Count > 0)
+        {
+            var e = data.effects[0];
+            if (e != null && !string.IsNullOrEmpty(e.effectName)) return e.effectName;
+        }
+        return data.GetSuitSymbol() + data.GetRankText();
+    }
+
+    // 显示描述：把卡上所有效果的 description 拼起来（道具读 itemEffects，普通牌读 effects）
+    public static string GetDescription(CardDataSO data)
+    {
+        var parts = new List<string>();
+        if (data.cardType == CardType.Item)
+        {
+            if (data.itemEffects != null)
+                foreach (var e in data.itemEffects)
+                    if (e != null && !string.IsNullOrEmpty(e.description)) parts.Add(e.description);
+        }
+        else if (data.effects != null)
+        {
+            foreach (var e in data.effects)
+                if (e != null && !string.IsNullOrEmpty(e.description)) parts.Add(e.description);
+        }
+        return string.Join("\n", parts);
+    }
 }

@@ -37,4 +37,5 @@ public abstract class JokerSO : ScriptableObject
     public virtual void OnAcquire() { }                 // 获得时
     public virtual void OnRemove() { }                  // 移除时
     public virtual void OnNewLevel() { }                // 换关（清战斗内状态）
+    public virtual void OnHandPlayed() { }              // 每手打出结算前（演出开始前调，加成进本手伤害一起滚分）
 }

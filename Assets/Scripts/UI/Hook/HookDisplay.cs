@@ -12,8 +12,8 @@ public class HookDisplay : MonoBehaviour
     public Transform[] hangPoints = new Transform[5];
 
     [Header("小丑外观")]
-    public float cardScale = 0.6f;   // 小丑缩放（比手牌小一圈）
-    public float hangDrop = 0.78f;   // 挂上后中心离挂点往下多远 = 1.3×cardScale（牌高2.6的一半），改 cardScale 要跟着改
+    public float cardScale = 0.5f;   // 小丑缩放（比手牌小一圈）
+    public float hangDrop = 0.65f;   // 挂上后中心离挂点往下多远 = 1.3×cardScale（牌高2.6的一半），改 cardScale 要跟着改
     public float bumpKick = 30f;     // 新小丑挂上来时，踢老小丑一脚的角速度
 
     List<GameObject> spawned = new List<GameObject>();   // 支点列表（index 对应第几个小丑）

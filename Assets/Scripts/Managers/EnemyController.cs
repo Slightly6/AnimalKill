@@ -348,7 +348,27 @@ public class EnemyController : Singleton<EnemyController>
         }
     }
 
+    // 庄家钮：随机搅乱成行为池里的另一个意图
+    public void RandomizeIntent()
+    {
+        if (activeBehaviors == null || activeBehaviors.Count == 0) return;
+        selectedBehavior = activeBehaviors[UnityEngine.Random.Range(0, activeBehaviors.Count)];
+        currentIntent = selectedBehavior.intent;
+        EventBus.Publish(new EnemyIntentChangedEvent { enemy = this, intent = currentIntent });
+        Debug.Log("[庄家钮] 敌人意图被搅乱成 " + currentIntent);
+    }
+
     //-------------特殊效果卡牌----------------
+
+    // 扑克脸：下一次攻击伤害被压成固定值（-1 = 不压）
+    private int nextAttackFlat = -1;
+    public void SetNextAttackFlat(int dmg) { nextAttackFlat = dmg; }
+    public int ConsumeNextAttackFlat()
+    {
+        int f = nextAttackFlat;
+        nextAttackFlat = -1;
+        return f;
+    }
 
     // 效果：乘上倍率
     public void MultiplyNextAttack(float m)

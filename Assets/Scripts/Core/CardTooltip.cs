@@ -19,8 +19,8 @@ public class CardTooltip : MonoBehaviour
     {
         if (tmp == null || card == null || card.Data == null) return;
 
-        string desc = string.IsNullOrEmpty(card.Data.description) ? "" : "\n<size=80%>" + card.Data.description;
-        tmp.text = "<b>" + card.Data.abilityName + "</b>" + desc;
+        string desc = CardInfo.GetDescription(card.Data);
+        tmp.text = "<b>" + CardInfo.GetTitle(card.Data) + "</b>" + (string.IsNullOrEmpty(desc) ? "" : "\n<size=80%>" + desc);
 
         // 跟到卡上方，面向相机
         tmp.transform.position = card.transform.position + offset;

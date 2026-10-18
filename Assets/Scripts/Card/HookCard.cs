@@ -11,12 +11,16 @@ public class HookCard : MonoBehaviour, IShopFlyable
 
     [Header("悬浮反馈")]
     public float hoverLift = 0.4f;      // 上浮高度
-    public float hoverScale = 1.08f;    // 悬浮放大
+    public float hoverScale = 1.08f;    // 悬浮放大（待售小丑）
+    public float hookHoverScale = 1.3f; // 钩子上已购小丑的悬浮放大（更明显，方便认牌）
 
-    Vector3 basePos;
     Vector3 baseScale;
+    Vector3 homePos;     // 悬浮前的"家"位置（进入悬浮瞬间记录；钩子上的卡一直在摆，不能用 Start 时的固定值）
+    Vector3 homeScale;
+    bool hovering;
+    bool flying;   // 购买飞向钩子途中，悬浮交互全禁（避免和飞行动画抢位置）
     Coroutine hoverRoutine;
-    bool locked;   // 购买飞走后置真，悬浮逻辑全部停用
+    bool locked;   // 已购（挂在钩子上）：悬浮照常，只是不再飘骰子价格
 
     public void Init(JokerSO so)
     {
@@ -32,30 +36,42 @@ public class HookCard : MonoBehaviour, IShopFlyable
 
     void Start()
     {
-        basePos = transform.position;   // 悬浮结束回落的位置
-        baseScale = transform.localScale;
+        baseScale = transform.localScale;   // 购买瞬间复位 scale 用
     }
 
-    // 悬浮：上浮 + 微放大；移开：回落复位
+    // 悬浮：上浮 + 放大（认出对准哪张）；右键 = 说明投到手机
     void OnMouseEnter()
     {
-        if (locked || GameProgress.InputLocked) return;
+        if (flying) return;
+        if (!hovering)
+        {
+            homePos = transform.position;   // 记"家"：进入悬浮瞬间的位置/大小
+            homeScale = transform.localScale;
+            hovering = true;
+        }
+        float scaleMul = locked ? hookHoverScale : hoverScale;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
-        hoverRoutine = StartCoroutine(HoverAnim(basePos + Vector3.up * hoverLift, hoverScale));
+        hoverRoutine = StartCoroutine(HoverAnim(homePos + Vector3.up * hoverLift, homeScale * scaleMul));
+
+        if (!locked && ShopManager.Instance != null && Data != null)
+            ShopManager.Instance.ShowDiceCup(Data.price);   // 待售小丑才飘骰子价格；钩子上的不飘
     }
     void OnMouseOver()
     {
         if (Input.GetMouseButtonDown(1))
-            PhoneDisplay.Instance.ShowJoker(Data);   // 小丑说明投到手机屏幕上
+            PhoneDisplay.Instance.ShowJoker(Data);   // 小丑说明投到手机屏幕上（商店/战斗随时可看）
     }
     void OnMouseExit()
     {
         PhoneDisplay.Instance.SlideBack();   // 移开小丑卡，手机滑回起点
-        if (locked) return;
+        if (ShopManager.Instance != null) ShopManager.Instance.HideDiceCup();   // 骰子缩回帽子里
+        if (flying) return;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
-        hoverRoutine = StartCoroutine(HoverAnim(basePos, 1f));
+        hoverRoutine = StartCoroutine(HoverAnim(homePos, homeScale));
+        hovering = false;
     }
-    IEnumerator HoverAnim(Vector3 toPos, float toScale)
+    // 相对动画：从当前位置/大小 Lerp 到目标（不用 Start 记的绝对位置——钩子上的卡位置缩放都变过）
+    IEnumerator HoverAnim(Vector3 toPos, Vector3 toScale)
     {
         Vector3 fromPos = transform.position;
         Vector3 fromScale = transform.localScale;
@@ -66,7 +82,7 @@ public class HookCard : MonoBehaviour, IShopFlyable
             t += Time.deltaTime / dur;
             float p = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t));
             transform.position = Vector3.Lerp(fromPos, toPos, p);
-            transform.localScale = Vector3.Lerp(fromScale, baseScale * toScale, p);
+            transform.localScale = Vector3.Lerp(fromScale, toScale, p);
             yield return null;
         }
     }
@@ -74,8 +90,17 @@ public class HookCard : MonoBehaviour, IShopFlyable
     void StopHover()
     {
         locked = true;
+        flying = true;
+        hovering = false;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
         transform.localScale = baseScale;
+        StartCoroutine(ClearFlyFlag());
+    }
+    // 飞行 0.4 秒 + 余量后恢复悬浮交互（已落定在钩子上）
+    IEnumerator ClearFlyFlag()
+    {
+        yield return new WaitForSeconds(0.6f);
+        flying = false;
     }
 
     void OnMouseDown()
@@ -84,10 +109,26 @@ public class HookCard : MonoBehaviour, IShopFlyable
         if (GameProgress.currentNodeType != MapNodeType.Shop) return;
         if (Data == null) return;
 
+        // 骰子不够：敌人开口说你付不起，卡留在原地（开挂=无限骰子，跳过判断）
+        if (!GameProgress.cheatMode && GameProgress.dice < Data.price)
+        {
+            if (ShopManager.Instance != null)
+                ShopManager.Instance.HintCantAfford(Data.price - GameProgress.dice);
+            return;
+        }
+
         StopHover();
-        // 购买成立（栏没满）才从商店列表移除；失败卡留在原地继续卖
-        if (ShopManager.Instance.BuyJoker(this))
-            ShopManager.Instance.jokerPool.Remove(Data);
+        // 购买成立（栏没满）才扣钱并从商店列表移除；失败卡留在原地继续卖
+        if (!ShopManager.Instance.BuyJoker(this)) return;
+
+        if (!GameProgress.cheatMode)   // 开挂：不扣骰子
+        {
+            GameProgress.dice -= Data.price;
+            if (TOPhat.Instance != null) TOPhat.Instance.RefreshCount();   // 帽子计数同步
+            ShopManager.Instance.ShowDiceLine();   // 报数同步到新余额
+        }
+        Debug.Log("已购买小丑：" + Data.jokerName + "，花费骰子 " + Data.price);
+        ShopManager.Instance.jokerPool.Remove(Data);
     }
 
     // 飞回牌堆（没买时 MapManager 调）

@@ -35,4 +35,11 @@ public class JokerManager : Singleton<JokerManager>
         foreach (JokerSO j in jokers)
             if (j != null) j.OnNewLevel();
     }
+
+    // 每手打出结算前调（BattleManager 在演出开始前调）：小丑的战斗数值钩子入口
+    public void NotifyHandPlayed()
+    {
+        foreach (JokerSO j in jokers)
+            if (j != null) j.OnHandPlayed();
+    }
 }

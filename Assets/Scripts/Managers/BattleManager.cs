@@ -16,6 +16,7 @@ public class BattleManager : Singleton<BattleManager>
     private int pointBonusNextTurn = 0;  // 下回合额外点数挂账（AddCoin 手牌效果）
     private int drawBonusNextTurn = 0;  // 下回合额外抽牌挂账（道具卡效果）
     private int pendingDamageBonus = 0; // 本次出牌额外伤害（道具卡效果，用完清零）
+    public int PendingDamageBonus => pendingDamageBonus;   // BattleView 逐张滚分用：读当前累积的镶嵌加成
 
     // 效果挂账（按 timing 分流）
     private List<AbilityEffectSO> delayedEffects = new(); // 延时：下回合开始时执行
@@ -220,6 +221,16 @@ public class BattleManager : Singleton<BattleManager>
                 cards[i].MimicRandomly(DeckManager.Instance.HandCards);
         }
 
+        // 道具牌只能单张单独打出/弃掉，不能和其他牌混
+        bool hasItem = false;
+        foreach (var c in cards)
+            if (c != null && c.Data != null && c.Data.cardType == CardType.Item) { hasItem = true; break; }
+        if (hasItem && cards.Count > 1)
+        {
+            Debug.Log("[道具] 道具牌只能单独使用");
+            return;
+        }
+
         var dataList = cards.ConvertAll(c => c.Data);
 
         var normalDatas = new List<CardDataSO>();
@@ -320,12 +331,14 @@ public class BattleManager : Singleton<BattleManager>
         resolving = true;
         GameProgress.transitioning = true;   // 锁输入（InputLocked = mapOpen || transitioning）
 
-        // 1. 清选择 + 移手牌列表
+        // 1. 清选择 + 移手牌列表（批量窗口：一次出牌动作不管几张只算 1 次手牌变动）
         BattleView.Instance.ClearSelection();
+        TrinketRuntime.BeginHandChangeBatch();
         foreach (Card c in cards)
         {
             if (c != null) DeckManager.Instance.RemoveFromHand(c);
         }
+        TrinketRuntime.EndHandChangeBatch();
             
 
         // 1.5 纯计算（PokerResolver）：先判牌型+计分牌（无副作用），效果触发要用
@@ -348,14 +361,59 @@ public class BattleManager : Singleton<BattleManager>
             }
         }
 
-        // 1.6 触发卡牌效果（道具卡 + 普通牌统一走 ApplyEffects；计分牌标记传进去，scoreOnly 效果在散牌位不发动）
+        // 灌铅骰：本手有任何一张镶了它，所有牌都算计分牌（散牌位的镶嵌也会触发）
+        bool loadedDie = false;
+        foreach (var c in cards)
+        {
+            if (c == null || c.Data == null || c.Data.effects == null) continue;
+            foreach (var e in c.Data.effects)
+                if (e is LoadedDieTrinket && !TrinketRuntime.IsDisabled(c.Data, e)) { loadedDie = true; break; }
+            if (loadedDie) break;
+        }
+        if (loadedDie)
+        {
+            for (int i = 0; i < cards.Count; i++)
+                if (cards[i] != null && cards[i].Data != null && cards[i].Data.cardType != CardType.Item)
+                    coreIndices.Add(i);
+            Debug.Log("[灌铅骰] 本手所有牌都计分");
+        }
+
+        // 全垒打：宿主是计分牌才立旗——本手其他牌的随机伤害翻倍（霰弹枪用）
+        for (int i = 0; i < cards.Count; i++)
+        {
+            var c = cards[i];
+            if (c == null || c.Data == null || c.Data.effects == null || !coreIndices.Contains(i)) continue;
+            foreach (var e in c.Data.effects)
+                if (e is HomeRunTrinket && !TrinketRuntime.IsDisabled(c.Data, e))
+                {
+                    TrinketRuntime.SetRandomDouble(c.Data);
+                    Debug.Log("[全垒打] 本手其他牌的随机伤害翻倍");
+                    break;
+                }
+        }
+
+        // 小丑战斗钩子：演出开始前结算，加成进 pendingDamageBonus 跟着本手一起滚分
+        if (!isPlayfold && JokerManager.Instance != null)
+            JokerManager.Instance.NotifyHandPlayed();
+
+        // 1.6 散牌位/道具卡的效果先发掉（不在计分位，不走演出）；计分牌的效果挪进演出循环，
+        // 每弹一张发一张（BattleView.ShowHandBoard 里调 ApplyEffects），加血/加盾/挂账逐张入账
         if (!isPlayfold)
         {
             for (int i = 0; i < cards.Count; i++)
             {
                 Card c = cards[i];
-                if (c != null && c.Data != null && c.Data.effects != null && c.Data.effects.Count > 0)
-                    c.ApplyEffects(coreIndices.Contains(i));
+                if (c != null && c.Data != null && c.Data.effects != null && c.Data.effects.Count > 0 && !coreIndices.Contains(i))
+                    c.ApplyEffects(false);   // 散牌位：只有没勾 scoreOnly 的效果会发
+            }
+
+            // 道具牌使用：打出=使用，触发 ItemEffectSO.Use()（之前效果从未被调用，这就是道具效果拖了不生效的根因）
+            for (int i = 0; i < cards.Count; i++)
+            {
+                Card c = cards[i];
+                if (c == null || c.Data == null || c.Data.cardType != CardType.Item || c.Data.itemEffects == null) continue;
+                foreach (var e in c.Data.itemEffects)
+                    if (e != null) { e.Use(); Debug.Log("[道具] 使用 " + c.Data.name + " → " + e.effectName); }
             }
         }
         else   // 弃牌：触发"弃置时"效果（OnDiscard），打出效果不走
@@ -368,14 +426,17 @@ public class BattleManager : Singleton<BattleManager>
             }
         }
 
-        // 2. 算伤害：牌型固定伤害 + 效果挂账加成
-        int damage = Mathf.Max(0, PokerResolver.GetHandDamage(type) + pendingDamageBonus);   // 保底 0：蛇眼等效果可能挂负加成
+        // 2. 底分 = 牌型固定伤害；镶嵌加成在演出里逐张累积进 pendingDamageBonus（先清零，演完再读）
+        int baseDamage = PokerResolver.GetHandDamage(type);
         pendingDamageBonus = 0;
 
-        // 3. 纯演出（BattleView）：飞牌+牌型板子+飞撞+销毁牌
-        yield return BattleView.Instance.PlayResolveSequence(cards, type, damage, coreIndices, isPlayfold);
+        // 3. 纯演出（BattleView）：飞牌 + 计分板亮底分 + 逐张弹牌发效果滚分 + 销毁牌
+        yield return BattleView.Instance.PlayResolveSequence(cards, type, baseDamage, coreIndices, isPlayfold);
 
-        // 4. 游戏逻辑：isPlayfold=false 出牌扣敌人筹码；isPlayfold=true 弃牌进主池
+        // 4. 总伤害 = 底分 + 演出里累积的镶嵌加成，结算完一块打过去：出牌扣敌人筹码；弃牌进主池
+        int damage = Mathf.Max(0, baseDamage + pendingDamageBonus);   // 保底 0：蛇眼等效果可能挂负加成
+        if (TrinketRuntime.ConsumeDoubleThisHand()) damage *= 2;   // 筹码签/大邪典：总得分翻倍
+        pendingDamageBonus = 0;
         if (!isPlayfold)
         {
             GameManager.Instance.EnemyLoseChips(Mathf.Min(damage, GameManager.Instance.EnemyChips));
@@ -455,7 +516,11 @@ public class BattleManager : Singleton<BattleManager>
             foreach (var p in ec.Config.passives)
                 damage = p.ModifyDamage(ec, damage);
         }
-        damage = Mathf.Max(1, damage);     
+        damage = Mathf.Max(1, damage);
+
+        // 扑克脸：本次攻击被压成固定值（优先级最高，盖过所有修正）
+        int flat = EnemyController.Instance.ConsumeNextAttackFlat();
+        if (flat >= 0) damage = flat;
 
         // 演出
         Narrator.Hide();   // 敌人出牌了，意图气泡收掉

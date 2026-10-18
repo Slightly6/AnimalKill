@@ -35,6 +35,24 @@ public class Card : MonoBehaviour
     // 牌库归属数据：拟态牌无论变成谁，进弃牌堆/统计的都是本体
     public CardDataSO DeckData => originalData != null ? originalData : Data;
 
+    // ---- 记号笔：金色角标（代码生成的小方块，不用改预制体；位置不对就调 localPosition）----
+    private GameObject markBadge;
+    public void SetMarked(bool marked)
+    {
+        if (marked && markBadge == null)
+        {
+            markBadge = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            Destroy(markBadge.GetComponent<Collider>());
+            markBadge.transform.SetParent(transform, false);
+            markBadge.transform.localPosition = new Vector3(-0.35f, 0.02f, 0.45f);
+            markBadge.transform.localScale = Vector3.one * 0.1f;
+            var r = markBadge.GetComponent<Renderer>();
+            r.material = new Material(Shader.Find("Sprites/Default"));
+            r.material.color = new Color(1f, 0.85f, 0.2f);   // 金色
+        }
+        if (markBadge != null) markBadge.SetActive(marked);
+    }
+
     // 完全变成目标牌（点数/花色/技能全复制，视觉同步刷新）
     public void MimicInto(Card target)
     {
@@ -99,9 +117,12 @@ public class Card : MonoBehaviour
         if (propBlock == null) propBlock = new MaterialPropertyBlock();
 
         float target = IsSelected ? 1f : 0f;
+        float prev = selectGlow;
         selectGlow = Mathf.MoveTowards(selectGlow, target, Time.deltaTime / 0.12f);
 
-        if (selectGlow <= 0f && target <= 0f) return;
+        // 值停在端点（0 或 1）且不在动：不用每帧刷。但"变化的那一帧"必须写——
+        // 尤其消散到 0 的最后一帧，被吞的话 shader 属性残留旧值，月光关不掉
+        if (prev == selectGlow && (selectGlow == 0f || selectGlow == 1f)) return;
 
         for (int i = 0; i < cardRenderers.Length; i++)
         {
