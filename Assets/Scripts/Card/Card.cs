@@ -268,12 +268,14 @@ public class Card : MonoBehaviour
     }
 
     // 打出时触发所有效果（按 timing 分流）
-    public void ApplyEffects()
+    // scoring = 本牌是否是这手的计分牌（core）；勾了 scoreOnly 的效果在散牌位不发动
+    public void ApplyEffects(bool scoring)
     {
         if (IsDead || Data == null || Data.effects == null) return;
         foreach (var effect in Data.effects)
         {
             if (effect == null) continue;
+            if (effect.scoreOnly && !scoring) continue;   // 计分才触发：这张是散牌位，整个效果跳过
             switch (effect.timing)
             {
                 case EffectTiming.Immediate:

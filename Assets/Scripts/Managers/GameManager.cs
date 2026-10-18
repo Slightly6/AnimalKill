@@ -21,6 +21,13 @@ public class GameManager : Singleton<GameManager>
     // 敌人当前筹码
     public int EnemyChips { get; private set; }
 
+    // 蓝色筹码：临时护盾（敌方伤害先扣它，打穿了才扣红码；下回合开始时清零）
+    public int BlueChips { get; private set; }
+
+    // 受伤旗标：上一回合红色筹码是否真被敌方伤害打掉过（工伤赔偿/雪球/以眼还眼读这个）
+    public bool HurtLastTurn { get; private set; }
+    private bool hurtThisTurn;
+
     // ========== 双池系统 ==========
 
     // 主池：双方伤害+弃牌都进这里，关结束分账
@@ -91,6 +98,9 @@ public class GameManager : Singleton<GameManager>
         // if (SidePotChips <= 0)
         //     SidePotChips = startingSidePot;
         PotChips = 0;       // 主池每关重置
+        BlueChips = 0;      // 蓝码不跨关
+        hurtThisTurn = false;
+        HurtLastTurn = false;
         Coin.Instance.initialized=true;
         SendChipsChanged();
         Debug.Log("[关卡] 进入 " + cfg.levelName + "，敌人筹码 " + EnemyChips);
@@ -146,6 +156,56 @@ public class GameManager : Singleton<GameManager>
         TrinketRuntime.NotifyPotGained(amount);   // 镶嵌物：存根/大账簿记账
         SendChipsChanged();
         CheckWin();
+    }
+
+    // 镶嵌物：加蓝色筹码（临时护盾，下回合开始清零）
+    public void AddBlueChips(int amount)
+    {
+        if (IsGameOver || amount <= 0) return;
+        BlueChips += amount;
+        SendChipsChanged();
+    }
+
+    // 敌方伤害统一入口：先扣蓝码，打穿了才扣红码
+    // 红码真被打掉才记"本回合受过伤"；只有红码流出才进主池（蓝码是临时泥码，蒸发了）
+    public void TakeEnemyDamage(int amount)
+    {
+        if (IsGameOver || amount <= 0) return;
+        if (GameProgress.cheatMode) return;   // 开挂：不掉血
+        int blocked = Mathf.Min(BlueChips, amount);
+        if (blocked > 0)
+        {
+            BlueChips -= blocked;
+            Debug.Log("[蓝码] 吸收 " + blocked + " 点敌方伤害，剩 " + BlueChips);
+        }
+        int rest = amount - blocked;
+        if (rest > 0)
+        {
+            hurtThisTurn = true;
+            PlayerChips -= rest;
+            PotChips += rest;
+            TrinketRuntime.NotifyPotGained(rest);   // 镶嵌物：存根/大账簿只认真筹码
+            SendChipsChanged();
+            CheckWin();
+        }
+        else
+        {
+            SendChipsChanged();
+        }
+    }
+
+    // 玩家回合开始（抽牌阶段，BattleManager.GameLoop 调用）：归档受伤旗标 → 蓝码清零
+    // 必须跑在敌方伤害结算之后：蓝码先挡完上一轮的刀才作废
+    public void BeginPlayerTurn()
+    {
+        HurtLastTurn = hurtThisTurn;
+        hurtThisTurn = false;
+        if (BlueChips > 0)
+        {
+            BlueChips = 0;
+            Debug.Log("[蓝码] 回合开始，蓝色筹码清零");
+        }
+        SendChipsChanged();
     }
 
     // 敌人扣筹码
@@ -252,7 +312,8 @@ public class GameManager : Singleton<GameManager>
             playerChips = PlayerChips,
             enemyChips = EnemyChips,
             potChips = PotChips,
-            sidePotChips = SidePotChips
+            sidePotChips = SidePotChips,
+            blueChips = BlueChips
         });
     }
 

@@ -113,6 +113,7 @@ public struct ChipsChangedEvent
     public int enemyChips;    // 敌人当前筹码
     public int potChips;      // 主池筹码
     public int sidePotChips;  // 边池筹码（下关血量）
+    public int blueChips;     // 蓝色筹码（临时护盾，下回合开始清零）
 }
 
 // 敌人对白（过关时主池超出上限触发）

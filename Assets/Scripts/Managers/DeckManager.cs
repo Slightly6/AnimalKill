@@ -29,6 +29,8 @@ public class DeckManager : Singleton<DeckManager>
     // 抽牌堆和手牌
     private List<CardDataSO> drawPile = new List<CardDataSO>();// 抽牌堆
     private List<CardDataSO> discardPile = new List<CardDataSO>();// 弃牌堆（抽干后洗回去）
+    // 弃牌堆张数（车库甩卖等镶嵌物读这个数）
+    public int DiscardCount => discardPile.Count;
     // 手牌
     public List<Card> HandCards{get;private set;}=new List<Card>();
     private void Start()

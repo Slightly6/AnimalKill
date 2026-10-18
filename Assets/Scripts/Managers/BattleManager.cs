@@ -259,12 +259,13 @@ public class BattleManager : Singleton<BattleManager>
         while (!levelEnded && !GameManager.Instance.IsGameOver)
         {
             SetPhase(TurnPhase.Draw);
+            GameManager.Instance.BeginPlayerTurn();   // 蓝码：归档受伤旗标 + 清零（跑在敌方伤害结算之后）
             GameProgress.transitioning = false;
             TrinketRuntime.ResetForTurn();   // 镶嵌物：回合状态清零 + 当票还款 + 钩子回手 + 吸铁石吸牌
             // 延时效果在补牌恢复点数之前执行
             FlushDelayedEffects();
             TickPendingDraws();   // N 回合后抽牌的挂账倒计时（到 0 当回合生效）
-            PointsLeft = pointsPerTurn + pointBonusNextTurn;   // 每回合点数补满（含手牌挂账的额外点数）
+            PointsLeft = Mathf.Max(0, pointsPerTurn + pointBonusNextTurn);   // 每回合点数补满（含手牌挂账；高利贷可挂负数，保底 0）
             Debug.Log($"[回合开始] 点数补满 {pointsPerTurn} + 挂账{pointBonusNextTurn} = {PointsLeft}");
             pointBonusNextTurn = 0;
 
@@ -327,13 +328,34 @@ public class BattleManager : Singleton<BattleManager>
         }
             
 
-        // 1.5 触发所有卡牌效果（道具卡 + 普通牌效果统一走 ApplyEffects）
+        // 1.5 纯计算（PokerResolver）：先判牌型+计分牌（无副作用），效果触发要用
+        var normalCardsList = new List<Card>();
+        foreach (var c in cards)
+            if (c != null && c.Data != null && c.Data.cardType != CardType.Item)
+                normalCardsList.Add(c);
+
+        List<CardDataSO> normalDatas = normalCardsList.ConvertAll(c => c.Data);
+        HandType type = normalDatas.Count > 0 ? PokerResolver.Evaluate(normalDatas) : HandType.HighCard;
+
+        var rawCoreIndices = normalDatas.Count > 0 ? PokerResolver.GetCoreCardIndices(normalDatas, type) : new HashSet<int>();
+        HashSet<int> coreIndices = new HashSet<int>();
+        for (int i = 0; i < cards.Count; i++)
+        {
+            if (cards[i] != null && cards[i].Data != null && cards[i].Data.cardType != CardType.Item)
+            {
+                int normalIdx = normalCardsList.IndexOf(cards[i]);
+                if (rawCoreIndices.Contains(normalIdx)) coreIndices.Add(i);
+            }
+        }
+
+        // 1.6 触发卡牌效果（道具卡 + 普通牌统一走 ApplyEffects；计分牌标记传进去，scoreOnly 效果在散牌位不发动）
         if (!isPlayfold)
         {
-            foreach (Card c in cards)
+            for (int i = 0; i < cards.Count; i++)
             {
+                Card c = cards[i];
                 if (c != null && c.Data != null && c.Data.effects != null && c.Data.effects.Count > 0)
-                    c.ApplyEffects();
+                    c.ApplyEffects(coreIndices.Contains(i));
             }
         }
         else   // 弃牌：触发"弃置时"效果（OnDiscard），打出效果不走
@@ -346,27 +368,9 @@ public class BattleManager : Singleton<BattleManager>
             }
         }
 
-        // 2. 纯计算（PokerResolver）：只对普通牌判牌型
-        var normalCardsList = new List<Card>();
-        foreach (var c in cards)
-            if (c != null && c.Data != null && c.Data.cardType != CardType.Item)
-                normalCardsList.Add(c);
-
-        List<CardDataSO> normalDatas = normalCardsList.ConvertAll(c => c.Data);
-        HandType type = normalDatas.Count > 0 ? PokerResolver.Evaluate(normalDatas) : HandType.HighCard;
+        // 2. 算伤害：牌型固定伤害 + 效果挂账加成
         int damage = Mathf.Max(0, PokerResolver.GetHandDamage(type) + pendingDamageBonus);   // 保底 0：蛇眼等效果可能挂负加成
         pendingDamageBonus = 0;
-
-        var rawCoreIndices = normalDatas.Count > 0 ? PokerResolver.GetCoreCardIndices(normalDatas, type) : new HashSet<int>();
-        HashSet<int> coreIndices = new HashSet<int>();
-        for (int i = 0; i < cards.Count; i++)
-        {
-            if (cards[i] != null && cards[i].Data != null && cards[i].Data.cardType != CardType.Item)
-            {
-                int normalIdx = normalCardsList.IndexOf(cards[i]);
-                if (rawCoreIndices.Contains(normalIdx)) coreIndices.Add(i);
-            }
-        }
 
         // 3. 纯演出（BattleView）：飞牌+牌型板子+飞撞+销毁牌
         yield return BattleView.Instance.PlayResolveSequence(cards, type, damage, coreIndices, isPlayfold);
@@ -457,9 +461,9 @@ public class BattleManager : Singleton<BattleManager>
         Narrator.Hide();   // 敌人出牌了，意图气泡收掉
         yield return BattleView.Instance.PlayEnemyResolveSequence(playData, type, damage, coreIndices, atkMult, preDamage);
 
-        // 游戏逻辑：敌人直接扣玩家筹码（无护盾），扣掉的进主池
+        // 游戏逻辑：敌方伤害先扣蓝码（临时护盾），打穿了才扣红码，红码流出进主池
         Debug.Log("[敌人攻击] 伤害:" + damage);
-        GameManager.Instance.LoseChips(damage);
+        GameManager.Instance.TakeEnemyDamage(damage);
 
         // 触发意图独有效果（Call/Raise 默认空，留作演出钩子）
         EnemyController.Instance.ExecuteSelectedBehavior();

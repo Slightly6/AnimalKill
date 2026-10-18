@@ -10,6 +10,8 @@ public class Chips : MonoBehaviour
     public Transform stackRoot;
     public PotArea potArea;
     public bool isPlayerStack = true;
+    [Header("勾上 = 这堆显示蓝色筹码（临时护盾），忽略 isPlayerStack；potArea 要留空，蓝码清零/被扣不进主池")]
+    public bool showBlueChips = false;
 
     [Header("Stack layout")]
     public int coinsPerStack = 5;          // 每个小摞最多几枚
@@ -68,7 +70,7 @@ public class Chips : MonoBehaviour
 
     private void OnChipsChanged(ChipsChangedEvent e)
     {
-        SetCount(isPlayerStack ? e.playerChips : e.enemyChips);
+        SetCount(showBlueChips ? e.blueChips : (isPlayerStack ? e.playerChips : e.enemyChips));
     }
 
     public void SetCount(int newCount)
