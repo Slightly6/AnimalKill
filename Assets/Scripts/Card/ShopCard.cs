@@ -16,6 +16,7 @@ public class ShopCard : MonoBehaviour, IShopFlyable
     Coroutine hoverRoutine;
     Coroutine shakeRoutine;
     bool locked;   // 购买飞走后置真，悬浮逻辑全部停用
+    float ignoreHoverUntil = 0f;   // 落桌冷却：刚启用时鼠标压在原位不触发缩放
 
     void Start()
     {
@@ -37,10 +38,17 @@ public class ShopCard : MonoBehaviour, IShopFlyable
         basePos = transform.position;
     }
 
+    // 刚落桌时调用：0.15s 内忽略 OnMouseEnter，避免鼠标压在原位导致卡一落桌就放大
+    public void SetLanded()
+    {
+        ignoreHoverUntil = Time.time + 0.15f;
+    }
+
     // 悬浮：上浮 + 微放大；移开：回落复位 + 让赌博杯子复位
     void OnMouseEnter()
     {
         if (locked || !InShop() || GameProgress.InputLocked) return;
+        if (Time.time < ignoreHoverUntil) return;   // 刚落桌：鼠标压在原位不触发缩放
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
         hoverRoutine = StartCoroutine(HoverAnim(basePos + Vector3.up * hoverLift, hoverScale));
         if (GameProgress.currentNodeType == MapNodeType.Shop)
@@ -53,7 +61,7 @@ public class ShopCard : MonoBehaviour, IShopFlyable
     }
     void OnMouseExit()
     {
-        if (locked || !InShop()) return;
+        if (locked || !InShop() || GameProgress.InputLocked) return;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
         hoverRoutine = StartCoroutine(HoverAnim(basePos, 1f));
         if (ShopManager.Instance != null) ShopManager.Instance.HideDiceCup();

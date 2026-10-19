@@ -28,6 +28,10 @@ public class Chips : MonoBehaviour
     public float flyForce = 1.5f;
     public float flyUpForce = 0.5f;
 
+    [Header("失去飞行（PopAndFlyAway 用）：飞向指定位置后归还对象池")]
+    public float loseFlyHeight = 1.2f;      // 抛物线拱起高度
+    public float loseFlyDuration = 0.45f;   // 单枚飞行用时
+
     private readonly List<GameObject> coins = new List<GameObject>();
     private readonly List<GameObject> pendingPlayerCoins = new List<GameObject>();
     // [图案组][五个位置][该竖直小摞里的筹码]
@@ -477,6 +481,86 @@ public class Chips : MonoBehaviour
         }
 
         return bestCoin != null;
+    }
+
+    // ========== 失去飞行：从堆顶取币 → 飞向指定位置 → 归还对象池 ==========
+
+    private int flyingLoseCount;   // 正在飞向目标位的筹码数，归零时关掉 chipFly
+
+    // 从堆顶（沿用"离主池最近"的取币规则）取走最多 amount 枚，逐枚飞向 target 后归还对象池（不进主池）。
+    // 返回实际取走的枚数，外部按同一次数扣数据，筹码堆和数值就不会脱节。
+    public int PopAndFlyAway(int amount, Transform target)
+    {
+        if (amount <= 0) return 0;
+
+        int popped = 0;
+        for (int i = 0; i < amount; i++)
+        {
+            if (!TryFindClosestTopCoin(out int g, out int s, out GameObject coin))
+                break;
+
+            List<GameObject> stack = stackGroups[g][s];
+            stack.RemoveAt(stack.Count - 1);
+            coins.Remove(coin);
+
+            targetCount = Mathf.Max(0, targetCount - 1);   // 堆自己的目标数同步减少，避免 SetCount 再播一遍减少动画
+
+            if (target == null)
+            {
+                coin.transform.SetParent(null, true);
+                pool.Return(coin);
+            }
+            else
+            {
+                flyingLoseCount++;
+                GameProgress.chipFly = true;
+                StartCoroutine(LoseFlyRoutine(coin, target.position));
+            }
+            popped++;
+        }
+        return popped;
+    }
+
+    // 单枚：抛物线拱起飞到目标位 → 归还对象池
+    private IEnumerator LoseFlyRoutine(GameObject coin, Vector3 targetPos)
+    {
+        Rigidbody rb = coin.GetComponent<Rigidbody>();
+        Vector3 startPos = rb != null ? rb.position : coin.transform.position;
+
+        coin.transform.SetParent(null, true);
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.detectCollisions = false;
+        }
+
+        float t = 0f;
+        while (t < 1f)
+        {
+            t += Time.deltaTime / loseFlyDuration;
+            float p = Mathf.Clamp01(t);
+            Vector3 pos = Vector3.Lerp(startPos, targetPos, p);
+            pos.y += Mathf.Sin(p * Mathf.PI) * loseFlyHeight;   // 拱一下，飞过去自然些
+            if (rb != null) rb.position = pos;
+            else coin.transform.position = pos;
+            yield return null;
+        }
+
+        if (rb != null)
+        {
+            rb.position = targetPos;
+            rb.detectCollisions = true;
+        }
+        else coin.transform.position = targetPos;
+
+        pool.Return(coin);
+
+        flyingLoseCount--;
+        if (flyingLoseCount <= 0)
+        {
+            flyingLoseCount = 0;
+            GameProgress.chipFly = false;
+        }
     }
 
     public void ReceiveCoin(GameObject coin)

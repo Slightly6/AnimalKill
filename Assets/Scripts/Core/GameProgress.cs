@@ -111,8 +111,11 @@ using UnityEngine;
 
         public static bool chipFly=false;
 
-        // 战斗交互总锁：看地图 或 切关过渡 时，一切玩家点击禁用
-        public static bool InputLocked => mapOpen || transitioning || chipFly;
+        // 关卡收尾期间（手牌飞回牌堆 + 强化三选一排版）：锁住所有卡牌交互
+        public static bool levelEndBusy = false;
+
+        // 战斗交互总锁：看地图 或 切关过渡 或 关卡收尾 时，一切玩家点击禁用
+        public static bool InputLocked => mapOpen || transitioning || chipFly || levelEndBusy;
 
         // 重新开始一局（玩家输光后重开用）
         public static void Reset()

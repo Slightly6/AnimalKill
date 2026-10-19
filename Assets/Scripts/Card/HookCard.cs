@@ -11,8 +11,10 @@ public class HookCard : MonoBehaviour, IShopFlyable
 
     [Header("悬浮反馈")]
     public float hoverLift = 0.4f;      // 上浮高度
-    public float hoverScale = 1.08f;    // 悬浮放大（待售小丑）
-    public float hookHoverScale = 1.3f; // 钩子上已购小丑的悬浮放大（更明显，方便认牌）
+    [SerializeField]
+    private float hoverScale = 1.08f;    // 悬浮放大（待售小丑）
+    [SerializeField]
+    private float hookHoverScale = 1.08f; // 钩子上已购小丑的悬浮放大
 
     Vector3 baseScale;
     Vector3 homePos;     // 悬浮前的"家"位置（进入悬浮瞬间记录；钩子上的卡一直在摆，不能用 Start 时的固定值）
@@ -39,7 +41,9 @@ public class HookCard : MonoBehaviour, IShopFlyable
         baseScale = transform.localScale;   // 购买瞬间复位 scale 用
     }
 
-    // 悬浮：上浮 + 放大（认出对准哪张）；右键 = 说明投到手机
+    // 悬浮：放大并保持"挂钩点不动"（卡自身局部顶部钉在原位，放大时绕挂钩往下长）
+    Vector3 fixedHookPoint;   // 悬浮时锁定的挂钩点（卡局部顶部）世界坐标
+    float localHalfHeight;    // 卡面网格局部半高（scale=1 下）
     void OnMouseEnter()
     {
         if (flying) return;
@@ -48,10 +52,14 @@ public class HookCard : MonoBehaviour, IShopFlyable
             homePos = transform.position;   // 记"家"：进入悬浮瞬间的位置/大小
             homeScale = transform.localScale;
             hovering = true;
+            // 挂钩点 = 卡自身局部顶部（卡挂在钩子上时顶部贴着挂线）；记下它的世界坐标钉死
+            MeshFilter mf = GetComponentInChildren<MeshFilter>();
+            localHalfHeight = mf != null ? mf.sharedMesh.bounds.extents.y : 0f;
+            fixedHookPoint = transform.TransformPoint(Vector3.up * localHalfHeight);
         }
         float scaleMul = locked ? hookHoverScale : hoverScale;
         if (hoverRoutine != null) StopCoroutine(hoverRoutine);
-        hoverRoutine = StartCoroutine(HoverAnim(homePos + Vector3.up * hoverLift, homeScale * scaleMul));
+        hoverRoutine = StartCoroutine(HoverAnim(homePos, homeScale * scaleMul));
 
         if (!locked && ShopManager.Instance != null && Data != null)
             ShopManager.Instance.ShowDiceCup(Data.price);   // 待售小丑才飘骰子价格；钩子上的不飘
@@ -70,10 +78,9 @@ public class HookCard : MonoBehaviour, IShopFlyable
         hoverRoutine = StartCoroutine(HoverAnim(homePos, homeScale));
         hovering = false;
     }
-    // 相对动画：从当前位置/大小 Lerp 到目标（不用 Start 记的绝对位置——钩子上的卡位置缩放都变过）
+    // 相对动画：缩放从当前 Lerp 到目标；位置按当前缩放反推，使卡局部顶部始终钉在 fixedHookPoint
     IEnumerator HoverAnim(Vector3 toPos, Vector3 toScale)
     {
-        Vector3 fromPos = transform.position;
         Vector3 fromScale = transform.localScale;
         float t = 0f;
         const float dur = 0.15f;
@@ -81,8 +88,12 @@ public class HookCard : MonoBehaviour, IShopFlyable
         {
             t += Time.deltaTime / dur;
             float p = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(t));
-            transform.position = Vector3.Lerp(fromPos, toPos, p);
-            transform.localScale = Vector3.Lerp(fromScale, toScale, p);
+            Vector3 curScale = Vector3.Lerp(fromScale, toScale, p);
+            transform.localScale = curScale;
+            // 局部顶部到中心的世界偏移 = transform.up × (局部半高 × 当前缩放)
+            // 中心位置 = 挂钩点 - 偏移，这样放大时挂钩点不动、卡绕它往下长
+            Vector3 topOffsetWorld = transform.up * (localHalfHeight * curScale.y);
+            transform.position = fixedHookPoint - topOffsetWorld;
             yield return null;
         }
     }

@@ -32,9 +32,10 @@ public class TableClickTarget : MonoBehaviour
         if (GameProgress.InputLocked) return;
         if (GameProgress.IsNonBattleNode() && actionType == TableActionType.EndTurn)
         {
-            // 商店里点铃铛 = 不买东西直接离开：走统一收场（清商品 → 帽子原路返回 → 存档 → 开卷轴）
-            if (MapManager.Instance != null) MapManager.Instance.FinishNonBattleNode();
+           
+            MapManager.Instance.FinishNonBattleNode();
             return;
+            
         }
 
         if (BattleManager.Instance == null || !BattleManager.Instance.IsInBattle) return;

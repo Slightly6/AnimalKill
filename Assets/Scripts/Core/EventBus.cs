@@ -224,3 +224,8 @@ public struct EnemyHealthChangedEvent
     public int current;
     public int max;
 }
+// 轮盘停稳，球落进第几号格（0 = 绿色那格）
+public struct RouletteSettledEvent
+{
+    public int pocketIndex;
+}

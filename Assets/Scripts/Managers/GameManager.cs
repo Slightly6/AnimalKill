@@ -48,6 +48,9 @@ public class GameManager : Singleton<GameManager>
     public int bigBlindDice = 5;     // 大盲注（Elite）
     public int bossDice = 8;         // Boss
 
+    [Header("敌人认输台词（每个战斗关打死敌人时）：气泡说一句，停几秒后收掉")]
+    public float enemyLoseLineHoldTime = 3f;   // "我输了"这句停留多久后收掉
+
     private bool deathSequenceRunning = false;  // 玩家打光敌人筹码后，死亡流程正在进行中，防止重复触发
     public int toDice;                    // 本关过关奖励的骰子数（按节点类型算）
 
@@ -154,6 +157,31 @@ public class GameManager : Singleton<GameManager>
         PotChips += amount;                   // 玩家流出的筹码进主池
         TrinketRuntime.NotifyPotChanged();   // 镶嵌物：存根/大账簿记账
         SendChipsChanged();
+        CheckWin();
+    }
+
+    [Header("筹码失去飞行（飞到指定位置后归还对象池，不进主池）")]
+    public Transform chipLoseFlyTarget;   // 指定飞向的位置（Inspector 里拖）
+
+    // 筹码失去飞行：从玩家筹码堆顶部取 amount 枚，逐枚飞向指定位置，到达后归还对象池。
+    // 与 LoseChips 的区别：这是"丢掉"，不进主池；扣的数据 = 实际取走的枚数，天然和筹码堆同步。
+    public void FlyLoseChips(int amount, Transform target = null)
+    {
+        if (IsGameOver || amount <= 0) return;
+
+        Chips stack = MapManager.Instance != null ? MapManager.Instance.playerChips : null;
+        if (stack == null)
+        {
+            Debug.LogWarning("[筹码失去飞行] 找不到玩家筹码堆（MapManager.playerChips 没配）");
+            return;
+        }
+
+        Transform dest = target != null ? target : chipLoseFlyTarget;
+        int popped = stack.PopAndFlyAway(amount, dest);   // 堆内已同步减数
+        if (popped <= 0) return;
+
+        if (!GameProgress.cheatMode) PlayerChips = Mathf.Max(0, PlayerChips - popped);
+        SendChipsChanged();   // 数量已对齐，Chips 不会再播一遍"减少"动画
         CheckWin();
     }
 
@@ -364,7 +392,7 @@ public class GameManager : Singleton<GameManager>
             EnemyChips = 0;
             if (deathSequenceRunning) return;
             deathSequenceRunning = true;
-            Narrator.Hide();   // 敌人已死，收掉残留的意图气泡（"我想要弃牌"之类）
+            SayEnemyLose();   // 敌人认输：气泡说"我输了"，停留几秒后收掉
             BattleQueue.Instance.Until(() => !GameProgress.chipFly, 15f);
             BattleQueue.Instance.Run(DeathSequenceRoutine());   // 一个协程搞定后面所有
         }
@@ -375,6 +403,19 @@ public class GameManager : Singleton<GameManager>
             // SidePotChips = 0;   // 边池机制关闭
             EndGame(false);
         }
+    }
+
+    // 敌人认输（每个战斗关打死敌人都会说）：气泡说一句"我输了"，停 enemyLoseLineHoldTime 秒后收掉
+    private void SayEnemyLose()
+    {
+        Narrator.SayStickyText("我输了");
+        StartCoroutine(HideEnemyLoseLineRoutine());
+    }
+
+    private IEnumerator HideEnemyLoseLineRoutine()
+    {
+        yield return new WaitForSeconds(enemyLoseLineHoldTime);
+        Narrator.Hide();
     }
     private IEnumerator DeathSequenceRoutine()
     {

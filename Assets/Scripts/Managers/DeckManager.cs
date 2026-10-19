@@ -89,6 +89,36 @@ public class DeckManager : Singleton<DeckManager>
         ClearHandObjects();
         InitDeck();
     }
+
+    // 关卡收尾：把手牌全部飞回抽牌堆（演出），飞完销毁实体。数据不动（下关 InitDeck 会重建）
+    // 期间手牌列表先清空，避免飞行中被当手牌操作
+    public System.Collections.IEnumerator FlyAllHandToDeck()
+    {
+        Vector3 pilePos = deckPile != null ? deckPile.position : transform.position;
+        List<Card> toFly = new List<Card>(HandCards);
+        HandCards.Clear();
+        SyncMimicVisuals();
+        TrinketRuntime.BeginHandChangeBatch();
+
+        for (int i = 0; i < toFly.Count; i++)
+        {
+            Card c = toFly[i];
+            if (c == null) continue;
+            ShopCard sc = c.GetComponent<ShopCard>();
+            if (sc != null)
+            {
+                sc.StopHover();   // 先停悬浮，避免回落动画和飞回抢位置
+                sc.StartCoroutine(sc.FlyStraight(c.transform, pilePos, 0.4f));
+            }
+            else
+            {
+                Destroy(c.gameObject);
+            }
+        }
+        TrinketRuntime.EndHandChangeBatch();
+        EventBus.Publish(new HandChangedEvent());
+        yield return new WaitForSeconds(0.45f);   // 等最后一张飞完
+    }
     // 抽 N 张（协程，一张张翻面）
     // 批量窗口：一轮补牌不管几张只算 1 次手牌变动（船锚计数用）
     public System.Collections.IEnumerator DrawCards(int count)

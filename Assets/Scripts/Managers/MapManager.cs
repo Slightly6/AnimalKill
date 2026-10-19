@@ -168,7 +168,7 @@ public class MapManager : Singleton<MapManager>
     }
 
 
-    public void ClearSpawnedNonBattleObjects()
+    IEnumerator ClearSpawnedNonBattleObjectsRoutine()
     {
         MapNodeType type = GameProgress.currentNodeType;
 
@@ -186,19 +186,45 @@ public class MapManager : Singleton<MapManager>
 
             case MapNodeType.Shop:
                 clearshopCards();
+                // 帽子在外面（进过商店）就先完整演一遍原路返回，等它回到常驻位再开卷轴，避免相机立刻切走把回程盖掉
+                if (TOPhat.Instance != null && TOPhat.Instance.IsOutside)
+                {
+                    TOPhat.Instance.ExitShop();
+                    yield return TOPhat.Instance.WaitIdle();
+                }
+                SaveManager.Instance.Save();   // 买完/选完立即存，不必等下一关打完（桌上实体被扫进存档）
                 Narrator.Hide();   // 收掉商店常驻的"持有骰子数"播报，别跟着飘到地图
                 // 清商品
                 // DestroySpawned("Goods");
                 break;
 
             case MapNodeType.Event:
-                // 这两类当前没生成物，啥也不清
-                break;
+                // 轮盘赌离场：① 灭灯 + 轮盘、按钮回天上失活 ② 帽子归位 ③ 复用关卡结束的强化流程把攒的宝箱机会逐个开掉 ④ 开卷轴
+                GameProgress.levelEndBusy = true;   // 收尾期间锁住卡牌交互
+                if (RouletteDrop.Instance != null)
+                {
+                    Coroutine fly = RouletteDrop.Instance.FlyBack();
+                    if (fly != null) yield return fly;
+                }
+                // 帽子（悬浮骰子用的）原路收回去，等它归位
+                if (TOPhat.Instance != null && TOPhat.Instance.IsOutside)
+                {
+                    TOPhat.Instance.ExitShop();
+                    yield return TOPhat.Instance.WaitIdle();
+                }
+                Narrator.Hide();   // 收掉常驻的宝箱数播报，别跟着飘到地图
+
+                // 攒了几次机会就开几次：每次都是关卡结束那一套（带镶嵌的宝箱 + 抽牌堆飞三张）
+                // 开完由 PlayEventRewards 自己开卷轴，所以这里直接 yield break，别让下面那句 OpenMapUI 抢跑
+                PlayEventRewards(RouletteEventManager.Instance != null ? RouletteEventManager.Instance.TakeChances() : 0);
+                yield break;
             case MapNodeType.Rest:
                 if (RestManager.Instance != null)
                     RestManager.Instance.Despawn();
                 break;
         }
+
+        OpenMapUI();   // 收场全演完（商店=帽子回位、商品飞走）再开卷轴，回程不会被盖掉
     }
     //清理商品
     void clearshopCards()
@@ -270,22 +296,14 @@ public class MapManager : Singleton<MapManager>
     }
 
     // ========== 商店买完 / 宝箱选完：不切场景，帽子原路回去后卷轴再掉下来选下一关 ==========
+    // public void FinishNonBattleNode()
+    // {
+    //     StartCoroutine(FinishNonBattleNodeRoutine());
+    // }
+
     public void FinishNonBattleNode()
     {
-        StartCoroutine(FinishNonBattleNodeRoutine());
-    }
-
-    IEnumerator FinishNonBattleNodeRoutine()
-    {
-        ClearSpawnedNonBattleObjects();
-        // 帽子在外面（进过商店）就先完整演一遍原路返回，等它回到常驻位再开卷轴，避免相机立刻切走把回程盖掉
-        if (TOPhat.Instance != null && TOPhat.Instance.IsOutside)
-        {
-            TOPhat.Instance.ExitShop();
-            yield return TOPhat.Instance.WaitIdle();
-        }
-        SaveManager.Instance.Save();   // 买完/选完立即存，不必等下一关打完（桌上实体被扫进存档）
-        OpenMapUI();
+        StartCoroutine(ClearSpawnedNonBattleObjectsRoutine());
     }
 
     // 过关：K（章节 Boss）→ 解锁下一章 / 胜利；普通关 → 卷轴掉下来
@@ -299,21 +317,26 @@ public class MapManager : Singleton<MapManager>
             return;
         }
 
+        StartCoroutine(LevelClearRoutine());
+    }
+
+    System.Collections.IEnumerator LevelClearRoutine()
+    {
+        // 一进收尾就锁死所有卡牌交互：手牌飞回 + 强化三选一排版期间鼠标点啥都没用
+        GameProgress.levelEndBusy = true;
+
         //筹码区
         // 我的筹码不还池：整个跑局都在同一场景，玩家筹码堆跨关保留原样，
         // 下一关 ChipsChangedEvent 报同样的数，SetCount 不会动它（不重掉一遍开场下筹码雨）
         if(enemyChips!=null) enemyChips.ClearLedger();
         if(potArea!=null) potArea.ClearCoins();
         else FindObjectOfType<PotArea>().ClearCoins();
-        // 【边池机制关闭】边池不再有筹码实体，不用清场
-        // if(playerSidePot!=null) playerSidePot.ClearLedger();
-        // else FindObjectOfType<SidePotArea>().ClearLedger();
-        
-        //手牌区
-        DeckManager.Instance.ClearHandObjects();  // 删玩家手牌
+
+        //手牌区：先全部飞回抽牌堆（演出），飞完再清虚影/敌人手牌，避免两套卡牌逻辑同时跑
+        if (DeckManager.Instance != null)
+            yield return DeckManager.Instance.FlyAllHandToDeck();
         BattleView.Instance.ClearGhosts();        // 删虚影
         BattleView.Instance.ClearEnemyHand();
-        // AwardHide();   // 按刚打完的节点给兽皮
         SaveManager.Instance.Save();   // 打完一关存档一次
 
         LevelConfig clearedCfg = null;
@@ -329,12 +352,14 @@ public class MapManager : Singleton<MapManager>
             if (GameProgress.currentSuit >= 3)   // 最后一章（♣）→ 整局胜利
             {
                 GameManager.Instance.WinGame();
-                return;
+                GameProgress.levelEndBusy = false;
+                yield break;
             }
             GameProgress.currentSuit++;   // 解锁下一章（卷轴打开时会检测 suit 变化自动生成新章地图）
         }
 
         // 相机不动（留在战斗视角看宝箱砸桌开盖），宝箱开完盖 EnhanceManager 才切强化视角
+        // EnhanceManager 在三张候选牌全部落桌后会把 levelEndBusy 解锁，恢复交互
         EnhanceManager.Instance.Show(AfterEnhance);   // 强化三选一：选完补存档再开卷轴
     }
 
@@ -343,6 +368,21 @@ public class MapManager : Singleton<MapManager>
     {
         SaveManager.Instance.Save();
         OpenMapUI();
+    }
+
+    // 事件关离场奖励：直接复用关卡结束的强化三选一（EnhanceManager.Show）——
+    // 一次机会 = 带镶嵌的宝箱从天上掉下来开盖 + 从抽牌堆飞三张候选牌，选完接着开下一次，全开完再开卷轴
+    void PlayEventRewards(int remain)
+    {
+        if (remain <= 0)
+        {
+            GameProgress.levelEndBusy = false;   // 没有机会可开：解锁交互（有开的话由强化流程自己解锁）
+            SaveManager.Instance.Save();
+            OpenMapUI();
+            return;
+        }
+        GameProgress.levelEndBusy = true;        // 这一轮开箱+飞牌期间继续锁交互
+        EnhanceManager.Instance.Show(() => PlayEventRewards(remain - 1));
     }
 
     // 打开地图：优先用 3D 卷纸 RollingMap3D，没有则 fallback 到旧 MapScrollUI
@@ -397,9 +437,12 @@ public class MapManager : Singleton<MapManager>
                 break;
 
             case MapNodeType.Event:
-                // TODO：事件玩法还没做，先直接回地图，保证整条流程能跑通
-                Debug.Log($"[节点] {type} 内容未实现，暂时直接返回地图。");
-                FinishNonBattleNode();
+                // 轮盘赌：点事件节点后，轮盘砸下来落地，按钮组和轮盘同时从桌里冒出来；点颜色按钮开转
+                Debug.Log("[节点] 进入事件关：轮盘赌");
+                if (TOPhat.Instance != null) TOPhat.Instance.EnterShop();   // 复用商店帽子：悬浮按钮时从帽子里冒骰子
+                if (RouletteDrop.Instance != null) RouletteDrop.Instance.Drop();
+                // 敌人先报一次下注规则（3 骰子 / 否则 5 红筹码）
+                if (RouletteEventManager.Instance != null) RouletteEventManager.Instance.AnnounceStake();
                 break;
         }
     }
