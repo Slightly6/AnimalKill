@@ -30,12 +30,16 @@ public class TableClickTarget : MonoBehaviour
     {
         
         if (GameProgress.InputLocked) return;
-        if (GameProgress.IsNonBattleNode() && actionType == TableActionType.EndTurn)
+
+        // 非战斗节点：铃铛 = 收场离开本节点（商店 + 事件关）。
+        // 注意不能只用 IsNonBattleNode —— 它只认商店；事件关如果漏判，会掉到下面的战斗分支，
+        // 而 IsInBattle 是 false，直接 return，铃铛点了什么都不会发生。
+        bool nonBattle = GameProgress.IsNonBattleNode()
+                      || GameProgress.currentNodeType == MapNodeType.Event;
+        if (nonBattle && actionType == TableActionType.EndTurn)
         {
-           
             MapManager.Instance.FinishNonBattleNode();
             return;
-            
         }
 
         if (BattleManager.Instance == null || !BattleManager.Instance.IsInBattle) return;
