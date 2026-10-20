@@ -321,17 +321,10 @@ public class BattleView : Singleton<BattleView>
     // BattleManager 先用 PokerResolver 算好 type/damage 等，传进来
     public IEnumerator PlayResolveSequence(List<Card> cards, HandType type, int damage, HashSet<int> coreIndices, bool isPlayfold)
     {
-        // 1. 牌依次飞到虚影位，立着面向玩家
+        // 1. 一组牌错开起飞"甩"上桌（带弧线、边飞边略放大），每张落位时冒烟 + 消掉自己的虚影
         List<Vector3> positions = GetPlayPositions(cards.Count);
         Quaternion facePlayer = GetGhostRotation();
-        for (int i = 0; i < cards.Count; i++)
-        {
-            yield return FlyToTable(cards[i], positions[i], facePlayer, 0.2f);
-
-            // 飞到瞬间：该位置冒烟 + 这张虚影消失（真牌顶替虚影停在桌上）
-            PlaySmoke(positions[i]);
-            RemoveGhostAt(i);
-        }
+        yield return FlyCardsToTable(cards, positions, facePlayer, true);
 
         // 2. 亮底分 + 抬牌 + 逐张弹牌发效果滚分
         yield return ShowHandBoard(type, cards, coreIndices, isPlayfold, damage, isPlayer: true);
@@ -348,23 +341,78 @@ public class BattleView : Singleton<BattleView>
     // 结算演出时得分牌一起抬起的高度（想更高就调这个）
     const float PlayLift = 0.3f;
 
-    // 牌从当前位置飞到桌面结算位（同时放平）
-    private IEnumerator FlyToTable(Card card, Vector3 toPos, Quaternion toRot, float duration)
+    [Header("出牌飞上桌（整手牌连成一气甩出去）")]
+    public float playFlyDuration = 0.3f;   // 单张从手牌飞上桌的用时
+    public float playFlyStagger = 0.055f;  // 张与张之间的起飞间隔（越小越像一把撒出去）
+    public float playFlyApex = 0.45f;      // 飞行途中比直线多拱多少
+    public float playFlyPop = 0.12f;       // 飞行中临时放大多少（落桌回到原大小，收住才有"啪"的感觉）
+
+    // 一组牌一起飞上桌：每张各自按自己的延迟起飞、走弧线、边飞边放大再收回，
+    // 落位那一刻才冒烟 + 消虚影 —— 取代原来"一张一张线性平移 0.2 秒"的排队感。
+    private IEnumerator FlyCardsToTable(List<Card> cards, List<Vector3> positions, Quaternion toRot, bool smokeAndClearGhost)
     {
-        if (card == null) yield break;
-        Vector3 fromPos = card.transform.position;
-        Quaternion fromRot = card.transform.rotation;
+        int n = cards.Count;
+        if (n == 0) yield break;
+
+        Vector3[] fromPos = new Vector3[n];
+        Quaternion[] fromRot = new Quaternion[n];
+        Vector3[] baseScale = new Vector3[n];
+        bool[] landed = new bool[n];
+
+        for (int i = 0; i < n; i++)
+        {
+            if (cards[i] == null) { landed[i] = true; continue; }
+            fromPos[i] = cards[i].transform.position;
+            fromRot[i] = cards[i].transform.rotation;
+            baseScale[i] = cards[i].transform.localScale;
+        }
+
+        // 落位收尾：位置/朝向/缩放一次性抹平，玩家冒烟、虚影消失
+        void Land(int i)
+        {
+            landed[i] = true;
+            Card c = cards[i];
+            if (c == null) return;
+
+            c.transform.position = positions[i];
+            c.transform.rotation = toRot;
+            c.transform.localScale = baseScale[i];
+
+            if (!smokeAndClearGhost) return;
+            PlaySmoke(positions[i]);
+            RemoveGhostAt(i);
+        }
+
+        float stagger = Mathf.Max(0f, playFlyStagger);
+        float dur = Mathf.Max(0.05f, playFlyDuration);
+        float total = stagger * (n - 1) + dur;
         float t = 0f;
-        while (t < duration)
+
+        while (t < total)
         {
             t += Time.deltaTime;
-            float p = Mathf.Clamp01(t / duration);
-            card.transform.position = Vector3.Lerp(fromPos, toPos, p);
-            card.transform.rotation = Quaternion.Slerp(fromRot, toRot, p);
+
+            for (int i = 0; i < n; i++)
+            {
+                if (landed[i] || cards[i] == null) continue;
+
+                float local = Mathf.Clamp01((t - i * stagger) / dur);
+                float k = Mathf.SmoothStep(0f, 1f, local);   // 起飞收住、落桌不砸
+
+                Vector3 pos = Vector3.Lerp(fromPos[i], positions[i], k);
+                pos.y += Mathf.Sin(local * Mathf.PI) * playFlyApex;   // 边飞边拱一下
+                cards[i].transform.position = pos;
+                cards[i].transform.rotation = Quaternion.Slerp(fromRot[i], toRot, k);
+                cards[i].transform.localScale = baseScale[i] * (1f + Mathf.Sin(local * Mathf.PI) * playFlyPop);
+
+                if (local >= 1f) Land(i);
+            }
             yield return null;
         }
-        card.transform.position = toPos;
-        card.transform.rotation = toRot;
+
+        // 收尾：时间可能刚好差一帧，把还没落的全落干净
+        for (int i = 0; i < n; i++)
+            if (!landed[i]) Land(i);
     }
 
     // 牌被计分时弹一下：扩大再缩回（配合飘字，和 PunchScore 同款手感）
@@ -791,13 +839,10 @@ public class BattleView : Singleton<BattleView>
             c.transform.rotation = worldRot;
             c.transform.localScale = worldScale;
         }
-        // 2. 飞到桌面结算位（和玩家同一位置）
+        // 2. 飞到桌面结算位（和玩家同一位置，同一套甩牌节奏；敌人没有虚影所以不冒烟）
         List<Vector3> positions = GetPlayPositions(selectedViews.Count);
         Quaternion facePlayer = GetGhostRotation();
-        for (int i = 0; i < selectedViews.Count; i++)
-        {
-            yield return FlyToTable(selectedViews[i], positions[i], facePlayer, 0.2f);
-        }
+        yield return FlyCardsToTable(selectedViews, positions, facePlayer, false);
 
         // 3. 抬牌 + 滚牌型/伤害（和玩家一致）
         yield return ShowHandBoard(type, selectedViews, coreIndices, isPlay: false, damage);

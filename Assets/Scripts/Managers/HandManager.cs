@@ -28,6 +28,7 @@ public class HandManager : MonoBehaviour
 
     [Header("落位平滑")]
     public float followSpeed = 25f;   // 目标格位变化（补牌/出牌/换位）时滑过去的快慢；0 = 瞬间吸附
+    public float dragReorderDeadZone = 0.08f;   // 拖拽换位的迟滞（格位单位）：越大越不容易在中线附近来回抖
 
     [Header("拖牌时向玩家倾斜（0 = 不翻转）")]
     public float dragTiltAngle = 0f;    // 手牌区整体向玩家倾斜多少度（0 表示不翻转）
@@ -155,23 +156,25 @@ public class HandManager : MonoBehaviour
         }
         return spacing;
     }
+    // 拖拽中实时换位：鼠标拖到哪，列表里就把这张牌挪到哪，
+    // 其他牌立刻滑开让出空档（Arrange 每帧重排 + followSpeed 平滑），松手不用再等。
+    // 迟滞：鼠标正压在两个格位的分界线上时别来回改，否则相邻两张牌会抖。
     public void OnDragCardChangedPosition(Card draggingCard, Vector3 screenPos)
     {
         int count = deck.HandCards.Count;
         if (count <= 1) return;
 
-        // 1. 算出鼠标当前指向的索引
-        int targetIndex = GetIndexAtScreenPoint(screenPos);
-        
-        // 2. 拿到正在拖的牌原本的索引
         int currentIndex = deck.HandCards.IndexOf(draggingCard);
-        
-        // 3. 如果位置变了，就在列表里把这张牌挪过去
-        if (currentIndex != -1 && targetIndex != currentIndex)
-        {
-            deck.HandCards.RemoveAt(currentIndex);
-            deck.HandCards.Insert(targetIndex, draggingCard);
-        }
+        if (currentIndex < 0) return;
+
+        float idxF = GetContinuousIndexAtScreenPoint(screenPos);          // 鼠标指向的连续索引
+        int targetIndex = Mathf.Clamp(Mathf.RoundToInt(idxF), 0, count - 1);
+
+        if (targetIndex == currentIndex) return;                          // 还在自己这一格
+        if (Mathf.Abs(idxF - currentIndex) < 0.5f + dragReorderDeadZone)  // 没真正越过中线，先不动
+            return;
+
+        deck.MoveHandCard(draggingCard, targetIndex);   // 复用现成的换位（含拟态牌同步）
     }
     // 手牌中心（和 Arrange 里同一个点）
     public Vector3 GetHandCenter()
@@ -202,11 +205,18 @@ public class HandManager : MonoBehaviour
     {
         int count = deck.HandCards.Count;
         if (count == 0) return 0;
+        return Mathf.Clamp(Mathf.RoundToInt(GetContinuousIndexAtScreenPoint(screenPos)), 0, count - 1);
+    }
+
+    // 连续索引（不四舍五入）：拖动换位靠它算"离当前格位有多远"，做迟滞判定
+    public float GetContinuousIndexAtScreenPoint(Vector3 screenPos)
+    {
+        int count = deck.HandCards.Count;
+        if (count == 0) return 0;
 
         Vector3 p = ScreenToHandPoint(screenPos);
         Vector3 center = GetHandCenter();
         float localX = Vector3.Dot(p - center, mainCam.transform.right);   // 相对手牌中心的横向偏移
-        float idxF = (count - 1) / 2f + localX / GetSpacing();
-        return Mathf.Clamp(Mathf.RoundToInt(idxF), 0, count - 1);
+        return (count - 1) / 2f + localX / GetSpacing();
     }
 }

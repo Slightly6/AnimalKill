@@ -107,7 +107,13 @@ public class CardDisplay : MonoBehaviour
 
         // 立着跟手走（沿手牌平面），旋转保持手牌扇面角度不变
         if (handManager != null)
+        {
             transform.position = handManager.ScreenToHandPoint(Input.mousePosition);
+
+            // 边拖边换位：手上的牌提前挪出空档，玩家能实时看到松手会插到哪
+            // （只改列表顺序、不发事件；HandManager 的 followSpeed 会让其他牌滑过去）
+            handManager.OnDragCardChangedPosition(card, Input.mousePosition);
+        }
     }
 
     void BeginDrag()
