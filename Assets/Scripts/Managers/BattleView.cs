@@ -342,10 +342,10 @@ public class BattleView : Singleton<BattleView>
     const float PlayLift = 0.3f;
 
     [Header("出牌飞上桌（整手牌连成一气甩出去）")]
-    public float playFlyDuration = 0.3f;   // 单张从手牌飞上桌的用时
-    public float playFlyStagger = 0.055f;  // 张与张之间的起飞间隔（越小越像一把撒出去）
-    public float playFlyApex = 0.45f;      // 飞行途中比直线多拱多少
-    public float playFlyPop = 0.12f;       // 飞行中临时放大多少（落桌回到原大小，收住才有"啪"的感觉）
+    public float playFlyDuration = 0.34f;  // 单张从手牌飞上桌的用时
+    public float playFlyStagger = 0.1f;    // 张与张之间的起飞间隔：拉开一点，读得出"一张一张摆上去"
+    public float playFlyApex = 0.1f;       // 飞行途中比直线多拱多少（牌是摆上桌的，不是扔出去的）
+    public float playFlyPop = 0f;          // 飞行中临时放大多少：0 = 不做缩放弹跳（缩放是最"手游"的一笔）
 
     // 一组牌一起飞上桌：每张各自按自己的延迟起飞、走弧线、边飞边放大再收回，
     // 落位那一刻才冒烟 + 消虚影 —— 取代原来"一张一张线性平移 0.2 秒"的排队感。
@@ -397,7 +397,7 @@ public class BattleView : Singleton<BattleView>
                 if (landed[i] || cards[i] == null) continue;
 
                 float local = Mathf.Clamp01((t - i * stagger) / dur);
-                float k = Mathf.SmoothStep(0f, 1f, local);   // 起飞收住、落桌不砸
+                float k = 1f - (1f - local) * (1f - local);   // 先快后慢：甩出去，再被桌面拖住
 
                 Vector3 pos = Vector3.Lerp(fromPos[i], positions[i], k);
                 pos.y += Mathf.Sin(local * Mathf.PI) * playFlyApex;   // 边飞边拱一下
@@ -684,10 +684,10 @@ public class BattleView : Singleton<BattleView>
     // ========== 销毁牌 ==========
 
     [Header("结算牌飞回弃牌堆")]
-    public float discardFlyApex = 1.2f;       // 抛物线比直线多拱多少（越高越飘）
+    public float discardFlyApex = 0.35f;      // 抛物线比直线多拱多少（低一点：牌是推回牌堆，不是抛）
     public float discardFlyDuration = 0.42f;  // 单张飞行用时
-    public float discardFlyInterval = 0.07f;  // 张与张之间的出发间隔（逐张收紧的节奏感）
-    public float discardLandBounce = 0.07f;   // 落到牌堆后的回弹高度
+    public float discardFlyInterval = 0.1f;   // 张与张之间的出发间隔
+    public float discardLandBounce = 0f;      // 落到牌堆后的回弹高度（0 = 不做 Q 弹）
     public float discardLandStack = 0.02f;    // 每落一张往上垫这么高（视作叠在牌堆上）
 
     // 结算完的牌飞回弃牌堆：和筹码同一套抛物线配方（同一张实体走完整条连续曲线、落点精确、落地轻弹），
@@ -787,11 +787,36 @@ public class BattleView : Singleton<BattleView>
         enemyHandViews.Remove(card);
     }
 
-    private void ClearEnemyHandViews()
+    // 关卡结束：敌人手牌不原地销毁，逐张沿弧线飞出屏幕，飞到了再销毁
+    public IEnumerator ClearEnemyHandFly(Transform flyTarget)
     {
-        foreach (Card card in enemyHandViews)
-            if (card != null) Destroy(card.gameObject);
-        enemyHandViews.Clear();
+        List<Card> leaving = new List<Card>(enemyHandViews);
+        enemyHandViews.Clear();   // 先摘掉：排版/补牌逻辑都不再碰它们，位置全交给飞行
+
+        if (leaving.Count == 0) yield break;
+
+        Vector3 to = flyTarget != null
+            ? flyTarget.position
+            : transform.position + Vector3.down * 10f;
+        Quaternion toRot = Quaternion.Euler(-90f, 0f, 0f);
+
+        List<Coroutine> flights = new List<Coroutine>();
+        for (int i = 0; i < leaving.Count; i++)
+        {
+            Card c = leaving[i];
+            if (c == null) continue;
+
+            c.transform.SetParent(null, true);   // 脱离敌人父物体，飞行不被带着走
+            flights.Add(StartCoroutine(CardAnimator.FlyArc(c.transform, to, toRot, 0.35f, 0.4f, 0f, 0f)));
+
+            if (i < leaving.Count - 1) yield return new WaitForSeconds(0.05f);
+        }
+
+        foreach (Coroutine f in flights)
+            if (f != null) yield return f;
+
+        foreach (Card c in leaving)
+            if (c != null) Destroy(c.gameObject);
     }
 
     private void LayoutEnemyHand()
@@ -801,11 +826,6 @@ public class BattleView : Singleton<BattleView>
             float x = (i - (enemyHandViews.Count - 1) / 2f) * enemyHandSpacing;
             enemyHandViews[i].transform.localPosition = new Vector3(x, 0f, 0f);
         }
-    }
-
-    public void ClearEnemyHand()
-    {
-        ClearEnemyHandViews();
     }
 
     // ========== 敌人出牌演出 ==========
@@ -860,38 +880,36 @@ public class BattleView : Singleton<BattleView>
 
         yield return new WaitForSeconds(0.4f);
 
-        // 6. 牌缩小销毁（敌人专用）
-        yield return ShrinkOutEnemyCards(selectedViews);
+        // 6. 牌飞出屏幕销毁（敌人专用，不再原地缩小）
+        yield return FlyOutEnemyCards(selectedViews);
     }
 
-    // 敌人专用销毁（不碰 DeckManager）
-    private IEnumerator ShrinkOutEnemyCards(List<Card> cards)
+    // 敌人专用离场：不缩小消失，逐张沿弧线飞出屏幕再销毁
+    private IEnumerator FlyOutEnemyCards(List<Card> cards)
     {
+        MapManager map = FindObjectOfType<MapManager>();
+        Transform flyTarget = map != null ? map.discardFlyTarget : null;
 
-        List<Transform> ts = new List<Transform>();
-        foreach (Card c in cards)
-            if (c != null) ts.Add(c.transform);
+        Vector3 to = flyTarget != null
+            ? flyTarget.position
+            : transform.position + Vector3.down * 10f;
+        Quaternion toRot = Quaternion.Euler(-90f, 0f, 0f);
 
-        List<Vector3> baseScales = new List<Vector3>();
-        foreach (Transform tr in ts) baseScales.Add(tr.localScale);
-
-        float t = 0f;
-        float dur = 0.25f;
-        while (t < dur)
+        List<Coroutine> flights = new List<Coroutine>();
+        for (int i = 0; i < cards.Count; i++)
         {
-            t += Time.deltaTime;
-            float p = Mathf.Clamp01(t / dur);
-            for (int i = 0; i < ts.Count; i++)
-            {
-                if (ts[i] == null) continue;
-                ts[i].localScale = baseScales[i] * (1f - p);
-            }
-            yield return null;
+            Card c = cards[i];
+            if (c == null) continue;
+
+            flights.Add(StartCoroutine(CardAnimator.FlyArc(c.transform, to, toRot, 0.4f, 0.4f, 0f, 0f)));
+
+            if (i < cards.Count - 1) yield return new WaitForSeconds(0.05f);
         }
 
+        foreach (Coroutine f in flights)
+            if (f != null) yield return f;
+
         foreach (Card c in cards)
-        {    
-            Destroy(c.gameObject);
-        }
+            if (c != null) Destroy(c.gameObject);
     }
 }

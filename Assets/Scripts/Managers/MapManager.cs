@@ -188,7 +188,8 @@ public class MapManager : Singleton<MapManager>
                 break;
 
             case MapNodeType.Shop:
-                clearshopCards();
+                // 没卖掉的商品：逐张飞出屏幕销毁，等飞完再收帽子
+                yield return ClearShopCardsRoutine();
                 // 帽子在外面（进过商店）就先完整演一遍原路返回，等它回到常驻位再开卷轴，避免相机立刻切走把回程盖掉
                 if (TOPhat.Instance != null && TOPhat.Instance.IsOutside)
                 {
@@ -230,12 +231,6 @@ public class MapManager : Singleton<MapManager>
         OpenMapUI();   // 收场全演完（商店=帽子回位、商品飞走）再开卷轴，回程不会被盖掉
     }
     //清理商品
-    void clearshopCards()
-    {
-        StartCoroutine(ClearShopCardsRoutine());
-
-    }
-
     IEnumerator ClearShopCardsRoutine()
     {
         if (ShopManager.Instance == null) yield break;
@@ -332,14 +327,17 @@ public class MapManager : Singleton<MapManager>
         // 我的筹码不还池：整个跑局都在同一场景，玩家筹码堆跨关保留原样，
         // 下一关 ChipsChangedEvent 报同样的数，SetCount 不会动它（不重掉一遍开场下筹码雨）
         if(enemyChips!=null) enemyChips.ClearLedger();
-        if(potArea!=null) potArea.ClearCoins();
-        else FindObjectOfType<PotArea>().ClearCoins();
+        // 主池：不原地收回对象池，逐枚飞出屏幕再还池（和手牌一起飞，收场不拖长）
+        PotArea pot = potArea != null ? potArea : FindObjectOfType<PotArea>();
+        Coroutine potFly = pot != null ? StartCoroutine(pot.ClearCoinsFly(discardFlyTarget)) : null;
 
         //手牌区：先全部飞回抽牌堆（演出），飞完再清虚影/敌人手牌，避免两套卡牌逻辑同时跑
         if (DeckManager.Instance != null)
             yield return DeckManager.Instance.FlyAllHandToDeck();
+        if (potFly != null) yield return potFly;   // 等主池那摞也飞干净
+
         BattleView.Instance.ClearGhosts();        // 删虚影
-        BattleView.Instance.ClearEnemyHand();
+        yield return BattleView.Instance.ClearEnemyHandFly(discardFlyTarget);   // 敌人手牌飞出屏幕销毁
         SaveManager.Instance.Save();   // 打完一关存档一次
 
         LevelConfig clearedCfg = null;

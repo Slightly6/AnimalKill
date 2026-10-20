@@ -27,13 +27,13 @@ public class DeckManager : Singleton<DeckManager>
     public Transform handPanel;
 
     [Header("抽牌飞入手牌（抛物线手感，和筹码同款配方）")]
-    public float drawApexHeight = 0.6f;      // 抛物线比直线多拱多少（越高越"飞"）
+    public float drawApexHeight = 0.25f;     // 抛物线比直线多拱多少（低一点：牌是发到手上，不是抛过来）
     public float drawDuration = 0.4f;        // 单张从牌堆飞到手的时长
-    public float drawBounceHeight = 0.12f;   // 落位后小跳多高
+    public float drawBounceHeight = 0f;      // 落位后小跳多高（0 = 不做 Q 弹）
     public float drawBounceDuration = 0.12f; // 小跳用时
     [Header("抽多张的节奏（逐张加快，和筹码一个味道）")]
     public float drawStagger = 0.22f;        // 上一张起飞后多久，下一张才开始翻面
-    public float drawStaggerDecay = 0.85f;   // 每抽一张，下一张的间隔乘这个数（越小越密）
+    public float drawStaggerDecay = 0.92f;   // 每抽一张，下一张的间隔乘这个数（越小越密）
     public float drawStaggerMin = 0.1f;      // 间隔下限
 
     // 手牌排列：飞行落点和"飞到哪张牌之后"都问它
@@ -313,7 +313,7 @@ public class DeckManager : Singleton<DeckManager>
 
             ct += Time.deltaTime;
             float p = Mathf.Clamp01(ct / T);
-            float k = Mathf.SmoothStep(0f, 1f, p);   // 起步慢、中段快、接近落位收住
+            float k = 1f - (1f - p) * (1f - p);   // 先快后慢：被抽出去，再被手接住
 
             Vector3 pos = Vector3.Lerp(startPos, to, k);
             pos.y += Mathf.Sin(p * Mathf.PI) * drawApexHeight;   // 比直线多拱一点：飞的感觉

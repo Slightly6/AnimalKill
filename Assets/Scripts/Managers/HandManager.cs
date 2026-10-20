@@ -27,8 +27,8 @@ public class HandManager : MonoBehaviour
     private readonly Dictionary<Card, Vector3> hoverOffsets = new Dictionary<Card, Vector3>();
 
     [Header("落位平滑")]
-    public float followSpeed = 25f;   // 目标格位变化（补牌/出牌/换位）时滑过去的快慢；0 = 瞬间吸附
-    public float dragReorderDeadZone = 0.08f;   // 拖拽换位的迟滞（格位单位）：越大越不容易在中线附近来回抖
+    public float followSpeed = 17f;   // 目标格位变化（补牌/出牌/换位）时滑过去的快慢；0 = 瞬间吸附
+    public float dragReorderDeadZone = 0.12f;   // 拖拽换位的迟滞（格位单位）：越大越不容易在中线附近来回抖
 
     [Header("拖牌时向玩家倾斜（0 = 不翻转）")]
     public float dragTiltAngle = 0f;    // 手牌区整体向玩家倾斜多少度（0 表示不翻转）

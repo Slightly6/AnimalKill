@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -169,14 +170,73 @@ public class PotArea : MonoBehaviour
         }
     }
 
-    public void ClearCoins()
+    [Header("离场飞走（关卡结束清主池）")]
+    public float clearFlyDuration = 0.45f;   // 单枚飞出去的用时
+    public float clearFlyInterval = 0.015f;  // 逐枚出发间隔
+    public float clearFlyApex = 0.5f;        // 途中拱起的高度
+
+    // 关卡结束：主池不原地收回对象池，逐枚沿弧线飞出屏幕，飞到了再还池
+    public IEnumerator ClearCoinsFly(Transform flyTarget)
     {
-         if (pool != null)
+        if (potCoins.Count == 0) yield break;
+
+        List<GameObject> leaving = new List<GameObject>(potCoins);
+        potCoins.Clear();   // 先清账：这里开始谁也不再往这摞里算
+
+        // 没配飞出点就往下飞：至少有个方向，不会原地消失
+        Vector3 to = flyTarget != null
+            ? flyTarget.position
+            : transform.position + Vector3.down * 10f;
+
+        List<Coroutine> flights = new List<Coroutine>();
+        foreach (GameObject coin in leaving)
         {
-            foreach (GameObject coin in potCoins)
-                if (coin != null) pool.Return(coin);
+            if (coin == null) continue;
+            flights.Add(StartCoroutine(FlyAwayOne(coin, to)));
+            if (clearFlyInterval > 0f)
+                yield return new WaitForSeconds(clearFlyInterval);
         }
-        potCoins.Clear();
+
+        foreach (Coroutine f in flights)
+            if (f != null) yield return f;
+    }
+
+    private IEnumerator FlyAwayOne(GameObject coin, Vector3 to)
+    {
+        coin.transform.SetParent(null, true);   // 离池：主池清场不再带着它
+
+        Rigidbody rb = coin.GetComponent<Rigidbody>();
+        Vector3 startPos = rb != null ? rb.position : coin.transform.position;
+
+        if (rb != null)
+        {
+            rb.isKinematic = true;
+            rb.detectCollisions = false;
+            rb.velocity = Vector3.zero;
+            rb.angularVelocity = Vector3.zero;
+        }
+
+        float dur = Mathf.Max(0.05f, clearFlyDuration);
+        float t = 0f;
+        while (t < dur && coin != null)
+        {
+            t += Time.deltaTime;
+            float p = Mathf.Clamp01(t / dur);
+            float k = 1f - (1f - p) * (1f - p);   // 先快后慢：甩出去，再被拖住
+
+            Vector3 pos = Vector3.Lerp(startPos, to, k);
+            pos.y += Mathf.Sin(p * Mathf.PI) * clearFlyApex;
+
+            if (rb != null) rb.position = pos;
+            else coin.transform.position = pos;
+            yield return null;
+        }
+
+        if (coin == null) yield break;
+
+        if (rb != null) rb.detectCollisions = true;   // 回池前还原：下一关复用这颗币还要靠碰撞叠摞
+        if (pool != null) pool.Return(coin);
+        else coin.SetActive(false);
     }
 
     public int GetCoinCount()
