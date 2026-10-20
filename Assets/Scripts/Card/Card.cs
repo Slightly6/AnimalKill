@@ -369,9 +369,19 @@ public class Card : MonoBehaviour
     {
         if (Input.GetMouseButtonDown(1))
         {
-            if (effectBells != null && effectBells.HoveringBell) return;   // 右键点在铃铛上，让铃铛自己显示效果说明
-
             if (Data == null) return;
+
+            // 右键落在镶嵌图标上 → 只看镶嵌说明；点在卡面其他任何地方 → 只看卡牌信息
+            if (effectBells != null)
+            {
+                AbilityEffectSO eff = effectBells.GetEffectAtScreenPoint(Input.mousePosition);
+                if (eff != null)
+                {
+                    PhoneDisplay.Instance.ShowEffect(eff, (int)Data.rank);
+                    return;
+                }
+            }
+
             PhoneDisplay.Instance.ShowCard(Data);   // 卡牌信息投到手机屏幕上
         }
     }
