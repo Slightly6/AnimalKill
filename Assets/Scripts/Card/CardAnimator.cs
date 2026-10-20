@@ -113,6 +113,61 @@ public static class CardAnimator
         target.rotation = Quaternion.AngleAxis(angle, axis) * fromRot;   // 撞上时保持前倾
     }
 
+    // 抛物线飞行（和筹码 FlyToPotRoutine 同一套配方，只是不用刚体）：
+    // 同一个物体走完整条曲线，中途不换父节点、不重生，所以没有"飞到半空突然瞬移"的缝。
+    // 曲线由"顶点比起飞点高多少 + 总时长"反解重力与竖直初速，横向按总时长均分 → 落点精确。
+    // 落地后再小跳一下（bounceHeight/bounceDuration）压住，就是"q弹"的手感。
+    public static IEnumerator FlyArc(Transform target, Vector3 to, Quaternion toRot,
+        float apexHeight, float duration, float bounceHeight, float bounceDuration)
+    {
+        if (target == null) yield break;
+
+        Vector3 startPos = target.position;
+        Quaternion startRot = target.rotation;
+
+        float h = Mathf.Max(0.05f, apexHeight);
+        float T = Mathf.Max(0.05f, duration);
+        float drop = Mathf.Max(0.05f, (startPos.y + h) - to.y);   // 从顶点落下来的高度
+        float g = 2f * Mathf.Pow(Mathf.Sqrt(h) + Mathf.Sqrt(drop), 2f) / (T * T);
+        float vy0 = Mathf.Sqrt(2f * g * h);   // 竖直初速：正好拱到 apexHeight 高
+
+        Vector3 vh = to - startPos;   // 水平分量按总时长均分，横向刚好落在目标上
+        vh.y = 0f;
+        vh /= T;
+
+        float ct = 0f;
+        while (ct < T)
+        {
+            if (target == null) yield break;   // 飞行途中被销毁（换关清场）就收手
+            ct += Time.deltaTime;
+            float t = Mathf.Min(ct, T);
+
+            Vector3 pos = startPos + vh * t;
+            pos.y = startPos.y + vy0 * t - 0.5f * g * t * t;
+            target.position = pos;
+            target.rotation = Quaternion.Slerp(startRot, toRot, t / T);
+            yield return null;
+        }
+
+        if (target == null) yield break;
+
+        // 落地回弹：小跳一下再压住，落位才有重量感
+        if (bounceHeight > 0f && bounceDuration > 0f)
+        {
+            float bt = 0f;
+            while (bt < 1f)
+            {
+                if (target == null) yield break;
+                bt += Time.deltaTime / bounceDuration;
+                target.position = to + Vector3.up * (Mathf.Sin(Mathf.Clamp01(bt) * Mathf.PI) * bounceHeight);
+                yield return null;
+            }
+        }
+
+        target.position = to;
+        target.rotation = toRot;
+    }//--------------------------------重点--------------------------------------------卡牌飞行
+
     // 命中停顿：全世界卡一下（打击感核心）。用真实时间等待，timeScale=0 也能恢复。
     // 战斗协程是串行的，同一时刻只会有一个 HitStop。
     public static IEnumerator HitStop(float realtimeSeconds = 0.06f, float timeScale = 0.05f)

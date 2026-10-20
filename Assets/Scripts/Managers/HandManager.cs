@@ -26,6 +26,9 @@ public class HandManager : MonoBehaviour
     // 每张牌独立的 hover 偏移（切换 hover 牌时各自动画）
     private readonly Dictionary<Card, Vector3> hoverOffsets = new Dictionary<Card, Vector3>();
 
+    [Header("落位平滑")]
+    public float followSpeed = 25f;   // 目标格位变化（补牌/出牌/换位）时滑过去的快慢；0 = 瞬间吸附
+
     [Header("拖牌时向玩家倾斜（0 = 不翻转）")]
     public float dragTiltAngle = 0f;    // 手牌区整体向玩家倾斜多少度（0 表示不翻转）
 
@@ -52,42 +55,24 @@ public class HandManager : MonoBehaviour
 
         Camera cam = mainCam;
 
-        // 屏幕下方一点作为手牌中心（viewport 0~1，0.5,0.10 = 下方中间）
-        Vector3 center = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.10f, handDist));
-
-        // 牌越多越密集：总宽度超过 maxHandWidth 就压缩间距
-        float spacing = cardSpacing;
-        if (count > 1)
-        {
-            float totalWidth = (count - 1) * cardSpacing;
-            if (totalWidth > maxHandWidth)
-                spacing = maxHandWidth / (count - 1);
-        }
-
         for (int i = 0; i < count; i++)
         {
             Card card = deck.HandCards[i];
             if (card == null) continue;
 
+            // 正在飞进手牌：位置/朝向由 DeckManager 的飞入协程接管，这里别抢
+            if (card.SkipArrange) continue;
+
             // 正在拖拽的卡不要抢
             if (CardDisplay.draggingCard != null && CardDisplay.draggingCard.Card == card)
                 continue;
 
-            // 沿相机右方向展开，越靠边越往下沉
-            float t = count == 1 ? 0 : (i / (float)(count - 1) - 0.5f) * 2f;   // -1 ~ 1
-            float x = (i - (count - 1) / 2f) * spacing;
-            float sink = Mathf.Abs(t) * yOffset;
-
-            Vector3 pos = center
-                + cam.transform.right * x
-                - cam.transform.up * sink;
+            // 扇面落位（和 GetSlotPosition 同一份算法）
+            Vector3 pos = GetSlotPosition(i, count);
 
             // 被点选的牌：沿它自己的 Y 轴突出一点
             if (card.IsSelected)
                 pos += card.transform.up * selectLift;
-
-            // 越靠上（i 大）的牌离相机近一点，让点击命中的牌和眼睛看到的"盖在上面"一致
-            pos -= cam.transform.forward * (i * zStep);
 
             // 鼠标悬浮的牌：往前突出（每张牌独立平滑）
             bool isHovered = (CardDisplay.hoveredCard != null && CardDisplay.hoveredCard.Card == card);
@@ -99,17 +84,17 @@ public class HandManager : MonoBehaviour
             hoverOffsets[card] = curOffset;
             pos += curOffset;
 
-            card.transform.position = pos;
+            // 平滑滑向格位：新牌飞进来/出牌/换位导致格位变化时，牌是滑过去而不是瞬间弹过去
+            float follow = followSpeed > 0f ? Mathf.Clamp01(followSpeed * Time.deltaTime) : 1f;
+            card.transform.position = Vector3.Lerp(card.transform.position, pos, follow);
 
             // 扇形倾斜：越靠边越斜，但整体面向相机
-            float angle = -t * maxAngle;
-
             // 拖牌时整体向玩家倾斜，平时不倾斜
             float tilt = 0f;
             if (CardDisplay.draggingCard != null)
                 tilt = dragTiltAngle;
-
-            card.transform.rotation = cam.transform.rotation * Quaternion.Euler(tilt, 0, angle);
+            Quaternion rot = cam.transform.rotation * Quaternion.Euler(tilt, 0, GetSlotAngle(i, count));
+            card.transform.rotation = Quaternion.Slerp(card.transform.rotation, rot, follow);
 
             // 错开渲染顺序，防止手牌互相闪烁（选中不额外提层级，只靠 Y 轴突出）
             SortingGroup sg = card.sortingGroup;
@@ -121,6 +106,73 @@ public class HandManager : MonoBehaviour
         }
     }
 
+    // 扇面上第 index 张牌的位置（抽牌飞进手牌也读这份，保证飞入终点和排好的位置完全一致）
+    public Vector3 GetSlotPosition(int index, int count)
+    {
+        if (mainCam == null) mainCam = Camera.main;
+        if (mainCam == null || count <= 0) return Vector3.zero;
+
+        Camera cam = mainCam;
+
+        // 屏幕下方一点作为手牌中心（viewport 0~1，0.5,0.10 = 下方中间）
+        Vector3 center = cam.ViewportToWorldPoint(new Vector3(0.5f, 0.10f, handDist));
+
+        float spacing = GetSpacingFor(count);
+        float t = count == 1 ? 0 : (index / (float)(count - 1) - 0.5f) * 2f;   // -1 ~ 1
+        float x = (index - (count - 1) / 2f) * spacing;
+        float sink = Mathf.Abs(t) * yOffset;
+
+        // 越靠上（index 大）的牌离相机近一点，让点击命中的牌和眼睛看到的"盖在上面"一致
+        return center
+             + cam.transform.right * x
+             - cam.transform.up * sink
+             - cam.transform.forward * (index * zStep);
+    }
+
+    // 扇面上第 index 张牌的倾斜角（俯仰为 0，面向相机）
+    public Quaternion GetSlotRotation(int index, int count)
+    {
+        if (mainCam == null) mainCam = Camera.main;
+        if (mainCam == null || count <= 0) return Quaternion.identity;
+        return mainCam.transform.rotation * Quaternion.Euler(0f, 0f, GetSlotAngle(index, count));
+    }
+
+    float GetSlotAngle(int index, int count)
+    {
+        float t = count <= 1 ? 0 : (index / (float)(count - 1) - 0.5f) * 2f;   // -1 ~ 1
+        return -t * maxAngle;
+    }
+
+    float GetSpacingFor(int count)
+    {
+        // 牌越多越密集：总宽度超过 maxHandWidth 就压缩间距
+        float spacing = cardSpacing;
+        if (count > 1)
+        {
+            float totalWidth = (count - 1) * cardSpacing;
+            if (totalWidth > maxHandWidth)
+                spacing = maxHandWidth / (count - 1);
+        }
+        return spacing;
+    }
+    public void OnDragCardChangedPosition(Card draggingCard, Vector3 screenPos)
+    {
+        int count = deck.HandCards.Count;
+        if (count <= 1) return;
+
+        // 1. 算出鼠标当前指向的索引
+        int targetIndex = GetIndexAtScreenPoint(screenPos);
+        
+        // 2. 拿到正在拖的牌原本的索引
+        int currentIndex = deck.HandCards.IndexOf(draggingCard);
+        
+        // 3. 如果位置变了，就在列表里把这张牌挪过去
+        if (currentIndex != -1 && targetIndex != currentIndex)
+        {
+            deck.HandCards.RemoveAt(currentIndex);
+            deck.HandCards.Insert(targetIndex, draggingCard);
+        }
+    }
     // 手牌中心（和 Arrange 里同一个点）
     public Vector3 GetHandCenter()
     {

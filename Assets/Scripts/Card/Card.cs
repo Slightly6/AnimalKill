@@ -26,6 +26,7 @@ public class Card : MonoBehaviour
     [System.NonSerialized] public SortingGroup sortingGroup;   // 缓存引用，避免每帧 GetComponent
     [System.NonSerialized] public bool IsSelected;   // 这张牌被点选（准备出牌）
     [System.NonSerialized] public bool IsStaged;   // 已拖上桌集结（还没结算）
+    [System.NonSerialized] public bool SkipArrange;   // 正在飞进手牌：HandManager 先别抢位置
     [System.NonSerialized] public CardDataSO originalData;   // 拟态变身前的本体数据（弃牌/牌库归属用它）
 
     // ---- 拟态（CardDataSO.isMimic = true 的牌）----

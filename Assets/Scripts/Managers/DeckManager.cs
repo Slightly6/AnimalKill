@@ -26,6 +26,29 @@ public class DeckManager : Singleton<DeckManager>
     [Header("手牌父节点")]
     public Transform handPanel;
 
+    [Header("抽牌飞入手牌（抛物线手感，和筹码同款配方）")]
+    public float drawApexHeight = 0.6f;      // 抛物线比直线多拱多少（越高越"飞"）
+    public float drawDuration = 0.4f;        // 单张从牌堆飞到手的时长
+    public float drawBounceHeight = 0.12f;   // 落位后小跳多高
+    public float drawBounceDuration = 0.12f; // 小跳用时
+    [Header("抽多张的节奏（逐张加快，和筹码一个味道）")]
+    public float drawStagger = 0.22f;        // 上一张起飞后多久，下一张才开始翻面
+    public float drawStaggerDecay = 0.85f;   // 每抽一张，下一张的间隔乘这个数（越小越密）
+    public float drawStaggerMin = 0.1f;      // 间隔下限
+
+    // 手牌排列：飞行落点和"飞到哪张牌之后"都问它
+    private HandManager cachedHand;
+    private HandManager Hand
+    {
+        get
+        {
+            if (cachedHand == null) cachedHand = FindObjectOfType<HandManager>();
+            return cachedHand;
+        }
+    }
+    private int drawJobs;               // 还在翻面的抽牌任务数
+    private int drawFlights;            // 还在空中飞的牌数（DrawCards 结尾等它们全部落位）
+
     // 抽牌堆和手牌
     private List<CardDataSO> drawPile = new List<CardDataSO>();// 抽牌堆
     private List<CardDataSO> discardPile = new List<CardDataSO>();// 弃牌堆（抽干后洗回去）
@@ -119,15 +142,27 @@ public class DeckManager : Singleton<DeckManager>
         EventBus.Publish(new HandChangedEvent());
         yield return new WaitForSeconds(0.45f);   // 等最后一张飞完
     }
-    // 抽 N 张（协程，一张张翻面）
+    // 抽 N 张（协程）：一张张"甩"出去 —— 上一张起飞后等一下下，下一张才开始翻面，
+    // 间隔逐张收紧（和筹码飞进主池同一个节奏），前几张连成一串在空中飞；
+    // 全部落位后才继续流程（不然流程先走了，玩家能点到还在空中的牌）。
     // 批量窗口：一轮补牌不管几张只算 1 次手牌变动（船锚计数用）
     public System.Collections.IEnumerator DrawCards(int count)
     {
         TrinketRuntime.BeginHandChangeBatch();
+
+        // 任务数在翻面前就加上，后面几张翻面期间也在等它们；飞行数在牌真起飞时才算上，
+        // 这样"翻面中的"和"空中的"都能等到，收尾不会提前放行
+        float wait = drawStagger;
         for (int i = 0; i < count; i++)
         {
-            yield return DrawOneCard();
+            drawJobs++;
+            StartCoroutine(DrawOneCard());
+            yield return new WaitForSeconds(wait);
+            wait = Mathf.Max(drawStaggerMin, wait * drawStaggerDecay);
         }
+
+        while (drawJobs > 0 || drawFlights > 0) yield return null;
+
         TrinketRuntime.EndHandChangeBatch();
     }
 
@@ -159,6 +194,7 @@ public class DeckManager : Singleton<DeckManager>
         if (HandCards.Count >= maxHandSize)
         {
             Debug.Log("手牌满了");
+            EndDrawJob();
             yield break;
         }
          
@@ -167,6 +203,7 @@ public class DeckManager : Singleton<DeckManager>
             if (discardPile.Count == 0)
             {
                 Debug.Log("牌堆和弃牌堆都空了");
+                EndDrawJob();
                 yield break;
             }
             drawPile = new List<CardDataSO>(discardPile);
@@ -181,6 +218,13 @@ public class DeckManager : Singleton<DeckManager>
         drawPile.RemoveAt(0);
 
         yield return CreateCardInHand(data);
+        EndDrawJob();
+    }
+
+    // 这个抽牌任务收工（没牌可抽也要记一笔，不然 DrawCards 会一直等）
+    private void EndDrawJob()
+    {
+        drawJobs = Mathf.Max(0, drawJobs - 1);
     }
 
     // 从牌堆出生一张卡，扣着，翻面，进手牌
@@ -198,7 +242,8 @@ public class DeckManager : Singleton<DeckManager>
         // go.GetComponent<ShopCard>().enabled=false; // 禁用 ShopCard 脚本
         // go.GetComponent<CardDisplay>().enabled=true; // 启用 CardDisplay 脚本
         if (deckPile != null)
-            go.transform.position = deckPile.position + Vector3.up * 0.1f;   // 略高于牌堆顶，别叠穿
+            // 略高于牌堆顶，别叠穿；连抽时可能有两张同时在牌堆上翻面，高度错开一点免得完全重合
+            go.transform.position = deckPile.position + Vector3.up * (0.1f + 0.035f * (HandCards.Count % 4));
 
         Card card = go.GetComponent<Card>();
         if (card == null)
@@ -218,14 +263,89 @@ public class DeckManager : Singleton<DeckManager>
 
         yield return StartCoroutine(card.FlatFlipAnim());   // 平着翻到正面
         if (card == null) yield break;   
-        card.transform.SetParent(handPanel);
+
+        // 入列 + 换父（SetParent 保持世界坐标，所以这一刻不瞬移）：飞行终点就是它以后待的手牌格位
+        card.transform.SetParent(handPanel, true);
         HandCards.Add(card);
-        if (HandCamera.HandLayerIndex >= 0)
-            card.SetLayerRecursively(HandCamera.HandLayerIndex);   // 切到手牌层 → HandCamera 渲染 → 永远在最上层
         SyncMimicVisuals();
         EventBus.Publish(new HandChangedEvent());
 
+        // 从牌堆沿一条抛物线飞进手牌（顶点高度+时长反解，落点精确），落地小跳一下 = q弹。
+        // 飞行期间在手牌列表里，但先不让 HandManager 抢位置，由这段协程写位置。
+        HandManager hand = Hand;
+        if (hand != null)
+        {
+            card.SkipArrange = true;
+            drawFlights++;
+            StartCoroutine(FlyIntoHand(card, hand));
+        }
+        else if (HandCamera.HandLayerIndex >= 0)
+        {
+            card.SetLayerRecursively(HandCamera.HandLayerIndex);
+        }
+
+        if (card == null) yield break;
         Debug.Log("[发牌] 已入手牌：" + data.name);
+    }
+
+    // 一张牌从牌堆顶飞进手牌扇面：
+    // 目标格位每帧重算 —— 飞行途中又抽了新牌，手牌会重排，这张就自然改追自己的新位置。
+    // 主飞行走"起点→格位"的平滑插值 + 中途拱起；落位后再小跳一下压住。
+    // 只有"到手"和"被移出手牌/销毁"两种结局，收尾统一走下面，drawFlights 一定减得回来。
+    private System.Collections.IEnumerator FlyIntoHand(Card card, HandManager hand)
+    {
+        Vector3 startPos = card.transform.position;
+        Quaternion startRot = card.transform.rotation;
+
+        float T = Mathf.Max(0.05f, drawDuration);
+        float ct = 0f;
+        bool alive = true;
+
+        // 主飞行
+        while (alive && ct < T)
+        {
+            int index = card != null ? HandCards.IndexOf(card) : -1;
+            if (index < 0) { alive = false; break; }   // 被移出手牌（清场/打出）
+
+            int count = HandCards.Count;
+            Vector3 to = hand.GetSlotPosition(index, count);
+            Quaternion toRot = hand.GetSlotRotation(index, count);
+
+            ct += Time.deltaTime;
+            float p = Mathf.Clamp01(ct / T);
+            float k = Mathf.SmoothStep(0f, 1f, p);   // 起步慢、中段快、接近落位收住
+
+            Vector3 pos = Vector3.Lerp(startPos, to, k);
+            pos.y += Mathf.Sin(p * Mathf.PI) * drawApexHeight;   // 比直线多拱一点：飞的感觉
+            card.transform.position = pos;
+            card.transform.rotation = Quaternion.Slerp(startRot, toRot, k);
+            yield return null;
+        }
+
+        // 落位小跳一下再压住（q弹的来源）
+        if (alive && drawBounceHeight > 0f && drawBounceDuration > 0f)
+        {
+            float bt = 0f;
+            while (alive && bt < 1f)
+            {
+                int index = card != null ? HandCards.IndexOf(card) : -1;
+                if (index < 0) { alive = false; break; }
+
+                Vector3 to = hand.GetSlotPosition(index, HandCards.Count);
+                bt += Time.deltaTime / drawBounceDuration;
+                card.transform.position = to + Vector3.up * (Mathf.Sin(Mathf.Clamp01(bt) * Mathf.PI) * drawBounceHeight);
+                yield return null;
+            }
+        }
+
+        if (card != null)
+        {
+            card.SkipArrange = false;   // 交回 HandManager 正常排列
+            if (alive && HandCamera.HandLayerIndex >= 0)
+                card.SetLayerRecursively(HandCamera.HandLayerIndex);   // 落进手牌才切手牌层（HandCamera 渲染，永远在最上层）
+        }
+
+        drawFlights = Mathf.Max(0, drawFlights - 1);
     }
 
     // 从手牌移除

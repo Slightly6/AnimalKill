@@ -21,7 +21,9 @@ public class Chips : MonoBehaviour
     public float groupSpacing = 1.8f;           //组横向间距
     public float groupRowSpacing = 1.8f;        //组纵向间距
 
-    public float interval=0.1f;
+    public float interval=0.1f;          // 每枚离堆的间隔，逐枚加快
+    public float intervalDecay = 0.85f;  // 每飞出一枚，下一枚间隔乘这个数（越小越快）
+    public float minInterval = 0.03f;    // 间隔下限
     public float dropHeight = 1.5f;   // 掉落演出高度
     public float dropDuration = 0.25f; // 掉落到目标位的时间
     [Header("Fly to pot")]
@@ -298,9 +300,13 @@ public class Chips : MonoBehaviour
         tr.rotation = targetRot;
     }
 
+    // 每批开始时用的间隔（Inspector 配的 interval），批结束时复位，避免下一批从半路加速的位置开始
+    private float baseInterval = -1f;
+
     private IEnumerator LoseCoinsRoutine()
     {
         Debug.Log("[Chips] 开始飞，coins=" + coins.Count + "，target=" + targetCount);
+        if (baseInterval < 0f) baseInterval = interval;
         while (coins.Count > targetCount)
         {
             if (!TryFindClosestTopCoin(
@@ -317,12 +323,12 @@ public class Chips : MonoBehaviour
             stack.RemoveAt(stack.Count - 1);
             coins.Remove(coin);
 
-            // 出牌结算：筹码先飞上天，再从主池正上方掉下来进主池（入池在 FlyUpRoutine 里做）
+            // 出牌结算：这枚一离堆就当场起飞（不再等整批一起走），走完整条抛物线进主池
             if (potArea != null)
             {
-                flyCoins.Add(coin);
-                if (flyRoutine == null)
-                    flyRoutine = StartCoroutine(FlyUpRoutine());
+                flyingPotCount++;
+                GameProgress.chipFly = true;
+                StartCoroutine(FlyToPotRoutine(coin));
             }
             else
             {
@@ -347,108 +353,128 @@ public class Chips : MonoBehaviour
             }
 
             yield return new WaitForSeconds(interval);
-            interval*=0.85f;
-            if (interval < 0.01f) interval = 0.01f;
+            interval = Mathf.Max(minInterval, interval * intervalDecay);   // 逐枚加快：伤害越大，筹码出得越密
         }
-        interval=0.1f;
+        interval = baseInterval;
         loseRoutine = null;
-        // chipFly 由 FlyUpRoutine 全部落袋后负责关掉；没主池时这里直接关（蓝色筹码还有正在飞的，等飞完自己关）
+        // chipFly 由单枚入池流程（FlyToPotRoutine）全部落袋后负责关掉；没主池时这里直接关（蓝码还有正在飞的，等飞完自己关）
         if (potArea == null && flyingLoseCount <= 0) GameProgress.chipFly = false;
     }
 
-    // ========== 飞上天 → 从主池上方掉落 ==========
+    // ========== 飞向主池（同一枚币走完整条抛物线） ==========
 
-    private readonly List<GameObject> flyCoins = new List<GameObject>();
-    private Coroutine flyRoutine;
+    private int flyingPotCount;   // 还在空中/正在入池的枚数，归零才放开 chipFly
+    private int flyGeneration;    // 清场代次：中途清过场，这枚正在飞的就不再往下走（币的归属已经交给池子）
 
-    [Header("飞天→主池掉落")]
-    public float flyUpHeight = 5f;        // 往天上飞多高
-    public float flyUpDuration = 0.3f;    // 飞天用时
-    public float potDropHeight = 6f;      // 从主池正上方多高处出现往下掉
-    public float potDropInterval = 0.15f; // 每枚间隔
+    [Header("飞天→主池（同一枚币走完整条抛物线，中途不还池重生）")]
+    public float flyUpHeight = 5f;        // 抛物线顶点比筹码堆高出多少
+    public float flyUpDuration = 0.85f;   // 从离堆到落进池子的总时长
+    [Header("落池回弹")]
+    public float bounceHeight = 0.12f;    // 落地后小跳多高
+    public float bounceDuration = 0.12f;  // 小跳用时
 
-    // 等本批筹码都飞完 → 逐枚从主池上方掉下来
-    // 外层循环：飞完一批后再看 flyCoins——飞行期间下一手可能又塞了筹码进来，不能撂下不管
-    private IEnumerator FlyUpRoutine()
+    // 单枚闭环：这枚筹码一离堆就走完整条抛物线——先窜到顶点，再横穿桌面落进主池它自己的格子，
+    // 落地轻弹一下锁位。全程同一枚实体，中途不还池、不重生，所以没有"飞到半空突然瞬移"的缝。
+    // 曲线由 flyUpHeight（顶点高出多少）和 flyUpDuration（总时长）反解重力与初速，落点精确落在格子上。
+    private IEnumerator FlyToPotRoutine(GameObject coin)
     {
-        while (true)
+        int gen = flyGeneration;
+
+        coin.transform.SetParent(null, true);   // 离堆：堆清场时不会被一起收走
+        potArea.ReceiveCoin(coin);              // 入池账 → 拿到它在摞里的格子；此后归属交给池子
+
+        Vector3 landPos = potArea.GetCoinWorldPos(coin);
+        Rigidbody rb = coin.GetComponent<Rigidbody>();
+
+        if (rb == null)
         {
-            // 等 LoseCoinsRoutine 把筹码都塞进 flyCoins
-            while (loseRoutine != null)
-                yield return null;
-
-            if (flyCoins.Count == 0)
-                break;   // 真没了才收工
-
-            List<GameObject> batch = new List<GameObject>(flyCoins);
-            flyCoins.Clear();
-
-            // 1. 全部同时竖直飞上天（物理向上冲），到点回收进池
-            foreach (GameObject coin in batch)
-            {
-                if (coin == null) continue;
-                Rigidbody rb = coin.GetComponent<Rigidbody>();
-                if (rb != null)
-                {
-                    rb.isKinematic = false;
-                    rb.constraints = RigidbodyConstraints.None;
-                    rb.velocity = Vector3.up * (flyUpHeight / flyUpDuration);
-                    rb.angularVelocity = Random.insideUnitSphere * 2f;
-                }
-            }
-
-            yield return new WaitForSeconds(flyUpDuration);
-
-            // 回收飞天上的筹码，直接还池（天上那批只是演出）
-            foreach (GameObject coin in batch)
-                if (coin != null) pool.Return(coin);
-
-            // 2. 逐枚取新筹码，从各自落点的正上方直接掉到位（不再先掉主池中心再瞬移）
-            for (int i = 0; i < batch.Count; i++)
-            {
-                GameObject coin = pool.Get();
-                if (coin == null) continue;
-
-                potArea.ReceiveCoin(coin);
-
-                Rigidbody rb = coin.GetComponent<Rigidbody>();
-                if (rb != null)
-                {
-                    Vector3 landPos = potArea.GetCoinWorldPos(coin);   // 它在摞里的准确位置
-                    rb.isKinematic = true;
-                    rb.position = landPos + Vector3.up * potDropHeight;
-                    rb.rotation = potArea.transform.rotation;
-                    StartCoroutine(PotDropAnim(rb, landPos));
-                }
-
-                yield return new WaitForSeconds(potDropInterval);
-            }
+            coin.transform.position = landPos;   // 没刚体的兜底：直接摆到格子上
+            EndFlyOne();
+            yield break;
         }
-        flyRoutine = null;
-        GameProgress.chipFly = false;
-    }
 
-    // 主池上方出现 → 竖直掉到主池 → 落地后排好
-    private IEnumerator PotDropAnim(Rigidbody rb, Vector3 landPos)
-    {
-        Vector3 startPos = rb.position;
-        float t = 0f;
-        while (t < 1f)
+        Vector3 startPos = rb.position;                       // 从堆里弹出来的当前位置
+        Quaternion startRot = rb.rotation;
+        Quaternion landRot = potArea.transform.rotation;
+
+        // 反解重力与竖直初速：上升段 tUp 拱到 flyUpHeight 高，下落段 tDown 从顶点落到格子，两段和就是总时长
+        float h = Mathf.Max(0.05f, flyUpHeight);
+        float T = Mathf.Max(0.1f, flyUpDuration);
+        float drop = Mathf.Max(0.05f, (startPos.y + h) - landPos.y);
+        float g = 2f * Mathf.Pow(Mathf.Sqrt(h) + Mathf.Sqrt(drop), 2f) / (T * T);
+        float vy0 = Mathf.Sqrt(2f * g * h);
+
+        Vector3 vh = landPos - startPos;   // 水平分量按总时长均分，横向刚好落在格子上
+        vh.y = 0f;
+        vh /= T;
+
+        rb.isKinematic = true;             // 手动控位：曲线就是标准抛物线，和物理同一形状但落点精确
+        rb.constraints = RigidbodyConstraints.None;
+        rb.detectCollisions = false;       // 空中不跟别的筹码/桌面碰，免得被撞歪打不进格子
+        rb.velocity = Vector3.zero;
+        rb.angularVelocity = Vector3.zero;
+
+        Vector3 tumbleAxis = Random.onUnitSphere;
+        bool aborted = false;
+        float ct = 0f;
+
+        while (ct < T)
         {
-            t += Time.deltaTime / dropDuration;
-            float p = Mathf.Clamp01(t);
-            rb.position = Vector3.Lerp(startPos, landPos, p * p);   // ease-in 模拟重力加速
+            if (gen != flyGeneration || !rb.gameObject.activeInHierarchy)
+            {
+                aborted = true;   // 中途清场（关卡结束）：这枚已还池，别再写它
+                break;
+            }
+
+            ct += Time.deltaTime;
+            float t = Mathf.Min(ct, T);
+            float p = t / T;
+
+            Vector3 pos = startPos + vh * t;
+            pos.y = startPos.y + vy0 * t - 0.5f * g * t * t;   // 抛物线：起手窜天，顶点后横穿桌面落向主池
+            rb.position = pos;
+            rb.rotation = Quaternion.Slerp(startRot, landRot, p)
+                        * Quaternion.AngleAxis(360f * p, tumbleAxis);   // 空中翻一整圈，落地正好摆正
             yield return null;
         }
-        potArea.Rearrange();   // 落地即收进摞，不用点击
+
+        if (!aborted)
+        {
+            // 落地回弹：小跳一下再压住，落池才有重量感（不再是砸下去纹丝不动）
+            float bt = 0f;
+            while (bt < 1f)
+            {
+                if (gen != flyGeneration || !rb.gameObject.activeInHierarchy)
+                {
+                    aborted = true;
+                    break;
+                }
+
+                bt += Time.deltaTime / bounceDuration;
+                rb.position = landPos + Vector3.up * (Mathf.Sin(Mathf.Clamp01(bt) * Mathf.PI) * bounceHeight);
+                yield return null;
+            }
+        }
+
+        if (!aborted)
+        {
+            rb.position = landPos;
+            rb.rotation = landRot;
+        }
+
+        rb.detectCollisions = true;   // 无论正常落地还是中途作废都恢复：这枚回池后可能被别的流程复用
+        EndFlyOne();
     }
 
-    // 本关结束清场：飞天上没回收的统一还池
-    public void ClearScatter()
+    // 一枚收工：还在空中/正在入池的枚数减一，全落完了才放开 chipFly
+    private void EndFlyOne()
     {
-        foreach (GameObject coin in flyCoins)
-            if (coin != null) pool.Return(coin);
-        flyCoins.Clear();
+        flyingPotCount--;
+        if (flyingPotCount <= 0)
+        {
+            flyingPotCount = 0;
+            GameProgress.chipFly = false;
+        }
     }
 
     // 在每个小摞的顶部筹码中，选择离主池最近的一枚。
@@ -650,20 +676,20 @@ public class Chips : MonoBehaviour
     public void ClearLedger()
     {
         if (loseRoutine != null) { StopCoroutine(loseRoutine); loseRoutine = null; }
-        if (flyRoutine != null) { StopCoroutine(flyRoutine); flyRoutine = null; }
+        baseInterval = -1f;   // 下次扣筹码重新从 Inspector 配的间隔开始加速
 
         if (pool != null)
         {
-            // 搁浅在 flyCoins 里的幽灵筹码 + 堆里没飞完的 + 飞来途中没入摞的，全部还池
-            foreach (GameObject coin in flyCoins)
-                if (coin != null) pool.Return(coin);
+            // 堆里没飞完的 + 飞来途中没入摞的，全部还池（在飞往主池途中的那些已经归 PotArea 管，由 ClearCoins 收）
             foreach (GameObject coin in coins)
                 if (coin != null) pool.Return(coin);
             foreach (GameObject coin in pendingPlayerCoins)
                 if (coin != null) pool.Return(coin);
         }
 
-        flyCoins.Clear();
+        flyingPotCount = 0;
+        flyGeneration++;   // 作废还在空中的单枚流程
+        GameProgress.chipFly = false;
         coins.Clear();
         pendingPlayerCoins.Clear();
         stackGroups.Clear();

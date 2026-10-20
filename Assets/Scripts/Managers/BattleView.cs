@@ -635,8 +635,15 @@ public class BattleView : Singleton<BattleView>
 
     // ========== 销毁牌 ==========
 
-    // 结算完的牌整体缩小到 0 再销毁（有过渡，不再瞬间消失）
-    // 结算完牌飞到弃牌堆位置后销毁
+    [Header("结算牌飞回弃牌堆")]
+    public float discardFlyApex = 1.2f;       // 抛物线比直线多拱多少（越高越飘）
+    public float discardFlyDuration = 0.42f;  // 单张飞行用时
+    public float discardFlyInterval = 0.07f;  // 张与张之间的出发间隔（逐张收紧的节奏感）
+    public float discardLandBounce = 0.07f;   // 落到牌堆后的回弹高度
+    public float discardLandStack = 0.02f;    // 每落一张往上垫这么高（视作叠在牌堆上）
+
+    // 结算完的牌飞回弃牌堆：和筹码同一套抛物线配方（同一张实体走完整条连续曲线、落点精确、落地轻弹），
+    // 逐张错开出发 —— 不再是"所有牌一起直线平移 0.2 秒然后集体消失"。
     private IEnumerator ShrinkOutCards(List<Card> cards)
     {
         Transform discardPos = DeckManager.Instance.discardPilePos;
@@ -648,40 +655,35 @@ public class BattleView : Singleton<BattleView>
             yield break;
         }
 
-        Vector3 target = discardPos.position + Vector3.up * 0.1f;
-        Quaternion flatRot = Quaternion.Euler(-90f, 0f, 0f);
-        float dur = 0.4f;
+        Vector3 pilePos = discardPos.position + Vector3.up * 0.1f;
+        Quaternion flatRot = Quaternion.Euler(-90f, 0f, 0f);   // 平躺进牌堆
 
-        List<Vector3> froms = new List<Vector3>();
-        List<Quaternion> fromRots = new List<Quaternion>();
-        foreach (Card c in cards)
-        {
-            if (c == null) { froms.Add(target); fromRots.Add(flatRot); continue; }
-            froms.Add(c.transform.position);
-            fromRots.Add(c.transform.rotation);
-        }
+        List<Coroutine> flights = new List<Coroutine>();
 
-        float t = 0f;
-        while (t < dur)
+        for (int i = 0; i < cards.Count; i++)
         {
-            t += Time.deltaTime;
-            float p = Mathf.Clamp01(t / dur);
-            for (int i = 0; i < cards.Count; i++)
-            {
-                if (cards[i] == null) continue;
-                Vector3 pos = Vector3.Lerp(froms[i], target, p);
-                pos.y += Mathf.Sin(p * Mathf.PI) * 1.5f;   // 弧线：先升高再落下
-                cards[i].transform.position = pos;
-                cards[i].transform.rotation = Quaternion.Slerp(fromRots[i], flatRot, p);
-            }
-            yield return null;
-        }
-
-        foreach (Card c in cards)
-        {
+            Card c = cards[i];
             if (c == null) continue;
-            Destroy(c.gameObject);
+
+            c.transform.SetParent(null, true);   // 脱离手牌父节点：飞行途中不会被父物体带着走
+
+            // 同一个点落，按落桌顺序往上垫一点点，视觉上是"一张压一张"叠进牌堆
+            Vector3 target = pilePos + Vector3.up * (flights.Count * discardLandStack);
+
+            flights.Add(StartCoroutine(CardAnimator.FlyArc(
+                c.transform, target, flatRot,
+                discardFlyApex, discardFlyDuration, discardLandBounce, 0.1f)));
+
+            if (i < cards.Count - 1)
+                yield return new WaitForSeconds(discardFlyInterval);
         }
+
+        // 等每一张都落进牌堆（各自落点已精确，落地后不再被别的流程挪动）
+        for (int i = 0; i < flights.Count; i++)
+            yield return flights[i];
+
+        foreach (Card c in cards)
+            if (c != null) Destroy(c.gameObject);
     }
 
         // ========== 敌人手牌显示 ==========
