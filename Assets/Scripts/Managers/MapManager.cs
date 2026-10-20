@@ -24,6 +24,9 @@ public class MapManager : Singleton<MapManager>
     public GameObject chest;
     public List<GameObject> Goods = new List<GameObject>();
 
+    [Header("离场飞出点（商店没卖掉的商品/小丑、事件关付费的筹码都飞向这里）")]
+    public Transform discardFlyTarget;   // 拖一个屏幕外的空物体；空着 = 不飞
+
     // 非战斗节点刷出来的实体（商品/宝箱），离开该节点时统一清理
     private readonly List<GameObject> spawnedObjects = new List<GameObject>();
     //筹码
@@ -239,8 +242,8 @@ public class MapManager : Singleton<MapManager>
         var list = ShopManager.Instance.shopCards;
         if (list == null || list.Count == 0) yield break;
 
-        Transform deckPos = DeckPile.Instance != null ? DeckPile.Instance.transform : null;
-        if (deckPos == null) yield break;
+        if (discardFlyTarget == null) yield break;   // 没配飞出点就哪儿也不飞
+        Vector3 flyPos = discardFlyTarget.position;
 
         List<Coroutine> coroutines = new List<Coroutine>();
         foreach (var t in list)
@@ -248,7 +251,7 @@ public class MapManager : Singleton<MapManager>
             if (t == null) continue;
             var flyable = t.GetComponent<IShopFlyable>();
             if (flyable != null)
-                coroutines.Add(StartCoroutine(flyable.FlyStraight(t, new Vector3(15, 3, -1), 0.5f)));
+                coroutines.Add(StartCoroutine(flyable.FlyStraight(t, flyPos, 0.5f)));
         }
         list.Clear();
 

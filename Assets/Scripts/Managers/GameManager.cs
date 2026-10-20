@@ -160,11 +160,8 @@ public class GameManager : Singleton<GameManager>
         CheckWin();
     }
 
-    [Header("筹码失去飞行（飞到指定位置后归还对象池，不进主池）")]
-    public Transform chipLoseFlyTarget;   // 指定飞向的位置（Inspector 里拖）
-
-    // 筹码失去飞行：从玩家筹码堆顶部取 amount 枚，逐枚飞向指定位置，到达后归还对象池。
-    // 与 LoseChips 的区别：这是"丢掉"，不进主池；扣的数据 = 实际取走的枚数，天然和筹码堆同步。
+    // 筹码失去飞行：从玩家筹码堆顶部取 amount 枚，逐枚飞向指定位置（不传就飞 MapManager 的离场飞出点），
+    // 到达后归还对象池。与 LoseChips 的区别：这是"丢掉"，不进主池；扣的数据 = 实际取走的枚数，天然和筹码堆同步。
     public void FlyLoseChips(int amount, Transform target = null)
     {
         if (IsGameOver || amount <= 0) return;
@@ -176,7 +173,15 @@ public class GameManager : Singleton<GameManager>
             return;
         }
 
-        Transform dest = target != null ? target : chipLoseFlyTarget;
+        Transform dest = target != null
+            ? target
+            : (MapManager.Instance != null ? MapManager.Instance.discardFlyTarget : null);
+        if (dest == null)
+        {
+            Debug.LogWarning("[筹码失去飞行] 没配飞出点（MapManager.discardFlyTarget 空着）");
+            return;
+        }
+
         int popped = stack.PopAndFlyAway(amount, dest);   // 堆内已同步减数
         if (popped <= 0) return;
 
@@ -387,7 +392,15 @@ public class GameManager : Singleton<GameManager>
     // 胜负：敌人筹码归零 = 过关；玩家筹码归零 = 整局失败
     private void CheckWin()
     {
-        if (EnemyChips <= 0)
+        // 只有战斗节点才判"敌人筹码归零 = 过关"。
+        // 非战斗节点（商店/宝箱/休息/事件）里 EnemyChips 是上一场战斗打完留下的 0，
+        // 这里一旦发生任何筹码变动（比如事件关花红筹码付费），就会被误判成打死敌人，
+        // 一路跑出战斗关收场（敌人认输 → LevelClearedEvent → 帽子收骰/手牌飞回/强化开箱/出地图）。
+        bool inBattle = GameProgress.currentNodeType == MapNodeType.Monster
+                     || GameProgress.currentNodeType == MapNodeType.Elite
+                     || GameProgress.currentNodeType == MapNodeType.Boss;
+
+        if (inBattle && EnemyChips <= 0)
         {
             EnemyChips = 0;
             if (deathSequenceRunning) return;

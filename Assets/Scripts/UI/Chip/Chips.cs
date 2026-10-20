@@ -326,7 +326,24 @@ public class Chips : MonoBehaviour
             }
             else
             {
-                coin.transform.SetParent(null, true);
+                // 没有主池的那堆就是蓝色筹码堆（临时护盾）：到期就是收走。
+                // 飞向离场点后归还对象池 —— 原来只 SetParent(null) 会把实体丢在场上，
+                // 既漏还池，看起来也是硬消失。
+                Transform dest = MapManager.Instance != null ? MapManager.Instance.discardFlyTarget : null;
+                if (dest != null)
+                {
+                    flyingLoseCount++;
+                    GameProgress.chipFly = true;
+                    StartCoroutine(LoseFlyRoutine(coin, dest.position));
+                }
+                else if (pool != null)
+                {
+                    pool.Return(coin);
+                }
+                else
+                {
+                    coin.transform.SetParent(null, true);
+                }
             }
 
             yield return new WaitForSeconds(interval);
@@ -335,8 +352,8 @@ public class Chips : MonoBehaviour
         }
         interval=0.1f;
         loseRoutine = null;
-        // chipFly 由 FlyUpRoutine 全部落袋后负责关掉；没主池时这里直接关
-        if (potArea == null) GameProgress.chipFly = false;
+        // chipFly 由 FlyUpRoutine 全部落袋后负责关掉；没主池时这里直接关（蓝色筹码还有正在飞的，等飞完自己关）
+        if (potArea == null && flyingLoseCount <= 0) GameProgress.chipFly = false;
     }
 
     // ========== 飞上天 → 从主池上方掉落 ==========

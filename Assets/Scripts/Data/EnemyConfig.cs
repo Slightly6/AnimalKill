@@ -20,7 +20,7 @@ public class EnemyConfig : ScriptableObject
     public List<CardDataSO> deck = new List<CardDataSO>();
     public int handSize = 7;
 
-    [Header("出牌数量（每回合在区间内随机）")]
+    [Header("出牌数量（AI 在区间内挑牌型最大的那手：张数不低于 min、不高于 max）")]
     [Range(1, 5)] public int minCardCount = 1;   // 最少出几张
     [Range(1, 5)] public int maxCardCount = 5;   // 最多出几张
 
@@ -35,4 +35,30 @@ public class EnemyConfig : ScriptableObject
 
     [Header("被动机制（不参与 weight 随机，按钩子自动触发）")]
     public List<EnemyBehaviorSO> passives = new List<EnemyBehaviorSO>();
+
+    // 池子挂错就报出来（改资产时立刻在 Console 看到）：
+    //   被动类机制塞进行为池 → 抽到它那回合不出牌，只白占一次行动；
+    //   行动类（Check/Call/Raise/Fold 等）塞进被动池 → 钩子不会自动触发，纯占位。
+    void OnValidate()
+    {
+        CheckPool(behaviors, false, "behaviors");
+        CheckPool(backupBehaviors, false, "backupBehaviors");
+        CheckPool(passives, true, "passives");
+    }
+
+    void CheckPool(List<EnemyBehaviorSO> pool, bool wantPassive, string poolName)
+    {
+        if (pool == null) return;
+        for (int i = 0; i < pool.Count; i++)
+        {
+            EnemyBehaviorSO b = pool[i];
+            if (b == null || b.IsPassive == wantPassive) continue;
+
+            Debug.LogError("[敌人配置] " + name + " 的 " + poolName + " 池挂了「" + b.behaviorName + "」"
+                         + "，它是" + (b.IsPassive
+                             ? "被动类机制，应挂 passives（靠钩子自动触发），挂进行为池只会白占一回合不出牌"
+                             : "行动类，应挂 behaviors / backupBehaviors（参与加权随机），挂被动池永远不会触发")
+                         + "。", this);
+        }
+    }
 }

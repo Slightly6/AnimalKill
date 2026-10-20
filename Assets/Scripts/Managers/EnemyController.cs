@@ -24,6 +24,10 @@ public class EnemyController : Singleton<EnemyController>
     [Tooltip("当前回合数（Rush 等机制用，Initialize 时重置为 0）")]
     public int RoundNumber { get; private set; } = 0;
 
+    // 本场战斗敌人已经真打出过几发攻击（Call/Raise 结算完成就算一发）。
+    // 抢先（Rush）等"第一次攻击"类被动读它：0 = 下一发就是第一次。
+    public int AttacksDone { get; private set; } = 0;
+
     [Tooltip("上回合意图（Double 加倍等机制用）")]
     public EnemyIntentType LastIntent { get; private set; } = EnemyIntentType.Check;
 
@@ -67,6 +71,7 @@ public class EnemyController : Singleton<EnemyController>
 
         // 被动机制：战斗开始钩子
         RoundNumber = 0;
+        AttacksDone = 0;
         LastIntent = EnemyIntentType.Check;
         activeBehaviors = Config.behaviors;   // 默认用主行为池
         if (Config.passives != null)
@@ -116,15 +121,42 @@ public class EnemyController : Singleton<EnemyController>
     {
         EnemyPlayData result = new EnemyPlayData { intent = currentIntent };
 
-        // Check/Fold 不出牌；出牌数从敌人配置的区间随机
+        // Check/Fold 不出牌
         if (selectedBehavior == null
             || currentIntent == EnemyIntentType.Check
             || currentIntent == EnemyIntentType.Fold)
             return result;
 
-        int cardCount = UnityEngine.Random.Range(Config.minCardCount, Config.maxCardCount + 1);
-        cardCount = Mathf.Min(cardCount, hand.Count);
-        List<int> indices = FindBestCombination(cardCount);
+        // AI：出手里最大的牌型。
+        // 在 [minCardCount, maxCardCount] 张的**所有组合**里挑牌型伤害最高的那手
+        // （以前是先随一个张数、再只在该张数里挑最优，于是手里有同花也可能只出对子）。
+        int lo = Mathf.Max(1, Config.minCardCount);
+        int hi = Mathf.Min(Config.maxCardCount, hand.Count);
+
+        List<int> indices = new List<int>();
+        int bestDamage = -1;
+        int bestRankSum = -1;
+        List<CardDataSO> tmp = new List<CardDataSO>();
+
+        for (int count = lo; count <= hi; count++)
+        {
+            List<int> cand = FindBestCombination(count);
+            if (cand.Count != count) continue;   // 手牌不够这个张数
+
+            tmp.Clear();
+            foreach (int i in cand) tmp.Add(hand[i]);
+
+            int dmg = CalculateRawDamage(tmp);
+            int rankSum = RankSum(tmp);
+
+            // 牌型伤害优先（牌型越大越优先）；同牌型再比点数之和（一对 A 优于一对 7）
+            if (dmg > bestDamage || (dmg == bestDamage && rankSum > bestRankSum))
+            {
+                bestDamage = dmg;
+                bestRankSum = rankSum;
+                indices = cand;
+            }
+        }
 
         foreach (int index in indices)
         {
@@ -132,8 +164,25 @@ public class EnemyController : Singleton<EnemyController>
             result.cards.Add(hand[index]);
         }
 
-        // 让 behavior 有机会改写选牌（如只挑同花色），默认不动
+        // 让当前行为有机会改写选牌（如只挑同花色），默认不动
         selectedBehavior.ModifyCardChoice(this, result.handIndices);
+
+        // 被动机制也能改写选牌（对子 / 同花这类"常驻选牌策略"）。
+        // 注意：这些实现只动 handIndices，所以改完必须把 cards 重建一遍 ——
+        // 结算层（PokerResolver）读的是 cards，不重建就会出现"牌被清空了却照样打人"。
+        if (Config.passives != null)
+        {
+            foreach (var p in Config.passives)
+                p.ModifyCardChoice(this, result.handIndices);
+        }
+        result.cards.Clear();
+        foreach (int index in result.handIndices)
+            result.cards.Add(hand[index]);
+
+        // 选牌被清空（如"对子"要求对子以上，凑不出就全清）= 这回合不出牌，
+        // 转成 Check 交给结算层走"不出牌不攻击"分支
+        if (result.handIndices.Count == 0)
+            result.intent = EnemyIntentType.Check;
 
         return result;
     }
@@ -228,6 +277,12 @@ public class EnemyController : Singleton<EnemyController>
         EventBus.Publish(new EnemyIntentChangedEvent{enemy=this,intent=currentIntent});
     }
 
+    // 敌人真打出一发攻击后调用（BattleManager 结算完伤害调它）
+    public void MarkAttackDone()
+    {
+        AttacksDone++;
+    }
+
     private List<int> FindBestCombination(
         int targetCount)
     {
@@ -305,6 +360,18 @@ public class EnemyController : Singleton<EnemyController>
     private int CalculateRawDamage(List<CardDataSO> cards)
     {
         return PokerResolver.GetHandDamage(PokerResolver.Evaluate(cards));
+    }
+
+    // 点数之和（Ace 按最大 14 算）：同一种牌型伤害相同时拿它比大小，让敌人出点数大的那组（一对 A > 一对 7）
+    private static int RankSum(List<CardDataSO> cards)
+    {
+        int sum = 0;
+        foreach (var c in cards)
+        {
+            if (c == null) continue;
+            sum += c.rank == CardRank.Ace ? 14 : (int)c.rank;
+        }
+        return sum;
     }
 
     private void DrawToFull()

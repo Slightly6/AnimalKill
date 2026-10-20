@@ -529,6 +529,7 @@ public class BattleManager : Singleton<BattleManager>
         // 游戏逻辑：敌方伤害先扣蓝码（临时护盾），打穿了才扣红码，红码流出进主池
         Debug.Log("[敌人攻击] 伤害:" + damage);
         GameManager.Instance.TakeEnemyDamage(damage);
+        ec.MarkAttackDone();   // 记一发攻击：抢先（Rush）等"第一次攻击"类被动读它
 
         // 触发意图独有效果（Call/Raise 默认空，留作演出钩子）
         EnemyController.Instance.ExecuteSelectedBehavior();

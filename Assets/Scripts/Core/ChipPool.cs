@@ -49,6 +49,10 @@ public class ChipPool : MonoBehaviour
     // 还
     public void Return(GameObject coin)
     {
+        // 对象可能已经先被销毁了（场景卸载时筹码挂在的父物体先于池子被销毁，但还留在 inUse 里）。
+        // Unity 的 == 重载让已销毁对象比较为 null，这里直接用 == null 拦住，别再访问它的 transform / SetActive。
+        if (coin == null) return;
+
         coin.SetActive(false);
         // 池子自己正在销毁时别再挂父（Unity 禁止，且会打断还池流程），反正马上一起销毁
         if (!destroying)
@@ -66,7 +70,7 @@ public class ChipPool : MonoBehaviour
     }
     public void ReturnAll()
     {
-        List<GameObject>list=new List<GameObject>(inUse);
+        List<GameObject> list=new List<GameObject>(inUse);
         foreach (GameObject coin in list)
         {
             Return(coin);
