@@ -332,8 +332,8 @@ public class BattleView : Singleton<BattleView>
         // 3. 不出数字，筹码由 Chips 自动飞进主池
         yield return new WaitForSeconds(0.4f);
 
-        // 4. 结算完了牌才离场：缩小消失
-        yield return ShrinkOutCards(cards);
+        // 4. 结算完了牌才离场：沿弧线飞回弃牌堆销毁
+        yield return FlyOutToDiscard(cards);
     }
 
     // ========== 飞牌 ==========
@@ -690,9 +690,10 @@ public class BattleView : Singleton<BattleView>
     public float discardLandBounce = 0f;      // 落到牌堆后的回弹高度（0 = 不做 Q 弹）
     public float discardLandStack = 0.02f;    // 每落一张往上垫这么高（视作叠在牌堆上）
 
-    // 结算完的牌飞回弃牌堆：和筹码同一套抛物线配方（同一张实体走完整条连续曲线、落点精确、落地轻弹），
+    // 牌飞回弃牌堆：和筹码同一套抛物线配方（同一张实体走完整条连续曲线、落点精确、落地轻弹），
     // 逐张错开出发 —— 不再是"所有牌一起直线平移 0.2 秒然后集体消失"。
-    private IEnumerator ShrinkOutCards(List<Card> cards)
+    // 结算牌和回合末清手共用（DeckManager.DiscardAllHandFly 调）；飞完在方法内统一销毁
+    public IEnumerator FlyOutToDiscard(List<Card> cards)
     {
         Transform discardPos = DeckManager.Instance.discardPilePos;
         if (discardPos == null) discardPos = DeckManager.Instance.deckPile;

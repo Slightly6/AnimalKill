@@ -228,6 +228,9 @@ public class MapManager : Singleton<MapManager>
                 break;
         }
 
+        // 商店/休息这类节点收尾演完了，这里解锁；战斗关不走这条尾巴（LevelClearRoutine 交给强化流程解锁），
+        // 事件关在 PlayEventRewards 里解锁。锁住的时间 = 收尾演出期间，期间铃铛/卡牌点了都没用
+        GameProgress.levelEndBusy = false;
         OpenMapUI();   // 收场全演完（商店=帽子回位、商品飞走）再开卷轴，回程不会被盖掉
     }
     //清理商品
@@ -299,8 +302,16 @@ public class MapManager : Singleton<MapManager>
     //     StartCoroutine(FinishNonBattleNodeRoutine());
     // }
 
+    // 非战斗节点离场流程进行中（铃铛已点过）：从这一刻到出地图，铃铛彻底失效。
+    // 不能用 levelEndBusy 顶替——宝箱选择期间 EnhanceManager 会解锁它（让玩家点候选牌），铃铛会跟着复活
+    public bool NodeFinishRunning { get; private set; }
+
     public void FinishNonBattleNode()
     {
+        // 第一帧就双重上锁：levelEndBusy 锁全局交互，NodeFinishRunning 专门焊死铃铛，
+        // 连点铃铛不许把离场流程触发第二遍，必须等这次收尾完整演完
+        GameProgress.levelEndBusy = true;
+        NodeFinishRunning = true;
         StartCoroutine(ClearSpawnedNonBattleObjectsRoutine());
     }
 
@@ -389,6 +400,7 @@ public class MapManager : Singleton<MapManager>
     // 打开地图：优先用 3D 卷纸 RollingMap3D，没有则 fallback 到旧 MapScrollUI
     void OpenMapUI()
     {
+        NodeFinishRunning = false;   // 地图都出来了，离场流程算走完，铃铛解锁（下一关再点才有效）
         var rolling = FindObjectOfType<RollingMap3D>();
         if (rolling != null)
         {

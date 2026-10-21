@@ -86,6 +86,30 @@ public class DeckManager : Singleton<DeckManager>
       Shuffle(drawPile);
       Debug.Log("牌组初始化完成，共 " + drawPile.Count + " 张");
     }
+    // 回合结束：手牌数据全部进弃牌堆，实体沿弧线飞回弃牌堆再逐张销毁（和结算牌同一套演出）
+    // 批量窗口：清手整个动作只算 1 次手牌变动（船锚计数用）
+    public System.Collections.IEnumerator DiscardAllHandFly()
+    {
+        TrinketRuntime.BeginHandChangeBatch();
+        List<Card> toFly = new List<Card>();
+        for (int i = HandCards.Count - 1; i >= 0; i--)
+        {
+            Card c = HandCards[i];
+            DiscardCardData(c);          // 数据先入账，实体不动
+            if (c != null) toFly.Add(c);
+        }
+        SyncMimicVisuals();
+        EventBus.Publish(new HandChangedEvent());
+        TrinketRuntime.EndHandChangeBatch();
+
+        if (toFly.Count == 0) yield break;
+
+        if (BattleView.Instance != null)
+            yield return BattleView.Instance.FlyOutToDiscard(toFly);   // 飞行演出交给 BattleView
+        else
+            foreach (Card c in toFly)   // 没有演出层（个别测试场景）：当场销毁兜底
+                if (c != null) Destroy(c.gameObject);
+    }
     // 回合结束：手牌全部进弃牌堆（销毁实体，数据留着抽干后洗回）
     // 批量窗口：清手整个动作只算 1 次手牌变动（船锚计数用）
     public void DiscardAllHand()
@@ -383,9 +407,9 @@ public class DeckManager : Singleton<DeckManager>
         SyncMimicVisuals();
     }
 
-    // 弃牌：数据进弃牌堆（抽干后洗回），销毁手牌实体
+    // 弃牌的数据部分：进弃牌堆（抽干后洗回）、移出手牌列表，不动实体——实体销毁交给调用方
     // 道具弃掉也算"使用"：消耗（创可贴挂账则免死一次进弃牌堆）
-    public void DiscardToPile(Card card)
+    private void DiscardCardData(Card card)
     {
         if (card == null) return;
         if (card.DeckData.cardType == CardType.Item)
@@ -398,6 +422,13 @@ public class DeckManager : Singleton<DeckManager>
         else if (!TrinketRuntime.IsBanished(card.DeckData))
             discardPile.Add(card.DeckData);   // 拟态牌进本体，变身对象不重复；大邪典销毁的牌不进弃牌堆
         HandCards.Remove(card);
+    }
+
+    // 弃一张牌：数据入账 + 当场销毁实体（主动弃牌用的瞬时版）
+    public void DiscardToPile(Card card)
+    {
+        if (card == null) return;
+        DiscardCardData(card);
         Destroy(card.gameObject);
         SyncMimicVisuals();
         EventBus.Publish(new HandChangedEvent());

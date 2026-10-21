@@ -15,7 +15,7 @@ public enum TableActionType
 public class TableClickTarget : MonoBehaviour
 {
     public TableActionType actionType;
-
+    public RouletteSpin myRoulette; 
     void Start()
     {
         Collider col = GetComponent<Collider>();
@@ -36,8 +36,29 @@ public class TableClickTarget : MonoBehaviour
         // 而 IsInBattle 是 false，直接 return，铃铛点了什么都不会发生。
         bool nonBattle = GameProgress.IsNonBattleNode()
                       || GameProgress.currentNodeType == MapNodeType.Event;
+
+        if (GameProgress.currentNodeType == MapNodeType.Event)
+        {
+            // 事件关铃铛 = 离场。四类情况拦住：
+            // ① 离场流程已在跑（点过一次铃铛）：从点击那刻到出地图彻底失效，
+            //    宝箱选择阶段也不能跳——那时 levelEndBusy 会被 EnhanceManager 解锁，得用专用标记拦
+            // ② 轮盘掉落/飞回/转动中：这时点离场 FlyBack 会被拒收，轮盘会赖在桌上不走
+            // ③ 转动判定用程序查找，不依赖 Inspector 拖引用（myRoulette 忘拖也不漏拦）
+            if (MapManager.Instance != null && MapManager.Instance.NodeFinishRunning) return;
+
+            if (RouletteDrop.Instance != null && RouletteDrop.Instance.IsBusy) return;
+
+            if (myRoulette != null && myRoulette.IsSpinning) return;
+            RouletteSpin spin = FindObjectOfType<RouletteSpin>();
+            if (spin != null && spin.IsSpinning) return;
+
+            MapManager.Instance.FinishNonBattleNode();
+            return;
+        }
+
         if (nonBattle && actionType == TableActionType.EndTurn)
         {
+
             MapManager.Instance.FinishNonBattleNode();
             return;
         }

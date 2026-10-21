@@ -303,8 +303,8 @@ public class BattleManager : Singleton<BattleManager>
             BattleView.Instance.ClearSelection();    // 清残留选中（引用的是即将销毁的牌）
             BattleView.Instance.ClearGhosts();       // 清桌上虚影+阴影
             TrinketRuntime.FireTurnEndHeld();        // 镶嵌物：攥在手里没打出的效果（延期票/秒针/保险箱）
-            DeckManager.Instance.DiscardAllHand();   // 回合结束，手牌全弃
-            SetPhase(TurnPhase.EnemyBattle);
+            SetPhase(TurnPhase.EnemyBattle);         // 先切阶段再清手：牌飞回途中 CanPlay 已不通过，点不了
+            yield return DeckManager.Instance.DiscardAllHandFly();   // 回合结束，手牌数据全弃，实体飞回弃牌堆销毁
             yield return StartCoroutine(ResolveEnemyTurn());
         }
 
