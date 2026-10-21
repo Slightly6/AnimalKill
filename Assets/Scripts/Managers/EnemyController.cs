@@ -283,76 +283,37 @@ public class EnemyController : Singleton<EnemyController>
         AttacksDone++;
     }
 
-    private List<int> FindBestCombination(
-        int targetCount)
+    private List<int> FindBestCombination(int targetCount)
     {
-        List<int> best =
-            new List<int>();
-
+        List<int> best =new List<int>();
         int bestDamage = -1;
-
-        List<int> current =
-            new List<int>();
-
-        SearchCombination(
-            targetCount,
-            0,
-            current,
-            ref best,
-            ref bestDamage
-        );
-
+        List<int> current =  new List<int>();
+        SearchCombination(targetCount, 0, current, ref best,ref bestDamage);
         return best;
     }
 
-    private void SearchCombination(
-        int targetCount,
-        int startIndex,
-        List<int> current,
-        ref List<int> best,
-        ref int bestDamage)
+    private void SearchCombination(int targetCount,int startIndex, List<int> current, ref List<int> best,ref int bestDamage)
     {
         if (current.Count == targetCount)
         {
-            List<CardDataSO> cards =
-                new List<CardDataSO>();
-
+            List<CardDataSO> cards = new List<CardDataSO>();
             foreach (int index in current)
                 cards.Add(hand[index]);
-
-            int damage =
-                CalculateRawDamage(cards);
-
+            int damage = CalculateRawDamage(cards);
             if (damage > bestDamage)
             {
                 bestDamage = damage;
                 best = new List<int>(current);
             }
-
             return;
         }
+        int needed =targetCount - current.Count;
 
-        int needed =
-            targetCount - current.Count;
-
-        for (
-            int i = startIndex;
-            i <= hand.Count - needed;
-            i++)
+        for (int i = startIndex; i <= hand.Count - needed;i++)
         {
             current.Add(i);
-
-            SearchCombination(
-                targetCount,
-                i + 1,
-                current,
-                ref best,
-                ref bestDamage
-            );
-
-            current.RemoveAt(
-                current.Count - 1
-            );
+            SearchCombination(targetCount,i + 1, current, ref best, ref bestDamage );
+            current.RemoveAt(current.Count - 1);
         }
     }
 
